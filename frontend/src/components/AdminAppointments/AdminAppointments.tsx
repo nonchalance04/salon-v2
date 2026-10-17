@@ -1,3 +1,7 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/NativeSelect";
+import { Badge } from "@/components/ui/Badge";
 import { WaitingQueue } from "../WaitingQueue";
 import { NoShowCorrection } from "../NoShowCorrection";
 import { AppointmentCheckIn } from "../AppointmentCheckIn";
@@ -134,7 +138,7 @@ export function AdminAppointments({
           <div className="form-grid">
             <label>
               From date
-              <input
+              <Input
                 name="from"
                 type="date"
                 defaultValue={initialFilters.from}
@@ -142,12 +146,12 @@ export function AdminAppointments({
             </label>
             <label>
               Through date
-              <input name="to" type="date" defaultValue={initialFilters.to} />
+              <Input name="to" type="date" defaultValue={initialFilters.to} />
             </label>
             <label>
               Status
-              <select name="status" defaultValue={initialFilters.status ?? ""}>
-                <option value="">All statuses</option>
+              <NativeSelect name="status" defaultValue={initialFilters.status ?? ""}>
+                <NativeSelectOption value="">All statuses</NativeSelectOption>
                 {[
                   "PENDING_PAYMENT",
                   "CONFIRMED",
@@ -156,29 +160,29 @@ export function AdminAppointments({
                   "NO_SHOW",
                   "EXPIRED",
                 ].map((status) => (
-                  <option value={status} key={status}>
+                  <NativeSelectOption value={status} key={status}>
                     {status.replaceAll("_", " ")}
-                  </option>
+                  </NativeSelectOption>
                 ))}
-              </select>
+              </NativeSelect>
             </label>
             <label>
               Stylist
-              <select
+              <NativeSelect
                 name="staffId"
                 defaultValue={initialFilters.staffId ?? ""}
               >
-                <option value="">All stylists</option>
+                <NativeSelectOption value="">All stylists</NativeSelectOption>
                 {staff.map((person) => (
-                  <option key={person.id} value={person.id}>
+                  <NativeSelectOption key={person.id} value={person.id}>
                     {person.firstName} {person.lastName}
-                  </option>
+                  </NativeSelectOption>
                 ))}
-              </select>
+              </NativeSelect>
             </label>
             <label>
               Customer or booking code
-              <input
+              <Input
                 name="search"
                 maxLength={100}
                 defaultValue={initialFilters.search}
@@ -198,8 +202,8 @@ export function AdminAppointments({
             </label> */}
           </div>
           <div className="actions">
-            <button className="primary">Apply filters</button>
-            <button
+            <Button variant="default" className="primary">Apply filters</Button>
+            <Button variant="outline"
               type="button"
               onClick={(event) => {
                 event.currentTarget.form?.reset();
@@ -220,16 +224,16 @@ export function AdminAppointments({
               }}
             >
               Clear filters
-            </button>
+            </Button>
           </div>
         </fieldset>
       </form>
       {error && (
         <p role="alert" className="error">
           {error}{" "}
-          <button disabled={busy} onClick={() => void load()}>
+          <Button variant="outline" disabled={busy} onClick={() => void load()}>
             Retry
-          </button>
+          </Button>
         </p>
       )}
       {busy && <p role="status">Loading appointments…</p>}
@@ -273,14 +277,14 @@ export function AdminAppointments({
                     ))}
                   </td>
                   <td>
-                    <span
+                    <Badge variant="secondary"
                       className={`badge status-${row.status.toLowerCase()}`}
                     >
                       {row.status.replaceAll("_", " ")}
-                    </span>
+                    </Badge>
                   </td>
                   <td>
-                    <button
+                    <Button variant="outline"
                       disabled={busy}
                       aria-expanded={selected === row.bookingCode}
                       onClick={() =>
@@ -290,7 +294,7 @@ export function AdminAppointments({
                       }
                     >
                       View details
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               ))}
@@ -299,13 +303,13 @@ export function AdminAppointments({
         </div>
       )}
       {cursor && (
-        <button
+        <Button variant="outline"
           disabled={busy}
           className="admin-load-more"
           onClick={() => void load(cursor)}
         >
           Load more matching appointments
-        </button>
+        </Button>
       )}
       {current && (
         <article className="admin-panel" aria-label="Selected appointment">
@@ -318,19 +322,19 @@ export function AdminAppointments({
                 {current.bookingCode} · {format(current)}
               </p>
             </div>
-            <button
+            <Button variant="outline"
               onClick={() => {
                 setSelected(null);
                 setMarking(null);
               }}
             >
               Close details
-            </button>
+            </Button>
           </div>
           <p>
-            <span className={`badge status-${current.status.toLowerCase()}`}>
+            <Badge variant="secondary" className={`badge status-${current.status.toLowerCase()}`}>
               {current.status.replaceAll("_", " ")}
-            </span>
+            </Badge>
           </p>
           <ol>
             {current.appointmentServices.map((service) => (
@@ -377,16 +381,16 @@ export function AdminAppointments({
           )}
           <div className="actions">
             {onPayment && (
-              <button
+              <Button variant="outline"
                 disabled={busy}
                 onClick={() => onPayment(current.bookingCode)}
               >
                 Review appointment fee
-              </button>
+              </Button>
             )}
             {onSettlement &&
               ["CONFIRMED", "COMPLETED"].includes(current.status) && (
-                <button
+                <Button variant="default"
                   className="primary"
                   disabled={busy}
                   onClick={() => onSettlement(current.bookingCode)}
@@ -394,17 +398,17 @@ export function AdminAppointments({
                   {current.status === "COMPLETED"
                     ? "View settlement / receipt"
                     : "Settle services"}
-                </button>
+                </Button>
               )}
             {current.status === "CONFIRMED" &&
               !current.checkedInAt &&
               Date.parse(current.startAt) <= Date.parse(current.serverTime) && (
-                <button
+                <Button variant="outline"
                   disabled={busy}
                   onClick={() => setMarking(current.bookingCode)}
                 >
                   Mark no-show
-                </button>
+                </Button>
               )}
           </div>
           {current.status === "NO_SHOW" && !current.recoveryAppointment && (
@@ -431,15 +435,15 @@ export function AdminAppointments({
                 missed visit.
               </p>
               <div className="actions">
-                <button
+                <Button variant="outline"
                   disabled={busy}
                   onClick={() => void mark(current.bookingCode)}
                 >
                   Confirm no-show
-                </button>
-                <button disabled={busy} onClick={() => setMarking(null)}>
+                </Button>
+                <Button variant="outline" disabled={busy} onClick={() => setMarking(null)}>
                   Keep confirmed
-                </button>
+                </Button>
               </div>
             </div>
           )}

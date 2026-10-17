@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../lib/api";
 import type { Appointment } from "../../types/booking";
@@ -60,8 +61,8 @@ export function CheckoutReturn({ appointment, token, onResolved }: {
       {error && <p className="error" role="alert">{error}</p>}
       {(delayed || error) && (
         <div className="actions">
-          <button type="button" onClick={() => setAttempt(value => value + 1)}>Check again</button>
-          <button type="button" onClick={() => resolved.current(latest.current)}>View appointment</button>
+          <Button variant="outline" type="button" onClick={() => setAttempt(value => value + 1)}>Check again</Button>
+          <Button variant="outline" type="button" onClick={() => resolved.current(latest.current)}>View appointment</Button>
         </div>
       )}
     </section>

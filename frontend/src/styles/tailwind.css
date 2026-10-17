@@ -2,19 +2,17 @@
  * Tailwind CSS v4 entry.
  *
  * Preflight (Tailwind's base reset) is intentionally NOT imported so the
- * existing hand-written CSS keeps rendering exactly as before. Only the
- * theme tokens and utility classes are loaded.
+ * existing page layouts retain their spacing. Theme tokens and utilities
+ * style the shared components.
  *
- * Note: Tailwind utilities live inside the `utilities` cascade layer, while
- * the legacy stylesheets are unlayered. Unlayered rules win over layered
- * ones regardless of specificity, so a legacy element rule such as
- * `button { background: white }` will override `bg-*` utilities on that
- * element until the component is migrated off the legacy CSS.
+ * Shared controls use shadcn/ui. Broad legacy element styles exclude their
+ * data-slot attributes; feature-specific rules still customize layout.
  */
 @layer theme, base, components, utilities;
 
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
+@import "tw-animate-css";
 
 /*
  * The public site already defines its own `.container` class. Tailwind's
@@ -35,4 +33,84 @@
 
   --font-serif: Georgia, "Times New Roman", serif;
   --font-sans: Arial, Helvetica, sans-serif;
+}
+
+/* Shared shadcn/ui tokens. Keep the existing page layouts and typography. */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --radius: .75rem;
+  --background: #fff;
+  --foreground: #292a28;
+  --card: #fff;
+  --card-foreground: #292a28;
+  --popover: #fff;
+  --popover-foreground: #292a28;
+  --primary: #203c34;
+  --primary-foreground: #fff;
+  --secondary: #eef2ed;
+  --secondary-foreground: #203c34;
+  --muted: #f3f3ef;
+  --muted-foreground: #64736b;
+  --accent: #f3ecd3;
+  --accent-foreground: #292a28;
+  --destructive: #a13324;
+  --border: #dce0d8;
+  --input: #cad1c8;
+  --ring: #b67a3d;
+}
+
+.customer-site {
+  --primary: #d3ae30;
+  --primary-foreground: #292a28;
+  --ring: #987b16;
+}
+
+.clique-workspace, .clique-login {
+  --primary: #d9b437;
+  --primary-foreground: #242424;
+  --foreground: #242424;
+  --secondary: #f6f6f6;
+  --secondary-foreground: #242424;
+  --muted-foreground: #686868;
+  --input: #d9d9d9;
+  --border: #e3e3e3;
+  --ring: #bd941f;
+}
+
+@layer base {
+  /* The app does not use Preflight. Supply only the reset primitives need. */
+  :where([data-slot="button"], [data-slot="input"], [data-slot="native-select"], [data-slot="textarea"], [data-slot="badge"], [data-slot="card"], [data-slot="dialog-content"]) {
+    border-style: solid;
+  }
+  :where([data-slot="button"]) { cursor: pointer; }
+  :where([data-slot="button"]:disabled) { cursor: not-allowed; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot] { animation-duration: 0s !important; transition-duration: 0s !important; }
 }

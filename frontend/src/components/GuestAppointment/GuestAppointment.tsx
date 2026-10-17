@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { readGuestCredentials } from "../../utils/guest-credentials";
 import { Link, useLocation, useNavigate } from "react-router";
 import { AppointmentOtp } from "../AppointmentOtp";
@@ -136,8 +137,8 @@ export function GuestAppointment({
       {restoreError ? <>
         <p className="error" role="alert">{restoreError}</p>
         <div className="actions">
-          <button type="button" onClick={() => setRestoreAttempt(value => value + 1)}>Try again</button>
-          <button type="button" onClick={() => setRestoreError("")}>Verify booking details</button>
+          <Button variant="outline" type="button" onClick={() => setRestoreAttempt(value => value + 1)}>Try again</Button>
+          <Button variant="outline" type="button" onClick={() => setRestoreError("")}>Verify booking details</Button>
         </div>
       </> : <p role="status">Please wait while we restore your appointment securely.</p>}
     </section>
@@ -187,7 +188,7 @@ export function GuestAppointment({
               salon={salon}
             />}
             {!token && (
-              <button
+              <Button variant="outline"
                 type="button"
                 onClick={() => {
                   void api("/appointments/otp/logout", { method: "POST" })
@@ -198,7 +199,7 @@ export function GuestAppointment({
                 }}
               >
                 Back to home
-              </button>
+              </Button>
             )}
           </>
         ) : (

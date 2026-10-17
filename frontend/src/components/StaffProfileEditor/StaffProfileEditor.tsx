@@ -1,3 +1,7 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/NativeSelect";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api } from "../../lib/api";
 import { emptyStaffProfile, type StaffPublicProfile } from "../../utils/staff-profile";
@@ -29,27 +33,27 @@ export function StaffProfileEditor({ staffId, name, initial, busy, onBusy, onSav
   return <form ref={form} tabIndex={-1} className="account-form staff-profile-editor" onSubmit={save} aria-label={`Edit public profile for ${name}`}>
     <div className="section-heading"><div><p className="eyebrow">CUSTOMER BOOKING PROFILE</p><h3>{name}</h3><p className="muted">Saved details appear in Select Professional. Use public image links for the portrait and portfolio.</p></div></div>
     <fieldset disabled={busy}>
-      <div className="form-grid"><label>Professional title<input required maxLength={100} value={profile.title} onChange={e => update("title", e.target.value)} placeholder="Senior hairstylist" /></label>
-        <label>Languages (comma-separated)<input value={languages} onChange={e => setLanguages(e.target.value)} maxLength={410} placeholder="English, Tagalog" /></label>
-        <label className="staff-profile-wide">Profile photo URL<input type="url" pattern="https://.*" maxLength={2048} value={profile.photoUrl ?? ""} onChange={e => update("photoUrl", e.target.value || null)} placeholder="https://example.com/portrait.jpg" /><small>HTTPS image link. Leave blank to use the illustrated avatar.</small></label>
-        <label className="staff-profile-wide">About this professional<textarea rows={4} maxLength={2000} value={profile.bio} onChange={e => update("bio", e.target.value)} placeholder="Introduce their approach, experience, and specialties." /></label></div>
+      <div className="form-grid"><label>Professional title<Input required maxLength={100} value={profile.title} onChange={e => update("title", e.target.value)} placeholder="Senior hairstylist" /></label>
+        <label>Languages (comma-separated)<Input value={languages} onChange={e => setLanguages(e.target.value)} maxLength={410} placeholder="English, Tagalog" /></label>
+        <label className="staff-profile-wide">Profile photo URL<Input type="url" pattern="https://.*" maxLength={2048} value={profile.photoUrl ?? ""} onChange={e => update("photoUrl", e.target.value || null)} placeholder="https://example.com/portrait.jpg" /><small>HTTPS image link. Leave blank to use the illustrated avatar.</small></label>
+        <label className="staff-profile-wide">About this professional<Textarea rows={4} maxLength={2000} value={profile.bio} onChange={e => update("bio", e.target.value)} placeholder="Introduce their approach, experience, and specialties." /></label></div>
       <p className="staff-profile-note">Appointments completed and clients served are calculated from completed visits with performed services. Qualified services are managed in Qualifications.</p>
-      <section aria-label="Portfolio editor"><div className="section-heading"><div><h4>Portfolio</h4><p className="muted">Show up to 8 examples of this professional’s work.</p></div><button type="button" disabled={profile.portfolio.length >= 8} onClick={() => update("portfolio", [...profile.portfolio, { title: "", imageUrl: "", caption: "" }])}>+ Add portfolio item</button></div>
+      <section aria-label="Portfolio editor"><div className="section-heading"><div><h4>Portfolio</h4><p className="muted">Show up to 8 examples of this professional’s work.</p></div><Button variant="outline" type="button" disabled={profile.portfolio.length >= 8} onClick={() => update("portfolio", [...profile.portfolio, { title: "", imageUrl: "", caption: "" }])}>+ Add portfolio item</Button></div>
         {!profile.portfolio.length && <p className="staff-profile-empty">No portfolio items yet.</p>}
         {profile.portfolio.map((item, index) => <fieldset className="staff-profile-entry" key={index}><legend>Portfolio item {index + 1}</legend><div className="form-grid">
-          <label>Title<input required maxLength={100} value={item.title} onChange={e => update("portfolio", profile.portfolio.map((row, i) => i === index ? { ...row, title: e.target.value } : row))} /></label>
-          <label>Image URL<input required type="url" pattern="https://.*" maxLength={2048} value={item.imageUrl} onChange={e => update("portfolio", profile.portfolio.map((row, i) => i === index ? { ...row, imageUrl: e.target.value } : row))} /></label>
-          <label className="staff-profile-wide">Caption<textarea rows={2} maxLength={300} value={item.caption} onChange={e => update("portfolio", profile.portfolio.map((row, i) => i === index ? { ...row, caption: e.target.value } : row))} /></label></div>
-          <button type="button" onClick={() => update("portfolio", profile.portfolio.filter((_, i) => i !== index))}>Remove portfolio item {index + 1}</button></fieldset>)}
+          <label>Title<Input required maxLength={100} value={item.title} onChange={e => update("portfolio", profile.portfolio.map((row, i) => i === index ? { ...row, title: e.target.value } : row))} /></label>
+          <label>Image URL<Input required type="url" pattern="https://.*" maxLength={2048} value={item.imageUrl} onChange={e => update("portfolio", profile.portfolio.map((row, i) => i === index ? { ...row, imageUrl: e.target.value } : row))} /></label>
+          <label className="staff-profile-wide">Caption<Textarea rows={2} maxLength={300} value={item.caption} onChange={e => update("portfolio", profile.portfolio.map((row, i) => i === index ? { ...row, caption: e.target.value } : row))} /></label></div>
+          <Button variant="outline" type="button" onClick={() => update("portfolio", profile.portfolio.filter((_, i) => i !== index))}>Remove portfolio item {index + 1}</Button></fieldset>)}
       </section>
-      <section aria-label="Testimonials editor"><div className="section-heading"><div><h4>Client testimonials</h4><p className="muted">Publish up to 10 client testimonials with permission. These are labeled as shared by the salon.</p></div><button type="button" disabled={profile.reviews.length >= 10} onClick={() => update("reviews", [...profile.reviews, { author: "", rating: 5, text: "" }])}>+ Add testimonial</button></div>
+      <section aria-label="Testimonials editor"><div className="section-heading"><div><h4>Client testimonials</h4><p className="muted">Publish up to 10 client testimonials with permission. These are labeled as shared by the salon.</p></div><Button variant="outline" type="button" disabled={profile.reviews.length >= 10} onClick={() => update("reviews", [...profile.reviews, { author: "", rating: 5, text: "" }])}>+ Add testimonial</Button></div>
         {!profile.reviews.length && <p className="staff-profile-empty">No testimonials yet.</p>}
-        {profile.reviews.map((review, index) => <fieldset className="staff-profile-entry" key={index}><legend>Testimonial {index + 1}</legend><div className="form-grid"><label>Client display name<input required maxLength={100} value={review.author} onChange={e => update("reviews", profile.reviews.map((row, i) => i === index ? { ...row, author: e.target.value } : row))} /></label>
-          <label>Rating<select value={review.rating} onChange={e => update("reviews", profile.reviews.map((row, i) => i === index ? { ...row, rating: Number(e.target.value) } : row))}>{[5,4,3,2,1].map(rating => <option key={rating} value={rating}>{rating} {rating === 1 ? "star" : "stars"}</option>)}</select></label>
-          <label className="staff-profile-wide">Testimonial<textarea required rows={3} maxLength={1000} value={review.text} onChange={e => update("reviews", profile.reviews.map((row, i) => i === index ? { ...row, text: e.target.value } : row))} /></label></div><button type="button" onClick={() => update("reviews", profile.reviews.filter((_, i) => i !== index))}>Remove testimonial {index + 1}</button></fieldset>)}
+        {profile.reviews.map((review, index) => <fieldset className="staff-profile-entry" key={index}><legend>Testimonial {index + 1}</legend><div className="form-grid"><label>Client display name<Input required maxLength={100} value={review.author} onChange={e => update("reviews", profile.reviews.map((row, i) => i === index ? { ...row, author: e.target.value } : row))} /></label>
+          <label>Rating<NativeSelect value={review.rating} onChange={e => update("reviews", profile.reviews.map((row, i) => i === index ? { ...row, rating: Number(e.target.value) } : row))}>{[5,4,3,2,1].map(rating => <NativeSelectOption key={rating} value={rating}>{rating} {rating === 1 ? "star" : "stars"}</NativeSelectOption>)}</NativeSelect></label>
+          <label className="staff-profile-wide">Testimonial<Textarea required rows={3} maxLength={1000} value={review.text} onChange={e => update("reviews", profile.reviews.map((row, i) => i === index ? { ...row, text: e.target.value } : row))} /></label></div><Button variant="outline" type="button" onClick={() => update("reviews", profile.reviews.filter((_, i) => i !== index))}>Remove testimonial {index + 1}</Button></fieldset>)}
       </section>
       {error && <p role="alert" className="error">{error}</p>}
-      <div className="actions"><button className="primary" disabled={busy}>{busy ? "Saving profile…" : "Save public profile"}</button><button type="button" onClick={onClose}>Cancel</button></div>
+      <div className="actions"><Button variant="default" className="primary" disabled={busy}>{busy ? "Saving profile…" : "Save public profile"}</Button><Button variant="outline" type="button" onClick={onClose}>Cancel</Button></div>
     </fieldset>
   </form>;
 }

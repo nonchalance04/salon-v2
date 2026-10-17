@@ -1,8 +1,9 @@
-import { guestSessionCredentials } from "../appointments/appointment-otp.routes.js";
+import { GUEST_SESSION_COOKIE, guestSessionCredentials } from "../appointments/appointment-otp.routes.js";
+import { GUEST_SESSION_MS } from "../appointments/appointment-otp.service.js";
 import { Router } from "express";
 import { z } from "zod";
 import { validateRequest } from "../../shared/http.js";
-import { browserSecurity } from "../auth/auth.security.js";
+import { browserSecurity, cookieOptions } from "../auth/auth.security.js";
 import { createAuthMiddleware } from "../auth/auth.middleware.js";
 import { configuredPaymentProvider } from "./provider-config.js";
 import { guestAccessSchema } from "../appointments/appointments.schema.js";
@@ -24,12 +25,23 @@ export function createPaymentsRouter(prisma, config, provider = configuredPaymen
         const { bookingCode, token, paymentId } = res.locals.validated.body;
         res.json({ payment: await service.refresh(bookingCode, token, paymentId) });
     });
+    router.post("/payments/customer-receipt", guestSessionCredentials(prisma), validateRequest(z.object({ body: guestAccessSchema.extend({ paymentId: z.uuid() }).strict() })), async (_req, res) => {
+        const { bookingCode, token, paymentId } = res.locals.validated.body;
+        res.json({ payment: await service.customerReceipt(bookingCode, token, paymentId) });
+    });
     router.post("/payments/recover-checkout", auth.authenticate, auth.adminOnly, validateRequest(z.object({ body: z.object({ paymentId: z.uuid(), checkoutReference: z.string().regex(/^cs_[A-Za-z0-9]+$/) }).strict() })), async (_req, res) => {
         res.json({ payment: await service.recoverCheckout(res.locals.user.id, res.locals.validated.body.paymentId, res.locals.validated.body.checkoutReference) });
     });
     router.post("/payments/checkout", guestSessionCredentials(prisma), validateRequest(z.object({ body: checkoutSchema })), async (_req, res) => {
         const { bookingCode, token, idempotencyKey } = res.locals.validated.body;
-        res.json(await service.checkout(bookingCode, token, idempotencyKey));
+        const checkout = await service.checkout(bookingCode, token, idempotencyKey);
+        // Establish access before leaving for checkout, without exposing the private
+        // booking token to PayMongo, browser storage, or the return URL.
+        if (provider?.name === "paymongo") {
+            const session = await service.returnSession(bookingCode, token);
+            res.cookie(GUEST_SESSION_COOKIE, session, { ...cookieOptions(config), maxAge: GUEST_SESSION_MS });
+        }
+        res.json(checkout);
     });
     router.post("/payments/test-capture", guestSessionCredentials(prisma), validateRequest(z.object({ body: testCaptureSchema })), async (_req, res) => {
         const { bookingCode, token, paymentId, outcome } = res.locals.validated.body;

@@ -569,3 +569,32 @@ coordination, fresh booking-conflict checks including buffers, and audit history
 Removed or closed periods are deactivated; historical rows and unrelated days
 are preserved. A weekday without active periods is closed. No scheduling rules,
 models, or database schema change.
+
+## 2026-10-17 — Adopt shadcn/ui shared frontend controls
+
+Use source-owned shadcn/ui primitives for public booking and staff screens,
+with Radix Dialog/Slot, Tailwind v4, class-variance-authority, and a shared class
+merger. Shared primitives follow the existing Component Folder Pattern under
+`frontend/src/components/ui`. Vite and TypeScript share the `@/` source alias.
+
+Keep the public salon and staff gold/charcoal themes through semantic CSS
+variables and existing feature layout styles. Exclude migrated controls from
+broad legacy element rules and keep Tailwind Preflight disabled. Preserve
+native form submission, validation, select change events, checkbox behavior,
+server-backed calendar availability, payment verification, and receipt printing.
+Modal portals retain their theme root; service and profile triggers explicitly
+restore focus when their conditionally mounted dialogs close.
+
+## 2026-10-18 — Simplify the admin Appointment Settings workflow
+
+At the user's request, present current booking settings with Edit settings and
+Save changes. Default activation to immediately, with an optional future start
+in the salon timezone. Show scheduled settings separately and collapse previous
+settings into history. Prevent unchanged form submissions using numeric value
+comparison against the policy effective at the selected activation time. Keep
+existing future activations visible and warn that they still take effect.
+
+Continue creating immutable BookingPolicyVersion records through the existing
+admin API and preserve audit history and every appointment's original policy
+reference. This changes presentation only; no policy overrides, migrations,
+models, or changes to booking rules are introduced.

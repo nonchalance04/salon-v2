@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { api } from "../../lib/api";
 
@@ -128,16 +130,16 @@ export function WaitingQueue({
       <form className="cashier-search" onSubmit={submit}>
         <label>
           Find waiting customer or booking
-          <input
+          <Input
             type="search"
             maxLength={100}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
           />
         </label>
-        <button>Search</button>
+        <Button variant="outline">Search</Button>
         {search && (
-          <button
+          <Button variant="outline"
             type="button"
             onClick={() => {
               setDraft("");
@@ -147,15 +149,15 @@ export function WaitingQueue({
             }}
           >
             Clear search
-          </button>
+          </Button>
         )}
       </form>
       {error && (
         <p role="alert" className="error">
           {error}{" "}
-          <button onClick={() => setRefresh((value) => value + 1)}>
+          <Button variant="outline" onClick={() => setRefresh((value) => value + 1)}>
             Retry
-          </button>
+          </Button>
         </p>
       )}
       {busy && !data && <p role="status">Loading waiting customers…</p>}
@@ -225,12 +227,12 @@ export function WaitingQueue({
                         ))}
                       </td>
                       <td data-label="Action">
-                        <button
+                        <Button variant="outline"
                           disabled={busy}
                           onClick={() => onSelect(row.bookingCode)}
                         >
                           Review services
-                        </button>
+                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -245,7 +247,7 @@ export function WaitingQueue({
             </p>
           )}
           <div className="actions cashier-pagination">
-            <button
+            <Button variant="outline"
               disabled={busy || page <= 1}
               onClick={() => {
                 setData(null);
@@ -253,12 +255,12 @@ export function WaitingQueue({
               }}
             >
               Previous
-            </button>
+            </Button>
             <span>
               Page {page} of{" "}
               {Math.max(1, Math.ceil(data.total / data.pageSize))}
             </span>
-            <button
+            <Button variant="outline"
               disabled={busy || page * data.pageSize >= data.total}
               onClick={() => {
                 setData(null);
@@ -266,7 +268,7 @@ export function WaitingQueue({
               }}
             >
               Next
-            </button>
+            </Button>
           </div>
         </>
       )}

@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/Dialog";
+import { Button } from "@/components/ui/Button";
+import { useState } from "react";
 import type { StaffPublicProfile } from "../../utils/staff-profile";
 import type { CatalogService } from "../../types/salon";
 
@@ -21,24 +23,19 @@ function PortfolioImage({ url, title }: { url: string; title: string }) {
   return failedUrl === url ? <div className="portfolio-art portfolio-unavailable">Image unavailable</div> : <img className="portfolio-photo" src={url} alt={title} loading="lazy" referrerPolicy="no-referrer" onError={() => setFailedUrl(url)} />;
 }
 
-function Profile({ person, services, onClose, onSelect }: { person: BookingStaff; services: CatalogService[]; onClose: () => void; onSelect: () => void }) {
-  const dialog = useRef<HTMLDialogElement>(null);
+function Profile({ person, services, trigger, onClose, onSelect }: { person: BookingStaff; services: CatalogService[]; trigger: HTMLButtonElement; onClose: () => void; onSelect: () => void }) {
   const [tab, setTab] = useState<(typeof tabs)[number]>("Profile");
   const profile = person.publicProfile;
   const qualified = services.filter(service => person.serviceIds.includes(service.id));
-  useEffect(() => {
-    const element = dialog.current;
-    const trigger = document.activeElement;
-    element?.showModal();
-    return () => { element?.close(); if (trigger instanceof HTMLElement) trigger.focus(); };
-  }, []);
-  return <dialog ref={dialog} className="professional-dialog" aria-label={`${person.firstName} ${person.lastName} profile`} onCancel={onClose} onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
-    <div className="professional-modal-content"><button type="button" className="profile-close" aria-label="Close profile" onClick={onClose} autoFocus>×</button>
-      <header className="professional-profile-header"><Portrait person={person} large /><h2>{person.firstName} {person.lastName}</h2><p>{profile?.title || "Salon professional"}</p></header>
-      <div className="profile-tabs" role="tablist" aria-label="Professional details">{tabs.map((name, i) => <button type="button" key={name} id={`profile-tab-${name}`} role="tab" aria-selected={tab === name} aria-controls="professional-tab-panel" tabIndex={tab === name ? 0 : -1} onClick={() => setTab(name)} onKeyDown={event => {
+  return <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
+    <DialogContent className="professional-dialog" showCloseButton={false} aria-describedby={undefined}
+      onCloseAutoFocus={event => { event.preventDefault(); trigger.focus(); }}>
+    <div className="professional-modal-content"><Button variant="outline" type="button" className="profile-close" aria-label="Close profile" onClick={onClose} autoFocus>×</Button>
+      <header className="professional-profile-header"><Portrait person={person} large /><DialogTitle asChild><h2>{person.firstName} {person.lastName}</h2></DialogTitle><p>{profile?.title || "Salon professional"}</p></header>
+      <div className="profile-tabs" role="tablist" aria-label="Professional details">{tabs.map((name, i) => <Button variant="outline" type="button" key={name} id={`profile-tab-${name}`} role="tab" aria-selected={tab === name} aria-controls="professional-tab-panel" tabIndex={tab === name ? 0 : -1} onClick={() => setTab(name)} onKeyDown={event => {
         const next = event.key === "ArrowRight" ? (i + 1) % tabs.length : event.key === "ArrowLeft" ? (i + tabs.length - 1) % tabs.length : event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : -1;
         if (next >= 0) { event.preventDefault(); setTab(tabs[next]!); document.getElementById(`profile-tab-${tabs[next]}`)?.focus(); }
-      }}>{name}</button>)}</div>
+      }}>{name}</Button>)}</div>
       <div id="professional-tab-panel" className="professional-tab-panel" role="tabpanel" aria-labelledby={`profile-tab-${tab}`} tabIndex={0}>
         {tab === "Profile" && <><p className="profile-bio">{profile?.bio || "Meet your salon professional. Choose from their bookable services below."}</p><dl className="professional-facts"><div><dt>Appointments completed</dt><dd>{person.statistics?.appointmentsCompleted ?? 0}</dd></div><div><dt>Clients served</dt><dd>{person.statistics?.clientsServed ?? 0}</dd></div><div><dt>Languages</dt><dd>{profile?.languages.length ? profile.languages.join(", ") : "Not listed"}</dd></div></dl><h3>Bookable services</h3><div className="professional-specialties">{qualified.map(service => <span key={service.id}>{service.name}</span>)}</div></>}
         {tab === "Portfolio" && <><h3>A little inspiration</h3>{profile?.portfolio.length ? <div className="professional-portfolio">{profile.portfolio.map((item, i) => <article key={i}><PortfolioImage url={item.imageUrl} title={item.title} /><h4>{item.title}</h4>{item.caption && <p>{item.caption}</p>}</article>)}</div> : <p className="muted">Portfolio photos haven’t been added yet.</p>}</>}
@@ -46,24 +43,24 @@ function Profile({ person, services, onClose, onSelect }: { person: BookingStaff
 
       </div>
 
-      <button type="button" className="profile-select" onClick={onSelect}>Choose {person.firstName} <span aria-hidden="true">→</span></button>
+      <Button variant="outline" type="button" className="profile-select" onClick={onSelect}>Choose {person.firstName} <span aria-hidden="true">→</span></Button>
     </div>
-  </dialog>;
+  </DialogContent></Dialog>;
 }
 
 export function ProfessionalPicker({ selections, staff, services, onSelect }: { selections: Selection[]; staff: BookingStaff[]; services: CatalogService[]; onSelect: (key: number, staffId: string) => void }) {
-  const [profile, setProfile] = useState<{ person: BookingStaff; rowKey: number } | null>(null);
+  const [profile, setProfile] = useState<{ person: BookingStaff; rowKey: number; trigger: HTMLButtonElement } | null>(null);
   return <div className="professional-picker"><p className="professional-guidance">Choose a professional for each service, or keep your options open with any available professional.</p>
     {selections.map((row, i) => {
       const people = staff.filter(person => person.serviceIds.includes(row.serviceId));
       const service = services.find(service => service.id === row.serviceId);
       return <section className="professional-service-group" aria-label={`Professional for service ${i + 1}: ${service?.name}`} key={row.key}>
         <div className="professional-service-title"><h2>{selections.length > 1 ? `${i + 1}. ` : ""}{service?.name}</h2><span>{people.length} {people.length === 1 ? "professional" : "professionals"}</span></div>
-        <div className={`professional-card professional-any${row.staffId === "" ? " is-selected" : ""}`}><span className="professional-any-icon" aria-hidden="true">⇄</span><div className="professional-card-copy"><h3>Any professional</h3><p>More flexibility for your visit</p></div><button type="button" className="professional-select" aria-label={`Any available professional for service ${i + 1}`} aria-pressed={!row.staffId} onClick={() => onSelect(row.key, "")}>{!row.staffId ? "Selected" : "Select"}</button></div>
-        {people.map(person => <article className={`professional-card${row.staffId === person.id ? " is-selected" : ""}`} key={person.id}><Portrait person={person}/><div className="professional-card-copy"><h3>{person.firstName} {person.lastName}</h3><p>{person.publicProfile?.title || "Salon professional"}</p><button type="button" className="professional-view-profile" aria-label={`View profile of ${person.firstName} ${person.lastName} for service ${i + 1}`} onClick={() => setProfile({person, rowKey: row.key})}>View profile ↗</button></div><button type="button" className="professional-select" aria-label={`Select ${person.firstName} ${person.lastName} for service ${i + 1}`} aria-pressed={row.staffId === person.id} onClick={() => onSelect(row.key, person.id)}>{row.staffId === person.id ? "Selected" : "Select"}</button></article>)}
+        <div className={`professional-card professional-any${row.staffId === "" ? " is-selected" : ""}`}><span className="professional-any-icon" aria-hidden="true">⇄</span><div className="professional-card-copy"><h3>Any professional</h3><p>More flexibility for your visit</p></div><Button variant="outline" type="button" className="professional-select" aria-label={`Any available professional for service ${i + 1}`} aria-pressed={!row.staffId} onClick={() => onSelect(row.key, "")}>{!row.staffId ? "Selected" : "Select"}</Button></div>
+        {people.map(person => <article className={`professional-card${row.staffId === person.id ? " is-selected" : ""}`} key={person.id}><Portrait person={person}/><div className="professional-card-copy"><h3>{person.firstName} {person.lastName}</h3><p>{person.publicProfile?.title || "Salon professional"}</p><Button variant="outline" type="button" className="professional-view-profile" aria-label={`View profile of ${person.firstName} ${person.lastName} for service ${i + 1}`} onClick={event => setProfile({person, rowKey: row.key, trigger: event.currentTarget})}>View profile ↗</Button></div><Button variant="outline" type="button" className="professional-select" aria-label={`Select ${person.firstName} ${person.lastName} for service ${i + 1}`} aria-pressed={row.staffId === person.id} onClick={() => onSelect(row.key, person.id)}>{row.staffId === person.id ? "Selected" : "Select"}</Button></article>)}
         {!people.length && <p className="professional-empty">No specific professionals are listed for this service. We’ll check staff availability when you choose your time.</p>}
       </section>;
     })}
-    {profile && <Profile key={`${profile.person.id}-${profile.rowKey}`} person={profile.person} services={services} onClose={() => setProfile(null)} onSelect={() => { onSelect(profile.rowKey, profile.person.id); setProfile(null); }}/>} 
+    {profile && <Profile key={`${profile.person.id}-${profile.rowKey}`} person={profile.person} services={services} trigger={profile.trigger} onClose={() => setProfile(null)} onSelect={() => { onSelect(profile.rowKey, profile.person.id); setProfile(null); }}/>}
   </div>;
 }

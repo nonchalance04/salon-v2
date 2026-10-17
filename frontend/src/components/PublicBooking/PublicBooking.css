@@ -45,8 +45,8 @@
 .customer-site .booking-shell .service-family-options .service-option{padding:16px}
 .customer-site .booking-shell .service-family-options .service-option h3{font-size:14px;line-height:1.5}
 .customer-site .service-family-heading:focus-visible{outline:2px solid #85702f;outline-offset:-4px;border-radius:14px}
-.customer-site .service-options-dialog{position:fixed;inset:0;width:min(520px,calc(100% - 32px));max-height:calc(100dvh - 40px);padding:0;border:1px solid #e0e0d9;border-radius:20px;background:#fff;color:#292a28;box-shadow:0 24px 90px #0003;overflow:auto}
-.customer-site .service-options-dialog::backdrop{background:#292a2866;backdrop-filter:blur(3px)}
+.customer-site .service-options-dialog{position:fixed;inset:auto;top:50%;left:50%;margin:0;width:min(520px,calc(100% - 32px));max-height:calc(100dvh - 40px);padding:0;border:1px solid #e0e0d9;border-radius:20px;background:#fff;color:#292a28;box-shadow:0 24px 90px #0003;overflow:auto}
+
 .customer-site .service-options-content{padding:28px}
 .customer-site .service-options-header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
 .customer-site .service-options-header h2{font-size:26px;margin:0 0 12px;line-height:1.25}

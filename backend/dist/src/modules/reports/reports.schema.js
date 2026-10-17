@@ -18,6 +18,7 @@ export const confirmedServicesQuery = z.object({
     pageSize: z.coerce.number().int().min(1).max(100).default(25),
     search: z.string().trim().max(100).default(""),
     paymentReady: z.enum(["true", "false"]).optional(),
+    arrivalToday: z.enum(["true", "false"]).optional(),
 }).strict();
 export function reportPeriod(q, timeZone) {
     const start = Temporal.PlainDate.from(q.from).toZonedDateTime(timeZone);

@@ -3,19 +3,50 @@ export type User = {
   role: "ADMIN" | "CASHIER"; isActive: boolean; lastLoginAt: string | null;
 };
 export class ApiError extends Error {
-  constructor(public status: number, message: string, public details?: unknown) { super(message); }
+  status: number;
+  details?: unknown;
+
+  constructor(status: number, message: string, details?: unknown) {
+    super(message);
+    this.status = status;
+    this.details = details;
+  }
 }
+const sessionCheckPaths = ["/auth/login", "/auth/me", "/appointments/otp/session"];
+
+function notifyExpiredSession(path: string, status: number, code?: string) {
+  if (code === "GUEST_SESSION_EXPIRED") {
+    if (path !== "/appointments/otp/session") {
+      window.dispatchEvent(new Event("guest-session-expired"));
+    }
+    return;
+  }
+
+  if (status === 401 && !sessionCheckPaths.includes(path)) {
+    window.dispatchEvent(new Event("session-expired"));
+  }
+}
+
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`/api${path}`, {
-    ...options, credentials: "include",
-    headers: { ...(options.body ? { "Content-Type": "application/json" } : {}), ...options.headers },
+    ...options,
+    credentials: "include",
+    headers: {
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...options.headers,
+    },
   });
+
   if (!response.ok) {
     const result = await response.json().catch(() => null);
-    if (result?.error?.code === "GUEST_SESSION_EXPIRED") {
-      if (path !== "/appointments/otp/session") window.dispatchEvent(new Event("guest-session-expired"));
-    } else if (response.status === 401 && !["/auth/login", "/auth/me", "/appointments/otp/session"].includes(path)) window.dispatchEvent(new Event("session-expired"));
-    throw new ApiError(response.status, result?.error?.message ?? "The request could not be completed.", result?.error?.details);
+    notifyExpiredSession(path, response.status, result?.error?.code);
+    throw new ApiError(
+      response.status,
+      result?.error?.message ?? "The request could not be completed.",
+      result?.error?.details,
+    );
   }
-  return response.status === 204 ? undefined as T : response.json();
+
+  if (response.status === 204) return undefined as T;
+  return response.json();
 }

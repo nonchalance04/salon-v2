@@ -2,8 +2,8 @@
 .customer-site { min-height:100vh; background:#f3f3f1; color:#292a28; font-family:Arial,Helvetica,sans-serif; line-height:1.5; }
 .customer-site h1,.customer-site h2,.customer-site h3 { font-family:inherit; font-weight:700; letter-spacing:-.03em; }
 .customer-site h3 { font-size:20px; margin-bottom:12px; }
-.customer-site button { color:inherit; }
-.customer-site input,.customer-site select,.customer-site textarea { color:#292a28; border-color:#d5d8cf; border-radius:10px; }
+.customer-site button:where(:not([data-slot])) { color:inherit; }
+.customer-site input:where(:not([data-slot])),.customer-site select:where(:not([data-slot])),.customer-site textarea:where(:not([data-slot])) { color:#292a28; border-color:#d5d8cf; border-radius:10px; }
 .customer-site .primary { background:#d3ae30; color:#292a28; border-color:#d3ae30; border-radius:99px; }
 .customer-site .primary:hover { background:#c8a124; }
 .customer-site .account-form,.customer-site .visit-summary { background:white; border:1px solid #ddddd7; border-radius:20px; }

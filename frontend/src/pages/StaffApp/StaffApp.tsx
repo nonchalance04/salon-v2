@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useAuth } from "../../contexts/AuthProvider";
 import { WorkspaceLayout } from "../../layouts/WorkspaceLayout";
 import { Login } from "../Login";
@@ -16,7 +17,7 @@ export function StaffApp() {
       <main className="loading">
         <h1>Unable to connect</h1>
         <p role="alert">{error}</p>
-        <button onClick={() => void refresh()}>Try again</button>
+        <Button variant="outline" onClick={() => void refresh()}>Try again</Button>
       </main>
     );
   return user ? <WorkspaceLayout key={user.role} accounts={<Accounts />} /> : <Login />;

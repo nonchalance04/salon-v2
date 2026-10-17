@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { NavLink, useLocation, useNavigate } from "react-router";
 import { useEffect, useState } from "react";
 import { SiteLogo } from "../SiteLogo";
@@ -35,23 +37,23 @@ export function SiteHeader() {
           const query = new FormData(event.currentTarget).get("q")?.toString() ?? "";
           navigate(`/services?${new URLSearchParams({ q: query })}`);
         }}>
-          <input
+          <Input
             name="q"
             aria-label="Search services"
             placeholder="Searching for something?"
           />
-          <button type="submit" aria-label="Search">
+          <Button variant="outline" type="submit" aria-label="Search">
             ⌕
-          </button>
+          </Button>
         </form>
-        <button
+        <Button variant="outline"
           className="icon-button mobile-menu"
           aria-label="Toggle navigation"
           aria-expanded={open}
           onClick={() => setOpen(!open)}
         >
           {open ? "×" : "☰"}
-        </button>
+        </Button>
       </div>
     </header>
   );

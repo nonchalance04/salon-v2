@@ -35,20 +35,38 @@ const families = [
 
 export type ServiceFamily<T extends Service> = { key: string; name: string; options: { label: string; service: T }[] };
 
+function findVariant(serviceName: string) {
+  const normalized = serviceName.trim().toLowerCase();
+  for (const family of families) {
+    const order = family.options.findIndex(([name]) => name.toLowerCase() === normalized);
+    if (order >= 0) {
+      return { familyName: family.name, label: family.options[order][1], order };
+    }
+  }
+  return undefined;
+}
+
 export function groupServiceVariants<T extends Service>(services: T[]): ServiceFamily<T>[] {
   const groups = new Map<string, ServiceFamily<T>>();
+
   for (const service of services) {
-    const normalized = service.name.trim().toLowerCase();
-    const family = families.find(item => item.options.some(([name]) => name.toLowerCase() === normalized));
-    const key = family ? `family:${family.name}` : `service:${service.id}`;
-    const group = groups.get(key) ?? { key, name: family?.name ?? service.name, options: [] };
-    group.options.push({ label: family?.options.find(([name]) => name.toLowerCase() === normalized)?.[1] ?? service.name, service });
-    groups.set(key, group);
+    const variant = findVariant(service.name);
+    const key = variant ? `family:${variant.familyName}` : `service:${service.id}`;
+    let group = groups.get(key);
+    if (!group) {
+      group = { key, name: variant?.familyName ?? service.name, options: [] };
+      groups.set(key, group);
+    }
+    group.options.push({ label: variant?.label ?? service.name, service });
   }
+
   // Keep the menu's standard option first, regardless of API sorting.
   for (const group of groups.values()) {
-    const family = families.find(item => `family:${item.name}` === group.key);
-    if (family) group.options.sort((a, b) => family.options.findIndex(([name]) => name.toLowerCase() === a.service.name.trim().toLowerCase()) - family.options.findIndex(([name]) => name.toLowerCase() === b.service.name.trim().toLowerCase()));
+    group.options.sort((a, b) => {
+      const firstOrder = findVariant(a.service.name)?.order ?? 0;
+      const secondOrder = findVariant(b.service.name)?.order ?? 0;
+      return firstOrder - secondOrder;
+    });
   }
   return [...groups.values()];
 }

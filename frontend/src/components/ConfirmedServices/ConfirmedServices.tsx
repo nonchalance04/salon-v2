@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Badge } from "@/components/ui/Badge";
 import { AppointmentCheckIn } from "../AppointmentCheckIn";
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { api } from "../../lib/api";
@@ -134,7 +137,7 @@ export function ConfirmedServices({
       <form className="cashier-search" onSubmit={submit}>
         <label>
           Search customer or booking code
-          <input
+          <Input
             type="search"
             maxLength={100}
             value={draft}
@@ -142,9 +145,9 @@ export function ConfirmedServices({
             placeholder="Customer name or booking code"
           />
         </label>
-        <button disabled={disabled}>Search</button>
+        <Button variant="outline" disabled={disabled}>Search</Button>
         {search && (
-          <button
+          <Button variant="outline"
             type="button"
             disabled={disabled}
             onClick={() => {
@@ -155,15 +158,15 @@ export function ConfirmedServices({
             }}
           >
             Clear search
-          </button>
+          </Button>
         )}
       </form>
       {error && (
         <p role="alert" className="error">
           {error}{" "}
-          <button onClick={() => setRefresh((value) => value + 1)}>
+          <Button variant="outline" onClick={() => setRefresh((value) => value + 1)}>
             Retry
-          </button>
+          </Button>
         </p>
       )}
       {busy && !data && <p role="status">Loading confirmed services…</p>}
@@ -201,7 +204,7 @@ export function ConfirmedServices({
                           {row.customer.firstName} {row.customer.lastName}
                         </strong>
                         <br />
-                        <span className="badge active">Confirmed</span>
+                        <Badge variant="secondary" className="badge active">Confirmed</Badge>
                       </td>
                       <td data-label="Services / staff">
                         {row.appointmentServices.map((service) => (
@@ -230,12 +233,12 @@ export function ConfirmedServices({
                           />
                         )}
                         {!arrivalOnly && (
-                          <button
+                          <Button variant="outline"
                             disabled={disabled || busy}
                             onClick={() => onSelect(row.bookingCode)}
                           >
                             {admin || manageOutcomes ? "Review services" : "Process payment"}
-                          </button>
+                          </Button>
                         )}
                       </td>
                     </tr>
@@ -255,7 +258,7 @@ export function ConfirmedServices({
             </p>
           )}
           <div className="actions cashier-pagination">
-            <button
+            <Button variant="outline"
               disabled={disabled || busy || page === 1}
               onClick={() => {
                 setData(null);
@@ -263,12 +266,12 @@ export function ConfirmedServices({
               }}
             >
               Previous
-            </button>
+            </Button>
             <span>
               Page {page} of{" "}
               {Math.max(1, Math.ceil(data.total / data.pageSize))}
             </span>
-            <button
+            <Button variant="outline"
               disabled={disabled || busy || page * data.pageSize >= data.total}
               onClick={() => {
                 setData(null);
@@ -276,7 +279,7 @@ export function ConfirmedServices({
               }}
             >
               Next
-            </button>
+            </Button>
           </div>
         </>
       )}

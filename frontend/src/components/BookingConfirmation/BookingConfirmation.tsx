@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { Link } from "react-router";
 import type { Appointment } from "../../types/booking";
 import type { Salon } from "../../types/salon";
@@ -159,13 +160,13 @@ export function BookingConfirmation({
                 className="booking-confirmed-receipt"
               />
             ) : (
-              <button
+              <Button variant="outline"
                 type="button"
                 className="booking-confirmed-receipt"
                 disabled
               >
                 ↓ Download E-Receipt
-              </button>
+              </Button>
             )}
             <p className="booking-confirmed-note">
               {receipt?.receiptSnapshot
@@ -179,12 +180,12 @@ export function BookingConfirmation({
                 <p role="alert" className="error">
                   {receiptError}
                 </p>
-                <button
+                <Button variant="outline"
                   type="button"
                   onClick={() => setRetry((value) => value + 1)}
                 >
                   Retry e-receipt
-                </button>
+                </Button>
               </>
             )}
           </div>
@@ -209,9 +210,9 @@ export function BookingConfirmation({
         </aside>
       </div>
       <div className="booking-confirmed-actions">
-        <button type="button" onClick={onManage}>
+        <Button variant="outline" type="button" onClick={onManage}>
           Manage appointment
-        </button>
+        </Button>
         {/* <Link to="/">Back to home</Link> */}
       </div>
     </section>

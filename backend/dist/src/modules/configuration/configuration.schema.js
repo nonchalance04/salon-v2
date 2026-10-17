@@ -21,6 +21,7 @@ export const serviceSchema = z.object({
     durationMinutes: integer.min(1), bufferMinutes: integer.nullable(), isActive: z.boolean(),
 }).strict();
 export const staffSchema = z.object({ firstName: text, lastName: text, phone: z.string().trim().max(50).nullable(), isActive: z.boolean() }).strict();
+export const staffUpdateSchema = staffSchema.extend({ lastName: z.string().trim().max(200).default("") });
 export const qualificationSchema = z.object({
     staffId: z.uuid(), serviceId: z.uuid(), isActive: z.boolean(),
     commissionRate: z.string().regex(/^(0(\.\d{1,4})?|1(\.0{1,4})?)$/),
@@ -30,6 +31,13 @@ export const staffSkillsSchema = z.object({
 }).strict().refine(input => new Set(input.services.map(row => row.serviceId)).size === input.services.length, "Select each service only once.");
 export const hoursSchema = z.object({ dayOfWeek: z.enum(days), openTime: time, closeTime: time, isActive: z.boolean() }).strict()
     .refine(v => v.openTime.padEnd(8, ":00") < v.closeTime.padEnd(8, ":00"), "Opening must precede closing.");
+export const dayHoursSchema = z.object({
+    isOpen: z.boolean(),
+    periods: z.array(z.object({
+        id: z.uuid().optional(), openTime: time, closeTime: time,
+    }).strict().refine(v => v.openTime.padEnd(8, ":00") < v.closeTime.padEnd(8, ":00"), "Opening must precede closing.")).max(100),
+}).strict().refine(v => v.isOpen ? v.periods.length > 0 : v.periods.length === 0, "Open days need opening hours; closed days must have no active hours.")
+    .refine(v => new Set(v.periods.flatMap(p => p.id ? [p.id] : [])).size === v.periods.filter(p => p.id).length, "Each opening period can appear only once.");
 export const scheduleSchema = z.object({
     staffId: z.uuid(), dayOfWeek: z.enum(days), startTime: time, endTime: time,
     effectiveFrom: date, effectiveTo: date, isActive: z.boolean(),
@@ -37,6 +45,12 @@ export const scheduleSchema = z.object({
     .refine(v => !v.effectiveFrom || !v.effectiveTo || v.effectiveFrom <= v.effectiveTo, "Invalid effective date range.");
 const intervalFields = { startsAt: timestamp, endsAt: timestamp, reason: optionalText };
 export const closureSchema = z.object(intervalFields).strict().refine(v => v.startsAt < v.endsAt, "Start must precede end.");
+export const allDayClosureSchema = z.object({
+    date: z.iso.date(),
+    reason: optionalText.optional().default(null),
+}).strict();
+// Keep interval requests compatible with existing custom-hours closure records.
+export const closureRequestSchema = z.union([allDayClosureSchema, closureSchema]);
 export const unavailabilitySchema = z.object({ ...intervalFields, staffId: z.uuid() }).strict().refine(v => v.startsAt < v.endsAt, "Start must precede end.");
 export const policySchema = z.object({
     appointmentFeeType: z.literal("FIXED"), appointmentFeeAmount: money,

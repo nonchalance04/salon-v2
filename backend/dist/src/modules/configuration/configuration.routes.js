@@ -4,7 +4,7 @@ import { validateRequest } from "../../shared/http.js";
 import { createAuthMiddleware } from "../auth/auth.middleware.js";
 import { browserSecurity } from "../auth/auth.security.js";
 import { createConfigurationService } from "./configuration.service.js";
-import { staffSkillsSchema, staffPublicProfileSchema, profileSchema, serviceSchema, staffSchema, qualificationSchema, hoursSchema, scheduleSchema, closureSchema, unavailabilitySchema, policySchema, recordId } from "./configuration.schema.js";
+import { staffSkillsSchema, staffPublicProfileSchema, profileSchema, serviceSchema, staffSchema, staffUpdateSchema, qualificationSchema, hoursSchema, dayHoursSchema, days, scheduleSchema, closureRequestSchema, unavailabilitySchema, policySchema, recordId } from "./configuration.schema.js";
 export function createConfigurationRouter(prisma, config) {
     const router = Router();
     const service = createConfigurationService(prisma, config.SALON_TIMEZONE);
@@ -18,16 +18,20 @@ export function createConfigurationRouter(prisma, config) {
     });
     // This is only route registration for this feature; the distinct services
     // above retain their own domain validation and locking responsibilities.
-    function register(path, schema, save) {
+    function register(path, schema, save, updateSchema = schema) {
         router.post(`/configuration/${path}`, validateRequest(z.object({ body: schema })), async (_req, res) => {
             res.status(201).json({ record: await save(res.locals.user.id, res.locals.validated.body) });
         });
-        router.put(`/configuration/${path}/:id`, validateRequest(z.object({ params: recordId, body: schema })), async (_req, res) => {
+        router.put(`/configuration/${path}/:id`, validateRequest(z.object({ params: recordId, body: updateSchema })), async (_req, res) => {
             res.json({ record: await save(res.locals.user.id, res.locals.validated.body, res.locals.validated.params.id) });
         });
     }
     register("services", serviceSchema, service.saveService);
-    register("staff", staffSchema, service.saveStaff);
+    register("staff", staffSchema, service.saveStaff, staffUpdateSchema);
+    router.delete("/configuration/staff/:id", validateRequest(z.object({ params: recordId })), async (_req, res) => {
+        await service.removeStaff(res.locals.user.id, res.locals.validated.params.id);
+        res.status(204).end();
+    });
     router.put("/configuration/staff/:id/skills", validateRequest(z.object({ params: recordId, body: staffSkillsSchema })), async (_req, res) => {
         res.json({ qualifications: await service.saveStaffSkills(res.locals.user.id, res.locals.validated.params.id, res.locals.validated.body) });
     });
@@ -36,8 +40,13 @@ export function createConfigurationRouter(prisma, config) {
     });
     register("qualifications", qualificationSchema, service.saveQualification);
     register("hours", hoursSchema, service.saveHours);
+    router.put("/configuration/hours/day/:dayOfWeek", validateRequest(z.object({
+        params: z.object({ dayOfWeek: z.enum(days) }), body: dayHoursSchema,
+    })), async (_req, res) => {
+        res.json({ hours: await service.saveDayHours(res.locals.user.id, res.locals.validated.params.dayOfWeek, res.locals.validated.body) });
+    });
     register("schedules", scheduleSchema, service.saveSchedule);
-    register("closures", closureSchema, service.saveClosure);
+    register("closures", closureRequestSchema, service.saveClosure);
     register("unavailability", unavailabilitySchema, service.saveUnavailability);
     router.post("/configuration/policies", validateRequest(z.object({ body: policySchema })), async (_req, res) => {
         res.status(201).json({ record: await service.createPolicy(res.locals.user.id, res.locals.validated.body) });

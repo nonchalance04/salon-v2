@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { useEffect, useState, type FormEvent } from "react";
 import { api } from "../../lib/api";
 import {
@@ -132,7 +134,7 @@ function OpeningDay({
                   <div className="opening-time-range" key={index}>
                     <label>
                       Opens at
-                      <input
+                      <Input
                         type="time"
                         step={timeStep(period.openTime)}
                         required
@@ -147,7 +149,7 @@ function OpeningDay({
                     </label>
                     <label>
                       Closes at
-                      <input
+                      <Input
                         type="time"
                         step={timeStep(period.closeTime)}
                         required
@@ -161,7 +163,7 @@ function OpeningDay({
                       />
                     </label>
                     {draft.periods.length > 1 && (
-                      <button
+                      <Button variant="outline"
                         type="button"
                         aria-label={`Remove time range ${index + 1} on ${label(day)}`}
                         onClick={() =>
@@ -174,7 +176,7 @@ function OpeningDay({
                         }
                       >
                         Remove
-                      </button>
+                      </Button>
                     )}
                   </div>
                 ))}
@@ -187,13 +189,13 @@ function OpeningDay({
             {/* <button type="submit" className="primary" disabled={!dirty}>
               Save {label(day)}
             </button> */}
-            <button type="submit" className="primary" disabled={!dirty}>
+            <Button variant="default" type="submit" className="primary" disabled={!dirty}>
               Save
-            </button>
+            </Button>
             {dirty && (
-              <button type="button" onClick={() => setDraft(JSON.parse(saved))}>
+              <Button variant="outline" type="button" onClick={() => setDraft(JSON.parse(saved))}>
                 Reset {label(day)}
-              </button>
+              </Button>
             )}
           </div>
         </div>

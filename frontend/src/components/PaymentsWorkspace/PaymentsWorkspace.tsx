@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/NativeSelect";
 import { createPaymentKey } from "../../utils/payment-key";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api } from "../../lib/api";
@@ -47,16 +50,16 @@ export function PaymentsWorkspace({ admin, initialCode }: { admin: boolean; init
   }
   return <section className="payments-workspace"><h2>Appointment-fee payments</h2><p>Record money already received. A salon payment reference is generated automatically and included on the receipt.</p>
     <form className="account-form" onSubmit={event => { event.preventDefault(); const code = String(new FormData(event.currentTarget).get("code")).trim(); void act(async () => { await lookup(code); key.current = createPaymentKey(); }); }}>
-      <label>Booking code<input name="code" required maxLength={100} defaultValue={initialCode} /></label><button disabled={busy}>Find booking</button>
+      <label>Booking code<Input name="code" required maxLength={100} defaultValue={initialCode} /></label><Button variant="outline" disabled={busy}>Find booking</Button>
     </form>
     {booking && <div className="account-form"><h3>{booking.bookingCode} · {booking.customer.firstName} {booking.customer.lastName}</h3><p>Status: {booking.status} · Appointment fee: PHP {booking.appointmentFeeAmount}</p>
       {booking.status !== "PENDING_PAYMENT" && <p>Recording a separate capture here will flag it for reconciliation and will not restore or confirm the booking.</p>}
-      <form onSubmit={event => void record(event)} key={booking.bookingCode}><fieldset disabled={busy}><label>Payment method<select name="method"><option value="CASH">Cash</option><option value="GCASH">GCash</option><option value="OTHER">Other</option></select></label>
+      <form onSubmit={event => void record(event)} key={booking.bookingCode}><fieldset disabled={busy}><label>Payment method<NativeSelect name="method"><NativeSelectOption value="CASH">Cash</NativeSelectOption><NativeSelectOption value="GCASH">GCash</NativeSelectOption><NativeSelectOption value="OTHER">Other</NativeSelectOption></NativeSelect></label>
         <label className="checkbox"><input type="checkbox" required /> I have verified receipt of PHP {booking.appointmentFeeAmount}.</label>
-        <button className="primary" disabled={busy}>Record received appointment fee</button></fieldset></form>
+        <Button variant="default" className="primary" disabled={busy}>Record received appointment fee</Button></fieldset></form>
       <FeePaymentHistory payments={booking.payments} />
       {admin && booking.payments.filter(p => p.status === "PENDING").map(p => <p key={p.id}>Pending payment attempt: <code>{p.id}</code></p>)}
-      {booking.payments.filter(p => p.status === "SUCCEEDED" && !p.receipt).map(p => <button key={p.id} disabled={busy} onClick={() => void act(async () => { await api("/payments/receipts", { method: "POST", body: JSON.stringify({ paymentId: p.id }) }); await lookup(booking.bookingCode); setNotice("Receipt issued."); if (admin) await loadReview(); })}>Issue receipt for PHP {p.amount}</button>)}
+      {booking.payments.filter(p => p.status === "SUCCEEDED" && !p.receipt).map(p => <Button variant="outline" key={p.id} disabled={busy} onClick={() => void act(async () => { await api("/payments/receipts", { method: "POST", body: JSON.stringify({ paymentId: p.id }) }); await lookup(booking.bookingCode); setNotice("Receipt issued."); if (admin) await loadReview(); })}>Issue receipt for PHP {p.amount}</Button>)}
     </div>}
     {notice && <p role="status" className="success">{notice}</p>}{error && <p role="alert" className="error">{error}</p>}
     {admin && <section><h3>Payment reconciliation</h3>
@@ -64,12 +67,12 @@ export function PaymentsWorkspace({ admin, initialCode }: { admin: boolean; init
         <form className="account-form" onSubmit={event => { event.preventDefault(); const data = new FormData(event.currentTarget); void act(async () => {
           await api("/payments/recover-checkout", { method: "POST", body: JSON.stringify({ paymentId: String(data.get("paymentId")).trim(), checkoutReference: String(data.get("checkoutReference")).trim() }) });
           setNotice("PayMongo checkout verified. Refresh the booking to view its current payment status."); await loadReview();
-        }); }}><label>Payment attempt ID<input name="paymentId" required /></label><label>PayMongo checkout session ID<input name="checkoutReference" required pattern="cs_[A-Za-z0-9]+" /></label><button disabled={busy}>Verify and recover checkout</button></form>
+        }); }}><label>Payment attempt ID<Input name="paymentId" required /></label><label>PayMongo checkout session ID<Input name="checkoutReference" required pattern="cs_[A-Za-z0-9]+" /></label><Button variant="outline" disabled={busy}>Verify and recover checkout</Button></form>
       </details><p>Review late or additional captures with the salon’s payment records. Contact the salon administrator about payment discrepancies.</p>
       <label className="checkbox"><input type="checkbox" checked={onlyReview} onChange={event => setOnlyReview(event.target.checked)} /> Show only payments requiring reconciliation</label>
-      <button disabled={busy} onClick={() => void act(() => loadReview())}>Refresh payments</button>
-      <div className="table-wrap"><table><thead><tr><th>Booking</th><th>Payment</th><th>Reference</th><th>Review</th></tr></thead><tbody>{review.map(p => <tr key={p.id}><td><button disabled={busy} onClick={() => void act(() => lookup(p.appointment.bookingCode))}>{p.appointment.bookingCode}</button><br />{p.appointment.status}</td><td>PHP {p.amount}<br />{paymentStatusLabel(p.status)} · {p.provider}</td><td>{p.externalReference ?? "Pending"}</td><td>{p.reconciliationReason?.replaceAll("_", " ") ?? p.reconciliationStatus}</td></tr>)}</tbody></table></div>
-      {!review.length && <p>No matching payments.</p>}{cursor && <button disabled={busy} onClick={() => void act(() => loadReview(cursor))}>Load more</button>}
+      <Button variant="outline" disabled={busy} onClick={() => void act(() => loadReview())}>Refresh payments</Button>
+      <div className="table-wrap"><table><thead><tr><th>Booking</th><th>Payment</th><th>Reference</th><th>Review</th></tr></thead><tbody>{review.map(p => <tr key={p.id}><td><Button variant="outline" disabled={busy} onClick={() => void act(() => lookup(p.appointment.bookingCode))}>{p.appointment.bookingCode}</Button><br />{p.appointment.status}</td><td>PHP {p.amount}<br />{paymentStatusLabel(p.status)} · {p.provider}</td><td>{p.externalReference ?? "Pending"}</td><td>{p.reconciliationReason?.replaceAll("_", " ") ?? p.reconciliationStatus}</td></tr>)}</tbody></table></div>
+      {!review.length && <p>No matching payments.</p>}{cursor && <Button variant="outline" disabled={busy} onClick={() => void act(() => loadReview(cursor))}>Load more</Button>}
     </section>}
   </section>;
 }

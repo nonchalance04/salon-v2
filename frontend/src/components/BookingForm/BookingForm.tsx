@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { PhoneInput } from "../PhoneInput";
 import { philippinePhoneNumber } from "../../utils/phone-number";
 import { useRef, useState, type FormEvent } from "react";
@@ -27,14 +29,14 @@ export function BookingForm({ plan, onBusy, onBooked }: { plan: BookingPlan; onB
   }
   return <form className="account-form" onSubmit={submit}><h3>Your contact details</h3>
     <fieldset disabled={busy}><div className="form-grid">
-      <label>First name<input name="firstName" required maxLength={100} autoComplete="given-name" /></label>
-      <label>Last name<input name="lastName" required maxLength={100} autoComplete="family-name" /></label>
+      <label>First name<Input name="firstName" required maxLength={100} autoComplete="given-name" /></label>
+      <label>Last name<Input name="lastName" required maxLength={100} autoComplete="family-name" /></label>
       <label>Phone<PhoneInput name="phone" /></label>
-      <label>Email (optional)<input name="email" type="email" maxLength={254} autoComplete="email" /></label>
+      <label>Email (optional)<Input name="email" type="email" maxLength={254} autoComplete="email" /></label>
     </div></fieldset>
     <p>Submitting reserves a temporary hold. Your booking is confirmed only after appointment-fee payment.</p>
     <p className="muted">Availability, fees, and Any Available staff assignments are checked again when you submit.</p>
     {error && <p role="alert" className="error">{error}</p>}
-    <button className="primary" disabled={busy}>{busy ? "Reserving your visit…" : "Reserve a temporary hold"}</button>
+    <Button variant="default" className="primary" disabled={busy}>{busy ? "Reserving your visit…" : "Reserve a temporary hold"}</Button>
   </form>;
 }

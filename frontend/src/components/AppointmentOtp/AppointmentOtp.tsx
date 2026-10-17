@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/NativeSelect";
 import { PhoneInput } from "../PhoneInput";
 import { philippinePhoneNumber } from "../../utils/phone-number";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -73,23 +76,23 @@ export function AppointmentOtp({ onVerified, restoreSession = true }: { onVerifi
     {channels.length > 0 && <><h3>Find your appointment</h3>
       <p>Enter your booking code and choose how to receive your verification code. Use the email address or phone number you provided when booking.</p>
       <form onSubmit={requestCode}><fieldset disabled={busy || Boolean(challengeId)}>
-        <label>Booking code<input required value={bookingCode} onChange={e => setBookingCode(e.target.value)} autoCapitalize="characters" maxLength={100} /></label>
-        <label>Verification method<select value={channel} onChange={e => setChannel(e.target.value as "SMS" | "EMAIL")}>
-          {channels.includes("SMS") && <option value="SMS">SMS</option>}
-          {channels.includes("EMAIL") && <option value="EMAIL">Email</option>}
-        </select></label>
+        <label>Booking code<Input required value={bookingCode} onChange={e => setBookingCode(e.target.value)} autoCapitalize="characters" maxLength={100} /></label>
+        <label>Verification method<NativeSelect value={channel} onChange={e => setChannel(e.target.value as "SMS" | "EMAIL")}>
+          {channels.includes("SMS") && <NativeSelectOption value="SMS">SMS</NativeSelectOption>}
+          {channels.includes("EMAIL") && <NativeSelectOption value="EMAIL">Email</NativeSelectOption>}
+        </NativeSelect></label>
         {channel === "EMAIL"
-          ? <label>Email address<input type="email" required autoComplete="email" maxLength={254} value={email} onChange={e => setEmail(e.target.value)} /></label>
+          ? <label>Email address<Input type="email" required autoComplete="email" maxLength={254} value={email} onChange={e => setEmail(e.target.value)} /></label>
           : <label>Phone number<PhoneInput value={phone} onChange={setPhone} /></label>}
         <p className="muted">{channel === "EMAIL" ? "Email verification requires an email address saved on your booking. Check your inbox and spam folder for the code." : "We’ll send the code by SMS to the phone number saved on your booking."}</p>
-        {!challengeId && <button className="primary" disabled={busy || cooldown > 0}>{busy ? "Requesting code…" : cooldown ? `Wait ${cooldown}s` : `Send code by ${channel === "EMAIL" ? "email" : "SMS"}`}</button>}
+        {!challengeId && <Button variant="default" className="primary" disabled={busy || cooldown > 0}>{busy ? "Requesting code…" : cooldown ? `Wait ${cooldown}s` : `Send code by ${channel === "EMAIL" ? "email" : "SMS"}`}</Button>}
       </fieldset></form>
       {notice && <p role="status">{notice}</p>}
       {challengeId && <form onSubmit={verify}>
-        <label>Verification code<input required inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ""))} /></label>
-        <button className="primary" disabled={busy}>{busy ? "Please wait…" : "Verify and view appointment"}</button>
-        <button type="button" disabled={busy || cooldown > 0} onClick={() => void requestCode()}>{cooldown ? `Resend in ${cooldown}s` : "Resend code"}</button>
-        <button type="button" disabled={busy} onClick={() => { setChallengeId(""); setNotice(""); setCode(""); setError(""); }}>Change booking details or method</button>
+        <label>Verification code<Input required inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ""))} /></label>
+        <Button variant="default" className="primary" disabled={busy}>{busy ? "Please wait…" : "Verify and view appointment"}</Button>
+        <Button variant="outline" type="button" disabled={busy || cooldown > 0} onClick={() => void requestCode()}>{cooldown ? `Resend in ${cooldown}s` : "Resend code"}</Button>
+        <Button variant="outline" type="button" disabled={busy} onClick={() => { setChallengeId(""); setNotice(""); setCode(""); setError(""); }}>Change booking details or method</Button>
         <p className="muted">Your appointment stays accessible on this browser for two hours. Use “Back to home” to end your appointment session when finished on a shared device.</p>
       </form>}
     </>}

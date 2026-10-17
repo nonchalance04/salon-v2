@@ -8,7 +8,8 @@ import { createAppointmentOtpService, GUEST_SESSION_MS } from "./appointment-otp
 import { createAppointmentsService } from "./appointments.service.js";
 import { tokenHash } from "./appointments.security.js";
 import { guestAccessSchema } from "./appointments.schema.js";
-const COOKIE = "salon_appointment_session";
+export const GUEST_SESSION_COOKIE = "salon_appointment_session";
+const COOKIE = GUEST_SESSION_COOKIE;
 export function guestSessionCookie(header) {
     const values = (header ?? "").split(";").map(v => v.trim()).filter(v => v.startsWith(`${COOKIE}=`));
     if (values.length !== 1)

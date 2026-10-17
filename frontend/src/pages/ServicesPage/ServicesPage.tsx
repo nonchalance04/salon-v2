@@ -1,3 +1,4 @@
+import { Input } from "@/components/ui/Input";
 import { useOutletContext, useSearchParams } from "react-router";
 import { ServiceCards } from "../../components/ServiceCards";
 import type { PublicContext } from "../../layouts/PublicSite/PublicSite.context";
@@ -16,7 +17,7 @@ export function ServicesPage() {
         </p>
         <label className="catalog-search">
           Search services
-          <input
+          <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search services"

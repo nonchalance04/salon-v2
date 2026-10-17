@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { readdir } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { before, after, test } from "node:test";
@@ -84,7 +85,9 @@ test("migrations apply and development seeding is repeatable with hashed passwor
   assert.equal(policy.appointmentFeeAmount.toFixed(2), "100.00");
   assert.equal(policy.effectiveFrom.toISOString(), "2026-09-30T16:00:00.000Z");
   const migrations = await pool.query('SELECT migration_name FROM "_prisma_migrations" WHERE finished_at IS NOT NULL');
-  assert.equal(migrations.rowCount, 8);
+  const migrationFolders = await readdir(new URL("../../prisma/migrations/", import.meta.url), { withFileTypes: true });
+  const expectedMigrations = migrationFolders.filter(entry => entry.isDirectory()).map(entry => entry.name).sort();
+  assert.deepEqual(migrations.rows.map(row => row.migration_name).sort(), expectedMigrations);
   const categoryCounts = await prisma.service.groupBy({ by: ["category"], _count: true });
   assert.deepEqual(Object.fromEntries(categoryCounts.map(row => [row.category, row._count])), {
     "Hair Services": 9, "Hair Color & Styling": 9, "Hair Treatments": 4,
@@ -199,7 +202,16 @@ test("money, instant storage, required partial indexes, and restrictive referenc
   const foreignKeys = await pool.query("SELECT conname, confdeltype FROM pg_constraint WHERE contype = 'f' AND connamespace = 'public'::regnamespace");
   assert.ok(foreignKeys.rowCount && foreignKeys.rowCount > 0);
   const ephemeralGuestReferences = new Set(["AppointmentOtpChallenge_appointmentId_fkey", "AppointmentGuestSession_appointmentId_fkey"]);
-  assert.ok(foreignKeys.rows.every((row) => row.confdeltype === (ephemeralGuestReferences.has(row.conname) ? "c" : "r")));
+  const historicalStaffReferences = new Set(["AppointmentService_staffRecordId_fkey", "CommissionRecord_staffRecordId_fkey"]);
+  for (const row of foreignKeys.rows) {
+    let expectedDelete = "r"; // Preserve referenced business records.
+    if (ephemeralGuestReferences.has(row.conname)) expectedDelete = "c";
+    if (historicalStaffReferences.has(row.conname)) expectedDelete = "n";
+    assert.equal(row.confdeltype, expectedDelete, row.conname);
+  }
+  for (const name of [...ephemeralGuestReferences, ...historicalStaffReferences]) {
+    assert.ok(foreignKeys.rows.some(row => row.conname === name), `Missing foreign key: ${name}`);
+  }
 });
 
 test("authentication and account management enforce browser and database permissions", async context => {

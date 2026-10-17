@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { Link } from "react-router";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../lib/api";
@@ -255,9 +256,9 @@ export function AppointmentView({
       </div>
       <footer className="reservation-footer">
         <p className="muted">Check the latest booking and payment updates.</p>
-        <button type="button" onClick={() => void refresh()}>
+        <Button variant="outline" type="button" onClick={() => void refresh()}>
           Refresh status ↻
-        </button>
+        </Button>
       </footer>
       {error && (
         <p role="alert" className="error">

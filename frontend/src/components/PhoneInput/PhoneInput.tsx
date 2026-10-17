@@ -1,10 +1,11 @@
+import { Input } from "@/components/ui/Input";
 import { useState } from "react";
 import { philippinePhoneDigits } from "../../utils/phone-number";
 
 export function PhoneInput({ name, value, onChange }: { name?: string; value?: string; onChange?: (value: string) => void }) {
   const [digits, setDigits] = useState("");
   return <span className="phone-field">
-    <span className="phone-input-group"><span className="phone-country" aria-hidden="true">+63</span><input
+    <span className="phone-input-group"><span className="phone-country" aria-hidden="true">+63</span><Input
       name={name} type="tel" inputMode="numeric" autoComplete="tel-national" required
       aria-label="Phone number (Philippines, +63)" pattern="[0-9]{10}" minLength={10} maxLength={32}
       placeholder="917 123 4567" value={value ?? digits}

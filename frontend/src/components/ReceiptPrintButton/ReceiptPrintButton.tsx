@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ReceiptContent } from "../ReceiptContent";
@@ -14,5 +15,5 @@ export function ReceiptPrintButton({ receipt, label = "Print receipt", className
     window.print();
     return () => { document.title = originalTitle; window.removeEventListener("afterprint", done); };
   }, [printing, receipt.receiptNumber]);
-  return <><button type="button" className={className} onClick={() => setPrinting(true)} aria-label={`${label} ${receipt.receiptNumber}`}>{label}</button>{printing && createPortal(<div className="receipt-print-root"><article className="salon-receipt"><ReceiptContent receipt={receipt} /></article></div>, document.body)}</>;
+  return <><Button variant="outline" type="button" className={className} onClick={() => setPrinting(true)} aria-label={`${label} ${receipt.receiptNumber}`}>{label}</Button>{printing && createPortal(<div className="receipt-print-root"><article className="salon-receipt"><ReceiptContent receipt={receipt} /></article></div>, document.body)}</>;
 }

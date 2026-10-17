@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { BookingCalendar } from "../BookingCalendar";
 import { useCalendarAvailability } from "../BookingCalendar/use-calendar-availability";
 import { Link, useNavigate, useSearchParams } from "react-router";
@@ -222,12 +224,12 @@ export function PublicBooking({ salon }: { salon: Salon | null }) {
   return (
     <section className="container booking-shell">
       <div className="booking-top">
-        <button
+        <Button variant="outline"
           onClick={() => (step ? setStep(step - 1) : navigate("/"))}
           disabled={bookingBusy}
         >
           ← Back
-        </button>
+        </Button>
         <Link className="icon-button" to="/" aria-label="Close booking">
           ×
         </Link>
@@ -239,7 +241,7 @@ export function PublicBooking({ salon }: { salon: Salon | null }) {
           <p className="error" role="alert">
             {error}
           </p>
-          <button onClick={() => void load()}>Retry</button>
+          <Button variant="outline" onClick={() => void load()}>Retry</Button>
         </>
       ) : !services.length ? (
         <p className="empty-state">No services are available yet.</p>
@@ -251,7 +253,7 @@ export function PublicBooking({ salon }: { salon: Salon | null }) {
           <div className="booking-main">
             <nav className="booking-steps" aria-label="Booking progress">
               {steps.map((label, i) => (
-                <button
+                <Button variant="outline"
                   key={label}
                   disabled={i > step}
                   aria-current={i === step ? "step" : undefined}
@@ -264,7 +266,7 @@ export function PublicBooking({ salon }: { salon: Salon | null }) {
                     {i < step ? "✓" : i + 1}
                   </span>
                   <span>{label}</span>
-                </button>
+                </Button>
               ))}
             </nav>
             <p className="booking-kicker">
@@ -304,7 +306,7 @@ export function PublicBooking({ salon }: { salon: Salon | null }) {
                 />
                 <label className="booking-search">
                   <span>Search services</span>
-                  <input
+                  <Input
                     type="search"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
@@ -388,13 +390,13 @@ export function PublicBooking({ salon }: { salon: Salon | null }) {
                     setDate(day);
                   }}
                 />
-                <button
+                <Button variant="outline"
                   className="button button--dark mt-5"
                   disabled={busy || !dateAvailable}
                   onClick={() => void search()}
                 >
                   {busy ? "Finding times…" : "Find available times"}
-                </button>
+                </Button>
                 {result && (
                   <section className="availability-results">
                     <h2>Available times</h2>
@@ -413,7 +415,7 @@ export function PublicBooking({ salon }: { salon: Salon | null }) {
                         aria-label="Available appointment times"
                       >
                         {result.slots.map((s) => (
-                          <button
+                          <Button variant="outline"
                             type="button"
                             className={`time-slot ${slot?.startAt === s.startAt ? "selected" : ""}`}
                             key={s.startAt}
@@ -421,7 +423,7 @@ export function PublicBooking({ salon }: { salon: Salon | null }) {
                             onClick={() => setSlot(s)}
                           >
                             {format(s.startAt)}
-                          </button>
+                          </Button>
                         ))}
                       </div>
                     )}
@@ -494,7 +496,7 @@ export function PublicBooking({ salon }: { salon: Salon | null }) {
                     </p>
                     {step === 0 && (
                       <div className="summary-actions">
-                        <button
+                        <Button variant="outline"
                           aria-label={`Remove service ${i + 1}`}
                           onClick={() => {
                             invalidate();
@@ -504,8 +506,8 @@ export function PublicBooking({ salon }: { salon: Salon | null }) {
                           }}
                         >
                           Remove
-                        </button>
-                        <button
+                        </Button>
+                        <Button variant="outline"
                           disabled={i === 0}
                           aria-label={`Move service ${i + 1} earlier`}
                           onClick={() => {
@@ -518,7 +520,7 @@ export function PublicBooking({ salon }: { salon: Salon | null }) {
                           }}
                         >
                           Move earlier
-                        </button>
+                        </Button>
                       </div>
                     )}
                   </div>
@@ -571,7 +573,7 @@ export function PublicBooking({ salon }: { salon: Salon | null }) {
               and assignments are confirmed when the hold is created.
             </p>
             {step < 3 && (
-              <button
+              <Button variant="outline"
                 className="button button--dark"
                 disabled={
                   !selections.length ||
@@ -587,7 +589,7 @@ export function PublicBooking({ salon }: { salon: Salon | null }) {
                   ][step]
                 }{" "}
                 <span aria-hidden="true">→</span>
-              </button>
+              </Button>
             )}
             {!selections.length && (
               <p className="summary-hint">Select a service to continue</p>

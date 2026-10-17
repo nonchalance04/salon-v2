@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import type { FormEvent } from "react";
 import { SettlementWorkspace } from "../SettlementWorkspace";
 import { ConfirmedServices } from "../ConfirmedServices";
@@ -44,9 +46,9 @@ export function CashierDashboard({ mode, bookingCode, onNavigate, onNavigationSt
             <form className="account-form cashier-search" onSubmit={search}>
               <label>
                 Booking code
-                <input name="code" required maxLength={100} placeholder="Enter booking code" />
+                <Input name="code" required maxLength={100} placeholder="Enter booking code" />
               </label>
-              <button className="primary">{mode === "services" ? "Find appointment" : "Find payment"}</button>
+              <Button variant="default" className="primary">{mode === "services" ? "Find appointment" : "Find payment"}</Button>
             </form>
           </details>
         </>

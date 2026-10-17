@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import "./PublicSite.css";
 import "../../components/PublicBooking/PublicBooking.css";
 import "../../components/AppointmentView/AppointmentView.css";
@@ -45,7 +46,7 @@ export function PublicSite() {
       {loading && <p role="status">Loading salon services…</p>}
       {error && (
         <p className="error" role="alert">
-          {error} <button onClick={() => void load()}>Retry</button>
+          {error} <Button variant="outline" onClick={() => void load()}>Retry</Button>
         </p>
       )}
       {!loading && !error && !services.length && (

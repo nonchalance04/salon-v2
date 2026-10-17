@@ -15,6 +15,23 @@ export function safeAudit(value) {
             .map(([key, item]) => [key, safeAudit(item)]));
     return value;
 }
+// Match a booking code or every word in the customer's name, in any order.
+function customerSearch(search) {
+    if (!search)
+        return {};
+    const nameWords = search.split(/\s+/).map(word => ({
+        OR: [
+            { customer: { firstName: { contains: word, mode: "insensitive" } } },
+            { customer: { lastName: { contains: word, mode: "insensitive" } } },
+        ],
+    }));
+    return {
+        OR: [
+            { bookingCode: { contains: search, mode: "insensitive" } },
+            { AND: nameWords },
+        ],
+    };
+}
 export function createReportsService(prisma, timeZone) {
     async function read(actorId, admin, operation) {
         return prisma.$transaction(async (tx) => {
@@ -35,7 +52,7 @@ export function createReportsService(prisma, timeZone) {
                     where: { status: { in: ["SUCCEEDED", "REFUNDED"] }, paidAt: period }, orderBy: [{ currency: "asc" }, { type: "asc" }, { method: "asc" }, { status: "asc" }, { satisfiesObligation: "asc" }, { reconciliationStatus: "asc" }], _sum: { amount: true }, _count: { _all: true } });
                 const refunds = await tx.payment.groupBy({ by: ["currency", "method", "type"], where: { status: "REFUNDED", refundedAt: period }, _sum: { amount: true }, _count: { _all: true } });
                 const currencies = [...new Set([...captures, ...refunds].map(r => r.currency))].sort();
-                return { from: q.from, to: q.to, timeZone, basis: "Captures by paidAt; refunds by refundedAt. Dates are inclusive in salon time. Carried credits are not new collections.",
+                return { from: q.from, to: q.to, timeZone, basis: "Collections use capture time. Net movement reflects recorded payment adjustments. Dates are inclusive in salon time. Carried credits are not new collections.",
                     totals: currencies.map(currency => {
                         const rows = captures.filter(r => r.currency === currency);
                         const sum = (selected) => selected.reduce((n, r) => n.plus(r._sum.amount ?? 0), new Prisma.Decimal(0));
@@ -69,13 +86,7 @@ export function createReportsService(prisma, timeZone) {
                                 { outcome: { not: "SCHEDULED" } }, { outcomeFinalizedAt: { not: null } },
                             ] },
                     },
-                    ...(q.search ? { OR: [
-                            { bookingCode: { contains: q.search, mode: "insensitive" } },
-                            { AND: q.search.split(/\s+/).map(word => ({ OR: [
-                                        { customer: { firstName: { contains: word, mode: "insensitive" } } },
-                                        { customer: { lastName: { contains: word, mode: "insensitive" } } },
-                                    ] })) },
-                        ] } : {}),
+                    ...customerSearch(q.search),
                 };
                 const total = await tx.appointment.count({ where });
                 const rows = await tx.appointment.findMany({ where, skip: (q.page - 1) * q.pageSize, take: q.pageSize,
@@ -95,19 +106,25 @@ export function createReportsService(prisma, timeZone) {
         },
         confirmedServices(actorId, q) {
             return read(actorId, false, async (tx) => {
+                const today = q.arrivalToday === "true"
+                    ? Temporal.Instant.fromEpochMilliseconds(+(await freshTime(tx))).toZonedDateTimeISO(timeZone).toPlainDate().toString()
+                    : null;
                 const where = {
                     status: "CONFIRMED", completedAt: null, completionType: null,
+                    ...(today ? {
+                        startAt: reportPeriod({ from: today, to: today, page: q.page, pageSize: q.pageSize }, timeZone),
+                        AND: [{ appointmentServices: {
+                                    some: { membershipStatus: "ACTIVE" },
+                                    none: { membershipStatus: "ACTIVE", OR: [
+                                            { outcome: { not: "SCHEDULED" } }, { outcomeFinalizedAt: { not: null } },
+                                        ] },
+                                } }],
+                    } : {}),
                     ...(q.paymentReady === "true" ? { appointmentServices: {
                             some: { membershipStatus: "ACTIVE", outcome: "PERFORMED", actualChargedAmount: { gt: 0 } },
                             none: { membershipStatus: "ACTIVE", outcome: "SCHEDULED" },
                         } } : {}),
-                    ...(q.search ? { OR: [
-                            { bookingCode: { contains: q.search, mode: "insensitive" } },
-                            { AND: q.search.split(/\s+/).map(word => ({ OR: [
-                                        { customer: { firstName: { contains: word, mode: "insensitive" } } },
-                                        { customer: { lastName: { contains: word, mode: "insensitive" } } },
-                                    ] })) },
-                        ] } : {}),
+                    ...customerSearch(q.search),
                 };
                 const total = await tx.appointment.count({ where });
                 const rows = await tx.appointment.findMany({ where, skip: (q.page - 1) * q.pageSize, take: q.pageSize,
@@ -117,11 +134,14 @@ export function createReportsService(prisma, timeZone) {
                         customer: { select: { firstName: true, lastName: true } },
                         appointmentServices: { where: { membershipStatus: "ACTIVE" }, orderBy: { sequenceNo: "asc" }, select: {
                                 id: true, serviceNameSnapshot: true, priceSnapshot: true, outcome: true,
+                                staffFirstNameSnapshot: true, staffLastNameSnapshot: true,
                                 staff: { select: { firstName: true, lastName: true } },
                             } },
                     } });
                 return { timeZone, page: q.page, pageSize: q.pageSize, total,
-                    rows: rows.map(row => ({ ...row, appointmentServices: row.appointmentServices.map(service => ({ ...service, priceSnapshot: service.priceSnapshot.toFixed(2) })) })) };
+                    rows: rows.map(row => ({ ...row, appointmentServices: row.appointmentServices.map(({ staffFirstNameSnapshot, staffLastNameSnapshot, ...service }) => ({ ...service,
+                            staff: service.staff ?? { firstName: staffFirstNameSnapshot || "Former staff", lastName: staffLastNameSnapshot },
+                            priceSnapshot: service.priceSnapshot.toFixed(2) })) })) };
             });
         },
         cashierQueue(actorId, q) {

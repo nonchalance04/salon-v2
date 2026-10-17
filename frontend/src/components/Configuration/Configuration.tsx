@@ -1,16 +1,22 @@
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/NativeSelect";
 import { OpeningHours, type OpeningHour } from "../OpeningHours";
 import { allDayClosureDate } from "./closure-date";
+import { AppointmentSettings } from "../AppointmentSettings";
+import type { PolicyRecord } from "../AppointmentSettings/policy-settings";
 import { StaffProfileEditor } from "../StaffProfileEditor";
 import { StaffSkillsEditor } from "../StaffSkillsEditor";
 import type { StaffPublicProfile } from "../../utils/staff-profile";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Temporal } from "@js-temporal/polyfill";
+import { configurationBody, fieldEditValue } from "./configuration-values";
 import { api, ApiError } from "../../lib/api";
 import { definitions, days, closureIntervalFields, type Section, type Field } from "./Configuration.fields";
 
 type Row = { id: string; [key: string]: unknown };
-type Snapshot = { timeZone: string; profile: Row | null } & Record<
-  Exclude<Section, "profile">,
+type Snapshot = { timeZone: string; profile: Row | null; policies: PolicyRecord[] } & Record<
+  Exclude<Section, "profile" | "policies">,
   Row[]
 >;
 type Conflict = {
@@ -92,35 +98,13 @@ export function Configuration({
   function open(row?: Row) {
     setProfileStaff(null);
     setSkillsStaff(null);
-    const source =
-      section === "policies"
-        ? data?.policies.find(
-            (p) => new Date(String(p.effectiveFrom)) <= new Date(),
-          )
-        : row;
+    const source = row;
     const day = section === "closures" && source ? closureDate(source) : null;
     const customHours = section === "closures" && Boolean(source) && !day;
     const values: Record<string, string | boolean> = {};
     for (const field of customHours ? closureIntervalFields : definition.fields) {
       const raw = section === "closures" && field.key === "date" ? day : source?.[field.key];
-      if (field.type === "active")
-        values[field.key] = raw === undefined ? true : Boolean(raw);
-      else if (section === "policies" && field.key === "effectiveFrom")
-        values[field.key] = "";
-      else if (raw === null || raw === undefined)
-        values[field.key] = field.initial ?? "";
-      else if (field.type === "time")
-        values[field.key] = String(raw).slice(11, 19);
-      else if (field.type === "date")
-        values[field.key] = String(raw).slice(0, 10);
-      else if (field.type === "datetime")
-        values[field.key] = Temporal.Instant.from(String(raw))
-          .toZonedDateTimeISO(data!.timeZone)
-          .toPlainDateTime()
-          .toString({ smallestUnit: customHours ? "millisecond" : "second" });
-      else if (field.type === "percent")
-        values[field.key] = String(Number(raw) * 100);
-      else values[field.key] = String(raw);
+      values[field.key] = fieldEditValue(field, raw, data!.timeZone, customHours);
     }
     setEdit({ id: row?.id, values, customHours });
     setError("");
@@ -148,22 +132,7 @@ export function Configuration({
     setNotice("");
     setConflicts([]);
     try {
-      const body: Record<string, unknown> = {};
-      for (const field of fields) {
-        const value = edit.values[field.key];
-        if (field.type === "active") body[field.key] = Boolean(value);
-        else if (value === "" && field.optional) body[field.key] = null;
-        else if (field.type === "number") body[field.key] = Number(value);
-        else if (field.type === "percent")
-          body[field.key] = (Number(value) / 100).toFixed(4);
-        else if (field.type === "datetime")
-          body[field.key] = Temporal.PlainDateTime.from(String(value))
-            .toZonedDateTime(data.timeZone, { disambiguation: "reject" })
-            .toInstant()
-            .toString();
-        else body[field.key] = String(value);
-      }
-      if (section === "policies") body.appointmentFeeType = "FIXED";
+      const body = configurationBody(fields, edit.values, data.timeZone);
       const path = `/configuration/${section}${edit.id && section !== "profile" ? `/${edit.id}` : ""}`;
       await api(path, {
         method: edit.id || section === "profile" ? "PUT" : "POST",
@@ -203,6 +172,17 @@ export function Configuration({
       setBusy(false);
     }
   }
+  if (section === "policies") return <AppointmentSettings
+    policies={data?.policies ?? []}
+    timeZone={data?.timeZone}
+    loading={!data}
+    loadError={error}
+    onRetry={() => { setError(""); void load().catch(fail); }}
+    onSaved={policy => setData(current => current ? {
+      ...current, policies: [...current.policies, policy],
+    } : current)}
+  />;
+
   const rows = data
     ? section === "profile"
       ? data.profile
@@ -239,7 +219,7 @@ export function Configuration({
           <p className="muted">{definition.description}</p>
         </div>
         {data && section !== "hours" && (
-          <button
+          <Button variant="default"
             className="primary"
             disabled={busy}
             onClick={() =>
@@ -251,7 +231,7 @@ export function Configuration({
             {section === "profile"
               ? "Edit profile"
               : `+ Add ${definition.singular}`}
-          </button>
+          </Button>
         )}
       </div>
       {data && (
@@ -268,12 +248,12 @@ export function Configuration({
                 <li key={c.appointmentServiceId}>
                   <strong>{c.bookingCode}</strong>{" "}
                   {onReviewBooking && (
-                    <button
+                    <Button variant="outline"
                       type="button"
                       onClick={() => onReviewBooking(c.bookingCode)}
                     >
                       Review booking
-                    </button>
+                    </Button>
                   )}{" "}
                   · {dateTime(c.startAt)} – {dateTime(c.reservedUntilAt)}
                 </li>
@@ -281,7 +261,7 @@ export function Configuration({
             </ul>
           )}
           {!data && (
-            <button onClick={() => void load().catch(fail)}>Retry</button>
+            <Button variant="outline" onClick={() => void load().catch(fail)}>Retry</Button>
           )}
         </div>
       )}
@@ -413,19 +393,19 @@ export function Configuration({
                 return (
                   <label key={field.key}>
                     {field.label}
-                    <select
+                    <NativeSelect
                       required
                       disabled={locked}
                       value={String(value)}
                       onChange={(e) => update(e.target.value)}
                     >
-                      <option value="">Select…</option>
+                      <NativeSelectOption value="">Select…</NativeSelectOption>
                       {options.map((option) => (
-                        <option value={option.id} key={option.id}>
+                        <NativeSelectOption value={option.id} key={option.id}>
                           {option.name}
-                        </option>
+                        </NativeSelectOption>
                       ))}
-                    </select>
+                    </NativeSelect>
                   </label>
                 );
               }
@@ -435,7 +415,7 @@ export function Configuration({
               return (
                 <label key={field.key}>
                   {field.label}
-                  <input
+                  <Input
                     required={!field.optional && !locked && !(edit.id && section === "staff" && field.key === "lastName")}
                     disabled={locked}
                     value={String(value)}
@@ -466,16 +446,12 @@ export function Configuration({
             })}
           </div>
           <div className="actions">
-            <button className="primary" disabled={busy}>
-              {busy
-                ? "Saving…"
-                : section === "policies"
-                  ? "Save appointment settings"
-                  : "Save changes"}
-            </button>
-            <button type="button" disabled={busy} onClick={() => setEdit(null)}>
+            <Button variant="default" className="primary" disabled={busy}>
+              {busy ? "Saving…" : "Save changes"}
+            </Button>
+            <Button variant="outline" type="button" disabled={busy} onClick={() => setEdit(null)}>
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       )}
@@ -487,12 +463,10 @@ export function Configuration({
         ) : (
           <div className="config-records">
             {rows.map((row) => (
-              <article className="config-record" key={row.id}>
+              <Card asChild key={row.id} className="block"><article className="config-record">
                 <div className="record-heading">
                   <h3>
-                    {section === "policies"
-                      ? `Settings update ${row.version}`
-                      : section === "staff"
+                    {section === "staff"
                         ? `${row.firstName} ${row.lastName}`
                         : section === "qualifications"
                           ? `${staffName(row.staffId)} · ${serviceName(row.serviceId)}`
@@ -506,14 +480,13 @@ export function Configuration({
                                     : definition.singular),
                               )}
                   </h3>
-                  {section !== "policies" && (
                     <div className="actions">
-                      <button disabled={busy} onClick={() => open(row)}>
+                      <Button variant="outline" disabled={busy} onClick={() => open(row)}>
                         Edit
-                      </button>
+                      </Button>
                       {section === "staff" && (
                         <>
-                          <button
+                          <Button variant="outline"
                             disabled={busy}
                             onClick={() => {
                               setEdit(null);
@@ -525,8 +498,8 @@ export function Configuration({
                             }}
                           >
                             Manage skills
-                          </button>
-                          <button
+                          </Button>
+                          <Button variant="outline"
                             disabled={busy}
                             onClick={() => {
                               setEdit(null);
@@ -538,28 +511,27 @@ export function Configuration({
                             }}
                           >
                             Edit public profile
-                          </button>
+                          </Button>
                           {Boolean(row.isActive) && (
-                            <button
+                            <Button variant="outline"
                               disabled={busy}
                               aria-label={`Delete ${staffName(row.id)}`}
                               onClick={() => void remove(row.id)}
                             >
                               Delete
-                            </button>
+                            </Button>
                           )}
                         </>
                       )}
                       {["closures", "unavailability"].includes(section) && (
-                        <button
+                        <Button variant="outline"
                           disabled={busy}
                           onClick={() => void remove(row.id)}
                         >
                           {section === "closures" ? "Remove closure" : "Remove period"}
-                        </button>
+                        </Button>
                       )}
                     </div>
-                  )}
                 </div>
                 <dl>
                   {recordFields(row).map((field) => (
@@ -593,7 +565,7 @@ export function Configuration({
                     </p>
                   </div>
                 )}
-              </article>
+              </article></Card>
             ))}
           </div>
         ))}

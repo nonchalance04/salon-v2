@@ -119,3 +119,34 @@ pass. Mocked browser checks verify all seven days, existing split hours and
 seconds, closed-day inputs, independent unsaved drafts, additional ranges,
 conflict feedback/reset, successful closure without deleting periods, and
 desktop/mobile layouts without horizontal overflow. No live hours were changed.
+
+## shadcn/ui adoption verification — 2026-10-17
+
+Shared source-owned primitives now replace buttons, text fields, selects,
+textareas, and status badges across public and staff screens. Configuration
+records use shared cards; service variants, professional profiles, and receipt
+previews use shared Radix dialogs. The existing salon themes and Component
+Folder Pattern are retained. Modal content keeps its theme context and sits
+above the floating salon guide.
+
+Validation:
+
+- Frontend TypeScript check and Vite production build pass (existing module
+  directive and bundle-size warnings remain).
+- All 38 frontend unit tests pass.
+- Browser checks with mocked APIs confirm service variant selection, dialog
+  focus containment, Escape and focus restoration, receipt preview amounts,
+  print-only receipt rendering/cleanup, login FormData and error handling,
+  required native selects, opening-hours request shapes and retained split
+  ranges, and no additional-time-range action.
+- Desktop (1366 px) and mobile (390 px) screens were rendered and inspected;
+  mobile pages have no horizontal overflow. Dialogs remain above the chat
+  launcher and respect reduced-motion preferences.
+- Booking calendar regression checks pass for unavailable/loading dates,
+  professional/month changes, stale responses, retries, and dates filling up.
+- Payment-return regression checks pass for direct confirmation, delayed
+  verification, retries/errors, expired sessions, unsuccessful checkout, and
+  navigation away during verification.
+
+No live bookings, payment transactions, or configuration records were changed
+by these browser checks.

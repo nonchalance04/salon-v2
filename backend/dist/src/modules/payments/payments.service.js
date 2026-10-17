@@ -3,7 +3,9 @@ import { Prisma, } from "../../../generated/prisma/client.js";
 import { ApiError } from "../../shared/http.js";
 import { lockSalon, lockStaff, freshTime } from "../scheduling/coordination.js";
 import { coversReservation } from "../scheduling/coverage.js";
-import { validGuestAccess } from "../appointments/appointments.security.js";
+import { createGuestCredentials, validGuestAccess } from "../appointments/appointments.security.js";
+import { GUEST_SESSION_MS } from "../appointments/appointment-otp.service.js";
+import { historicalStaff } from "../appointments/staff-history.js";
 import { TestPaymentProvider } from "./payment-provider.js";
 import { manualPaymentSchema, } from "./payments.schema.js";
 function metadata(payment) {
@@ -101,7 +103,7 @@ async function view(tx, id) {
     });
     return { ...payment, amount: payment.amount.toFixed(2) };
 }
-async function issueReceipt(tx, payment, actorId) {
+async function issueReceipt(tx, payment, actorId, timeZone = "Asia/Manila") {
     const existing = await tx.receipt.findUnique({
         where: { paymentId: payment.id },
     });
@@ -111,7 +113,7 @@ async function issueReceipt(tx, payment, actorId) {
         throw new ApiError(409, "PAYMENT_NOT_SUCCEEDED", "A receipt requires a successful payment.");
     const appointment = await tx.appointment.findUniqueOrThrow({
         where: { id: payment.appointmentId },
-        include: { customer: true },
+        include: { customer: true, appointmentServices: { where: { membershipStatus: "ACTIVE" }, orderBy: { sequenceNo: "asc" } } },
     });
     const salon = await tx.salonProfile.findFirst();
     return tx.receipt.create({
@@ -120,7 +122,8 @@ async function issueReceipt(tx, payment, actorId) {
             receiptNumber: `R-${randomUUID()}`,
             issuedByUserId: actorId,
             receiptSnapshot: {
-                schemaVersion: 1,
+                schemaVersion: 2,
+                issuedBy: actorId ? "STAFF" : "SYSTEM",
                 paymentId: payment.id,
                 bookingCode: appointment.bookingCode,
                 type: payment.type,
@@ -131,12 +134,30 @@ async function issueReceipt(tx, payment, actorId) {
                 externalReference: payment.externalReference,
                 paidAt: payment.paidAt.toISOString(),
                 customerName: `${appointment.customer.firstName} ${appointment.customer.lastName}`,
+                timeZone,
+                appointment: { startAt: appointment.startAt.toISOString(), endAt: appointment.endAt.toISOString() },
+                scheduledServices: appointment.appointmentServices.map(service => {
+                    const staff = historicalStaff(service);
+                    return { name: service.serviceNameSnapshot, staffName: `${staff.firstName} ${staff.lastName}`.trim(),
+                        startAt: service.scheduledStartAt.toISOString(), endAt: service.scheduledEndAt.toISOString() };
+                }),
                 salon: salon
-                    ? { name: salon.name, address: salon.address, phone: salon.phone }
+                    ? { name: salon.name, address: salon.address, phone: salon.phone, email: salon.email }
                     : null,
             },
         },
     });
+}
+async function issueAutomaticReceipt(tx, payment, timeZone) {
+    if (payment.provider !== "paymongo" || payment.status !== "SUCCEEDED" || payment.type !== "APPOINTMENT_FEE")
+        throw new ApiError(409, "RECEIPT_UNAVAILABLE", "An e-receipt requires a verified successful PayMongo appointment-fee payment.");
+    const existing = await tx.receipt.findUnique({ where: { paymentId: payment.id } });
+    if (existing)
+        return existing;
+    const receipt = await issueReceipt(tx, payment, null, timeZone);
+    await tx.auditLog.create({ data: { actorType: "SYSTEM", action: "RECEIPT_ISSUED", entityType: "Receipt", entityId: receipt.id,
+            afterData: { paymentId: payment.id, issuance: "VERIFIED_PROVIDER_PAYMENT" } } });
+    return receipt;
 }
 async function reservationsOwned(tx, row, now, timeZone) {
     const services = row.appointmentServices;
@@ -293,8 +314,10 @@ async function settle(tx, row, payment, event, actorId, timeZone = "Asia/Manila"
         },
     });
     if (event.status === "SUCCEEDED") {
-        if (actorId)
-            await issueReceipt(tx, updated, actorId);
+        if (updated.provider === "paymongo")
+            await issueAutomaticReceipt(tx, updated, timeZone);
+        else if (actorId)
+            await issueReceipt(tx, updated, actorId, timeZone);
         const eventTypes = confirm
             ? ["PAYMENT_RECEIVED", "BOOKING_CONFIRMED"]
             : ["PAYMENT_RECEIVED"];
@@ -403,6 +426,17 @@ export function createPaymentsService(prisma, provider, timeZone = "Asia/Manila"
                         amount: p.amount.toFixed(2),
                     })),
                 };
+            });
+        },
+        async returnSession(bookingCode, token) {
+            return transaction(prisma, async (tx) => {
+                const appointment = await guest(tx, bookingCode, token);
+                const session = createGuestCredentials();
+                await tx.appointmentGuestSession.create({ data: {
+                        appointmentId: appointment.id, tokenHash: session.hash,
+                        expiresAt: new Date(Date.now() + GUEST_SESSION_MS),
+                    } });
+                return session.token;
             });
         },
         async checkout(bookingCode, token, key) {
@@ -700,6 +734,17 @@ export function createPaymentsService(prisma, provider, timeZone = "Asia/Manila"
                 }, actorId, timeZone);
             });
         },
+        async customerReceipt(bookingCode, token, paymentId) {
+            return transaction(prisma, async (tx) => {
+                const appointment = await guest(tx, bookingCode, token);
+                await lockAppointment(tx, appointment.id);
+                const payment = await lockPayment(tx, paymentId);
+                if (payment.appointmentId !== appointment.id)
+                    throw new ApiError(404, "NOT_FOUND", "Payment not found.");
+                await issueAutomaticReceipt(tx, payment, timeZone);
+                return view(tx, paymentId);
+            });
+        },
         async issueReceipt(actorId, paymentId) {
             return transaction(prisma, async (tx) => {
                 const payment = await lockPayment(tx, paymentId);
@@ -708,7 +753,7 @@ export function createPaymentsService(prisma, provider, timeZone = "Asia/Manila"
                     throw new ApiError(400, "INVALID_PAYMENT_TYPE", "Only appointment-fee receipts are available here.");
                 const existing = await tx.receipt.findUnique({ where: { paymentId } });
                 if (!existing) {
-                    const receipt = await issueReceipt(tx, payment, actorId);
+                    const receipt = await issueReceipt(tx, payment, actorId, timeZone);
                     await tx.auditLog.create({
                         data: {
                             actorType: actor.role,

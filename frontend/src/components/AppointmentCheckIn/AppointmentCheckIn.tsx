@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useState } from "react";
 import { api } from "../../lib/api";
 
@@ -22,8 +23,8 @@ export function AppointmentCheckIn({ bookingCode, customerName, startAt, checked
   if (checkedInAt) return <p role="status">Checked in at {new Intl.DateTimeFormat("en-PH", { timeZone, dateStyle: "medium", timeStyle: "short" }).format(new Date(checkedInAt))}{checkedInByUser ? ` by ${checkedInByUser.firstName} ${checkedInByUser.lastName}` : ""}.</p>;
   if (date(new Date()) !== date(new Date(startAt))) return <p className="muted">Check-in is available on the appointment date.</p>;
   return <div>
-    {confirming ? <fieldset disabled={busy || disabled}><legend>Confirm customer arrival</legend><p>Has {customerName} arrived for booking {bookingCode}? Check-in records arrival; service completion is recorded separately.</p><button onClick={() => void checkIn()}>Confirm arrival</button><button onClick={() => setConfirming(false)}>Cancel</button></fieldset>
-      : <button disabled={busy || disabled} onClick={() => setConfirming(true)}>Check in customer</button>}
+    {confirming ? <fieldset disabled={busy || disabled}><legend>Confirm customer arrival</legend><p>Has {customerName} arrived for booking {bookingCode}? Check-in records arrival; service completion is recorded separately.</p><Button variant="outline" onClick={() => void checkIn()}>Confirm arrival</Button><Button variant="outline" onClick={() => setConfirming(false)}>Cancel</Button></fieldset>
+      : <Button variant="outline" disabled={busy || disabled} onClick={() => setConfirming(true)}>Check in customer</Button>}
     {busy && <p role="status">Recording arrival…</p>}
     {error && <p role="alert" className="error">{error}</p>}
   </div>;

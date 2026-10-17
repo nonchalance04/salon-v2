@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/NativeSelect";
 import { Link } from "react-router";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Temporal } from "@js-temporal/polyfill";
@@ -65,30 +68,30 @@ export function Availability() {
       {booked ? <AppointmentView initial={booked.initial} token={booked.token} /> : <fieldset disabled={bookingBusy} className="booking-selection">
       {loading ? <p role="status">Loading services…</p> : <>
         {timeZone && <p className="muted">All dates and times are in {timeZone}.</p>}
-        {!timeZone ? <button onClick={() => void load()}>Retry loading services</button> : !services.length ? <p>No services are available yet. Please check back later.</p> : <form onSubmit={search} className="account-form">
+        {!timeZone ? <Button variant="outline" onClick={() => void load()}>Retry loading services</Button> : !services.length ? <p>No services are available yet. Please check back later.</p> : <form onSubmit={search} className="account-form">
           <h2>Your visit</h2>
           {selections.map((row, index) => {
             const service = services.find(s => s.id === row.serviceId);
             return <fieldset key={row.key} className="visit-service"><legend>Service {index + 1}</legend><div className="form-grid">
-              <label>Service<select value={row.serviceId} onChange={e => change(row.key, { serviceId: e.target.value, staffId: "" })}>{services.map(s => <option key={s.id} value={s.id}>{s.name} · PHP {s.price} · {s.durationMinutes} min</option>)}</select></label>
-              <label>Staff<select value={row.staffId} onChange={e => change(row.key, { staffId: e.target.value })}><option value="">Any available staff</option>{staff.filter(s => s.serviceIds.includes(row.serviceId)).map(s => <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>)}</select></label>
+              <label>Service<NativeSelect value={row.serviceId} onChange={e => change(row.key, { serviceId: e.target.value, staffId: "" })}>{services.map(s => <NativeSelectOption key={s.id} value={s.id}>{s.name} · PHP {s.price} · {s.durationMinutes} min</NativeSelectOption>)}</NativeSelect></label>
+              <label>Staff<NativeSelect value={row.staffId} onChange={e => change(row.key, { staffId: e.target.value })}><NativeSelectOption value="">Any available staff</NativeSelectOption>{staff.filter(s => s.serviceIds.includes(row.serviceId)).map(s => <NativeSelectOption key={s.id} value={s.id}>{s.firstName} {s.lastName}</NativeSelectOption>)}</NativeSelect></label>
             </div>{service?.description && <p className="muted">{service.description}</p>}
-              <div className="actions"><button type="button" disabled={index === 0} aria-label={`Move service ${index + 1} earlier`} onClick={() => { invalidate(); setSelections(rows => { const copy = [...rows]; [copy[index - 1], copy[index]] = [copy[index]!, copy[index - 1]!]; return copy; }); }}>Move earlier</button>
-                <button type="button" disabled={selections.length === 1} aria-label={`Remove service ${index + 1}`} onClick={() => { invalidate(); setSelections(rows => rows.filter(s => s.key !== row.key)); }}>Remove</button></div>
+              <div className="actions"><Button variant="outline" type="button" disabled={index === 0} aria-label={`Move service ${index + 1} earlier`} onClick={() => { invalidate(); setSelections(rows => { const copy = [...rows]; [copy[index - 1], copy[index]] = [copy[index]!, copy[index - 1]!]; return copy; }); }}>Move earlier</Button>
+                <Button variant="outline" type="button" disabled={selections.length === 1} aria-label={`Remove service ${index + 1}`} onClick={() => { invalidate(); setSelections(rows => rows.filter(s => s.key !== row.key)); }}>Remove</Button></div>
             </fieldset>;
           })}
-          <button type="button" disabled={selections.length >= 20} onClick={() => { invalidate(); setSelections(rows => [...rows, { key: nextKey.current++, serviceId: services[0]!.id, staffId: "" }]); }}>+ Add another service</button>
-          <label className="visit-date">Visit date<input type="date" required value={date} onChange={e => { invalidate(); setDate(e.target.value); }} /></label>
+          <Button variant="outline" type="button" disabled={selections.length >= 20} onClick={() => { invalidate(); setSelections(rows => [...rows, { key: nextKey.current++, serviceId: services[0]!.id, staffId: "" }]); }}>+ Add another service</Button>
+          <label className="visit-date">Visit date<Input type="date" required value={date} onChange={e => { invalidate(); setDate(e.target.value); }} /></label>
           <p className="muted">Services run one after another, including any buffer between them.</p>
-          <button className="primary" disabled={busy || !selections.length}>{busy ? "Finding times…" : "Find available times"}</button>
+          <Button variant="default" className="primary" disabled={busy || !selections.length}>{busy ? "Finding times…" : "Find available times"}</Button>
         </form>}
       </>}
       {error && <p role="alert" className="error">{error}</p>}
       {result && <section className="availability-results" aria-labelledby="times-title"><h2 id="times-title">Available starting times</h2>
         <p className="muted">Times are advisory. Availability will be checked again when you submit a booking.</p>
         {!result.slots.length ? <p role="status">No times match this visit. Try another date, different staff, or fewer services.</p> : <>
-          <label>Browse by hour<select value={hour} onChange={e => setHour(e.target.value)}>{groups.map(([key, instant]) => <option key={key} value={key}>{new Intl.DateTimeFormat(undefined, { timeZone, hour: "numeric", timeZoneName: "short" }).format(new Date(instant))}</option>)}</select></label>
-          <div className="time-options" aria-label="Available starting times">{result.slots.filter(slot => hourKey(slot.startAt) === hour).map(slot => <button type="button" key={slot.startAt} aria-pressed={selected?.startAt === slot.startAt} onClick={() => setSelected(slot)}>{format(slot.startAt)}</button>)}</div>
+          <label>Browse by hour<NativeSelect value={hour} onChange={e => setHour(e.target.value)}>{groups.map(([key, instant]) => <NativeSelectOption key={key} value={key}>{new Intl.DateTimeFormat(undefined, { timeZone, hour: "numeric", timeZoneName: "short" }).format(new Date(instant))}</NativeSelectOption>)}</NativeSelect></label>
+          <div className="time-options" aria-label="Available starting times">{result.slots.filter(slot => hourKey(slot.startAt) === hour).map(slot => <Button variant="outline" type="button" key={slot.startAt} aria-pressed={selected?.startAt === slot.startAt} onClick={() => setSelected(slot)}>{format(slot.startAt)}</Button>)}</div>
         </>}
         {selected && <section className="visit-summary" aria-label="Selected visit"><h3>Your selected visit</h3><p>{date} · {format(selected.startAt)} – {format(selected.endAt)}</p>
           <ol>{selected.services.map(s => <li key={s.sequenceNo}><strong>{s.serviceName}</strong> with {s.staffName}<br />{format(s.startAt)} – {format(s.endAt)}{s.bufferMinutes > 0 && <span className="muted"> · {s.bufferMinutes} min buffer, through {format(s.reservedUntilAt)}</span>}</li>)}</ol>

@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 export function ServiceCategoryPicker({ categories, active, onSelect }: {
@@ -43,26 +44,26 @@ export function ServiceCategoryPicker({ categories, active, onSelect }: {
     return () => document.removeEventListener("pointerdown", dismiss);
   }, [open]);
   return <nav className="service-categories" aria-label="Service categories">
-    <div className="service-category-tabs" ref={tabsRef}>{categories.map((category, index) => <button
+    <div className="service-category-tabs" ref={tabsRef}>{categories.map((category, index) => <Button variant="outline"
       key={category} type="button" className={`service-category-pill ${category === active ? "active" : ""} ${index >= visibleCount ? "overflowed" : ""}`}
       aria-hidden={index >= visibleCount || undefined} tabIndex={index >= visibleCount ? -1 : undefined}
       aria-pressed={category === active} onClick={() => onSelect(category)}
-    >{category}</button>)}</div>
+    >{category}</Button>)}</div>
     <div className="service-category-menu" ref={menuRef} onBlur={event => {
       if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
     }} onKeyDown={event => {
       if (event.key === "Escape" && open) { event.preventDefault(); setOpen(false); triggerRef.current?.focus(); }
     }}>
-      <button ref={triggerRef} type="button" className="service-category-toggle" aria-label="All service categories"
+      <Button variant="outline" ref={triggerRef} type="button" className="service-category-toggle" aria-label="All service categories"
         aria-expanded={open} aria-controls="service-category-options" onClick={() => setOpen(value => !value)}>
         <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
           <path d="M9 5h12M9 12h12M9 19h12" /><circle cx="3" cy="5" r="1" /><circle cx="3" cy="12" r="1" /><circle cx="3" cy="19" r="1" />
         </svg>
-      </button>
+      </Button>
       {open && <div id="service-category-options" className="service-category-popover" role="group" aria-label="All service categories">
-        {categories.map(category => <button key={category} type="button" ref={category === active ? activeRef : undefined}
+        {categories.map(category => <Button variant="outline" key={category} type="button" ref={category === active ? activeRef : undefined}
           aria-pressed={category === active} className={category === active ? "active" : ""}
-          onClick={() => { onSelect(category); setOpen(false); triggerRef.current?.focus(); }}>{category}</button>)}
+          onClick={() => { onSelect(category); setOpen(false); triggerRef.current?.focus(); }}>{category}</Button>)}
       </div>}
     </div>
   </nav>;

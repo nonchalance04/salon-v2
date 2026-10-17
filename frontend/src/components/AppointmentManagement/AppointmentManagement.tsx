@@ -1,3 +1,7 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/NativeSelect";
 import { useRef, useState } from "react";
 import { api } from "../../lib/api";
 import type { Appointment } from "../../types/booking";
@@ -212,16 +216,16 @@ export function AppointmentManagement({
         </p>
       )}
       {canChange && !editing && (
-        <button disabled={busy} onClick={() => void open()}>
+        <Button variant="outline" disabled={busy} onClick={() => void open()}>
           {recovery
             ? "Request a recovery booking"
             : "Reschedule or change services"}
-        </button>
+        </Button>
       )}
       {canCancel && (
-        <button disabled={busy} onClick={() => setConfirmCancel(true)}>
+        <Button variant="outline" disabled={busy} onClick={() => setConfirmCancel(true)}>
           Cancel appointment
-        </button>
+        </Button>
       )}
       {!canChange && !canCancel && !appointment.recoveryAppointment && (
         <p>
@@ -236,10 +240,10 @@ export function AppointmentManagement({
             This releases your reserved time. The collected appointment fee
             remains unchanged.
           </p>
-          <button onClick={() => void cancel()}>Confirm cancellation</button>
-          <button onClick={() => setConfirmCancel(false)}>
+          <Button variant="outline" onClick={() => void cancel()}>Confirm cancellation</Button>
+          <Button variant="outline" onClick={() => setConfirmCancel(false)}>
             Keep appointment
-          </button>
+          </Button>
         </fieldset>
       )}
       {editing && (
@@ -267,7 +271,7 @@ export function AppointmentManagement({
                 ) : (
                   <label>
                     Service
-                    <select
+                    <NativeSelect
                       value={row.serviceId}
                       onChange={(e) => {
                         invalidate();
@@ -281,16 +285,16 @@ export function AppointmentManagement({
                       }}
                     >
                       {services.map((s) => (
-                        <option key={s.id} value={s.id}>
+                        <NativeSelectOption key={s.id} value={s.id}>
                           {s.name} · PHP {s.price}
-                        </option>
+                        </NativeSelectOption>
                       ))}
-                    </select>
+                    </NativeSelect>
                   </label>
                 )}
                 <label>
                   Staff
-                  <select
+                  <NativeSelect
                     value={row.staffId}
                     onChange={(e) => {
                       invalidate();
@@ -303,27 +307,27 @@ export function AppointmentManagement({
                       );
                     }}
                   >
-                    <option value="">Any available staff</option>
+                    <NativeSelectOption value="">Any available staff</NativeSelectOption>
                     {row.staffId &&
                       !staff.some(
                         (s) =>
                           s.id === row.staffId &&
                           s.serviceIds.includes(row.serviceId),
                       ) && (
-                        <option value={row.staffId}>
+                        <NativeSelectOption value={row.staffId}>
                           Previous staff (availability will be checked)
-                        </option>
+                        </NativeSelectOption>
                       )}
                     {staff
                       .filter((s) => s.serviceIds.includes(row.serviceId))
                       .map((s) => (
-                        <option key={s.id} value={s.id}>
+                        <NativeSelectOption key={s.id} value={s.id}>
                           {s.firstName} {s.lastName}
-                        </option>
+                        </NativeSelectOption>
                       ))}
-                  </select>
+                  </NativeSelect>
                 </label>
-                <button
+                <Button variant="outline"
                   type="button"
                   disabled={index === 0}
                   onClick={() => {
@@ -339,8 +343,8 @@ export function AppointmentManagement({
                   }}
                 >
                   Move earlier
-                </button>
-                <button
+                </Button>
+                <Button variant="outline"
                   type="button"
                   onClick={() => {
                     invalidate();
@@ -348,10 +352,10 @@ export function AppointmentManagement({
                   }}
                 >
                   Remove service {index + 1}
-                </button>
+                </Button>
               </fieldset>
             ))}
-            <button
+            <Button variant="outline"
               type="button"
               disabled={!services.length || rows.length >= 20}
               onClick={() => {
@@ -368,10 +372,10 @@ export function AppointmentManagement({
               }}
             >
               Add service
-            </button>
+            </Button>
             <label>
               Visit date ({appointment.timeZone})
-              <input
+              <Input
                 type="date"
                 value={date}
                 required
@@ -383,32 +387,32 @@ export function AppointmentManagement({
             </label>
             <label>
               Reason (optional)
-              <textarea
+              <Textarea
                 maxLength={1000}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
               />
             </label>
-            <button disabled={!rows.length}>Find available times</button>
-            <button type="button" onClick={() => setEditing(false)}>
+            <Button variant="outline" disabled={!rows.length}>Find available times</Button>
+            <Button variant="outline" type="button" onClick={() => setEditing(false)}>
               Close changes
-            </button>
+            </Button>
             {slots &&
               (slots.length ? (
                 <>
                   <label>
                     Available start
-                    <select
+                    <NativeSelect
                       value={startAt}
                       onChange={(e) => setStartAt(e.target.value)}
                     >
-                      <option value="">Choose a time</option>
+                      <NativeSelectOption value="">Choose a time</NativeSelectOption>
                       {slots.map((s) => (
-                        <option key={s.startAt} value={s.startAt}>
+                        <NativeSelectOption key={s.startAt} value={s.startAt}>
                           {format(s.startAt)}
-                        </option>
+                        </NativeSelectOption>
                       ))}
-                    </select>
+                    </NativeSelect>
                   </label>
                   {startAt && (
                     <>
@@ -425,11 +429,11 @@ export function AppointmentManagement({
                         Availability and eligibility are checked again when you
                         confirm.
                       </p>
-                      <button type="button" onClick={() => void save()}>
+                      <Button variant="outline" type="button" onClick={() => void save()}>
                         {recovery
                           ? "Create replacement booking"
                           : "Confirm appointment changes"}
-                      </button>
+                      </Button>
                     </>
                   )}
                 </>

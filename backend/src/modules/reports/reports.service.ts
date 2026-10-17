@@ -15,6 +15,24 @@ export function safeAudit(value: unknown): unknown {
     .map(([key, item]) => [key, safeAudit(item)]));
   return value;
 }
+// Match a booking code or every word in the customer's name, in any order.
+function customerSearch(search: string): Prisma.AppointmentWhereInput {
+  if (!search) return {};
+
+  const nameWords = search.split(/\s+/).map(word => ({
+    OR: [
+      { customer: { firstName: { contains: word, mode: "insensitive" as const } } },
+      { customer: { lastName: { contains: word, mode: "insensitive" as const } } },
+    ],
+  }));
+  return {
+    OR: [
+      { bookingCode: { contains: search, mode: "insensitive" } },
+      { AND: nameWords },
+    ],
+  };
+}
+
 export function createReportsService(prisma: PrismaClient, timeZone: string) {
   async function read<T>(actorId: string, admin: boolean, operation: (tx: Prisma.TransactionClient) => Promise<T>) {
     return prisma.$transaction(async tx => {
@@ -67,13 +85,7 @@ export function createReportsService(prisma: PrismaClient, timeZone: string) {
               { outcome: { not: "SCHEDULED" } }, { outcomeFinalizedAt: { not: null } },
             ] },
           },
-          ...(q.search ? { OR: [
-            { bookingCode: { contains: q.search, mode: "insensitive" } },
-            { AND: q.search.split(/\s+/).map(word => ({ OR: [
-              { customer: { firstName: { contains: word, mode: "insensitive" as const } } },
-              { customer: { lastName: { contains: word, mode: "insensitive" as const } } },
-            ] })) },
-          ] } : {}),
+          ...customerSearch(q.search),
         };
         const total = await tx.appointment.count({ where });
         const rows = await tx.appointment.findMany({ where, skip: (q.page - 1) * q.pageSize, take: q.pageSize,
@@ -113,13 +125,7 @@ export function createReportsService(prisma: PrismaClient, timeZone: string) {
             some: { membershipStatus: "ACTIVE" as const, outcome: "PERFORMED" as const, actualChargedAmount: { gt: 0 } },
             none: { membershipStatus: "ACTIVE" as const, outcome: "SCHEDULED" as const },
           } } : {}),
-          ...(q.search ? { OR: [
-            { bookingCode: { contains: q.search, mode: "insensitive" } },
-            { AND: q.search.split(/\s+/).map(word => ({ OR: [
-              { customer: { firstName: { contains: word, mode: "insensitive" as const } } },
-              { customer: { lastName: { contains: word, mode: "insensitive" as const } } },
-            ] })) },
-          ] } : {}),
+          ...customerSearch(q.search),
         };
         const total = await tx.appointment.count({ where });
         const rows = await tx.appointment.findMany({ where, skip: (q.page - 1) * q.pageSize, take: q.pageSize,

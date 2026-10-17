@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { api } from "../../lib/api";
 import { ConfirmedServices } from "../ConfirmedServices";
@@ -113,7 +114,7 @@ export function AdminDashboard({ onSettlement }: {
       </div>
       {error && (
         <p className="error" role="alert">
-          {error} <button onClick={() => void load()}>Retry</button>
+          {error} <Button variant="outline" onClick={() => void load()}>Retry</Button>
         </p>
       )}
       {busy && !data && (

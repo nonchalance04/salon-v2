@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api } from "../../lib/api";
 
@@ -41,12 +43,12 @@ export function StaffSkillsEditor({ staffId, name, services, qualifications, bus
         {services.filter(row => row.category === category).map(service => <div className="skills-service" key={service.id}>
           <label className="skills-check"><input type="checkbox" checked={selected.has(service.id)} disabled={!service.isActive && !qualifications.some(row => row.serviceId === service.id && row.isActive)} onChange={event => toggle(service.id, event.target.checked)} />
             <span>{service.name}{!service.isActive && <small>Inactive service · unavailable for booking</small>}</span></label>
-          {selected.has(service.id) && <label className="skills-rate">Commission (%)<input aria-label={`Commission for ${service.name} (%)`} type="number" required min="0" max="100" step="0.01" value={rates[service.id] ?? "40"} onChange={event => setRates(current => ({ ...current, [service.id]: event.target.value }))} /></label>}
+          {selected.has(service.id) && <label className="skills-rate">Commission (%)<Input aria-label={`Commission for ${service.name} (%)`} type="number" required min="0" max="100" step="0.01" value={rates[service.id] ?? "40"} onChange={event => setRates(current => ({ ...current, [service.id]: event.target.value }))} /></label>}
         </div>)}
       </fieldset>)}
       {services.length === 0 && <p>No services configured. Add services before assigning staff skills.</p>}
       <p className="muted">Removing a service required by an upcoming reservation is blocked. Existing bookings keep their saved commission rates.</p>
-      <div className="actions"><button className="primary">{busy ? "Saving…" : "Save skills"}</button><button type="button" onClick={onClose}>Cancel</button></div>
+      <div className="actions"><Button variant="default" className="primary">{busy ? "Saving…" : "Save skills"}</Button><Button variant="outline" type="button" onClick={onClose}>Cancel</Button></div>
     </fieldset>
   </form>;
 }

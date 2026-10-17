@@ -1,6 +1,6 @@
 export function chatbotTopic(message) {
     const text = message.toLowerCase();
-    if (/\b(cancel|cancellation|refund)\b/.test(text))
+    if (/\b(cancel|cancellation)\b/.test(text))
         return "cancel";
     if (/\b(reschedule|rescheduling|change|move)\b/.test(text))
         return "reschedule";
@@ -42,7 +42,7 @@ export function createChatbotService(source) {
                     break;
                 }
                 case "cancel":
-                    answer = "Open Manage my appointment using your booking code and secure guest token. Only eligible confirmed appointments can be cancelled, at or before the cancellation cutoff in that appointment’s original policy. After the cutoff, contact the salon. Cancellation releases the reservation; refunds are not automatic.";
+                    answer = "Open Manage my appointment using your booking code and secure guest token. Only eligible confirmed appointments can be cancelled, at or before the cancellation cutoff in that appointment’s original policy. After the cutoff, contact the salon. Cancellation releases the reservation. The collected appointment fee remains unchanged.";
                     break;
                 case "reschedule":
                     answer = "Open Manage my appointment using your booking code and secure guest token. An eligible confirmed appointment may be rescheduled within its original policy’s cutoff and reschedule limit. Choose services, staff and a new time; the backend checks the complete plan. Your current reservation remains if the change fails.";

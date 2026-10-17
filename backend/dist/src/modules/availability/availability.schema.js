@@ -7,4 +7,8 @@ export const availabilitySchema = z.object({
     ])).min(1).max(20),
     startAt: z.iso.datetime({ offset: true }).optional(),
 }).strict();
+export const calendarAvailabilitySchema = z.object({
+    month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+    services: availabilitySchema.shape.services,
+}).strict();
 //# sourceMappingURL=availability.schema.js.map

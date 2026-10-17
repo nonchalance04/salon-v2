@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/Button";
 import { createPaymentKey } from "../../utils/payment-key";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../lib/api";
@@ -58,12 +59,12 @@ export function FeePaymentControls({ bookingCode, token, onChange, pending }: { 
   return <div className="fee-payment">
     {options?.onlineAvailable ? <>
       {options.testMode && <p role="note"><strong>Development payment simulator — no real money is collected.</strong></p>}
-      {(!payment || !options.testMode) && !checkoutUrl ? <button type="button" className="primary" disabled={busy} onClick={() => void checkout()}>{busy ? "Opening payment…" : options.testMode ? "Open test payment" : "Pay with GCash"}</button> : options.testMode && <div className="actions"><button type="button" disabled={busy} onClick={() => void simulate("SUCCEEDED")}>Simulate successful payment</button><button type="button" disabled={busy} onClick={() => void simulate("FAILED")}>Simulate failed payment</button></div>}
+      {(!payment || !options.testMode) && !checkoutUrl ? <Button variant="default" type="button" className="primary" disabled={busy} onClick={() => void checkout()}>{busy ? "Opening payment…" : options.testMode ? "Open test payment" : "Pay with GCash"}</Button> : options.testMode && <div className="actions"><Button variant="outline" type="button" disabled={busy} onClick={() => void simulate("SUCCEEDED")}>Simulate successful payment</Button><Button variant="outline" type="button" disabled={busy} onClick={() => void simulate("FAILED")}>Simulate failed payment</Button></div>}
       {options.sandbox && <p role="note">PayMongo sandbox — no real money is collected.</p>}
       {checkoutUrl && <p><a className="payment-link" href={checkoutUrl} rel="noreferrer">Continue to GCash on PayMongo →</a></p>}
       {!options.testMode && <p>Complete payment in this tab. When PayMongo returns you to the salon, your booking restores automatically on this browser and confirms after payment is verified.</p>}
       {!options.testMode && payment?.status === "PENDING" && <p role="status">Waiting for payment confirmation… Status updates automatically when you return to the salon.</p>}
-      {!options.testMode && payment && <button type="button" disabled={busy} onClick={() => void checkPayment()}>Check payment status</button>}
+      {!options.testMode && payment && <Button variant="outline" type="button" disabled={busy} onClick={() => void checkPayment()}>Check payment status</Button>}
     </> : options && <p>Contact the salon to pay the appointment fee before your hold expires. Online payment is not configured.</p>}
     {error && <p role="alert" className="error">{error}</p>}
   </div>;

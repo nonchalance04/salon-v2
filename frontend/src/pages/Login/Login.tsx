@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router";
 import { useAuth } from "../../contexts/AuthProvider";
@@ -46,7 +48,7 @@ export function Login() {
           <h1>Sign in to your workspace</h1>
           <label>
             Email address
-            <input
+            <Input
               name="email"
               type="email"
               autoComplete="username"
@@ -57,7 +59,7 @@ export function Login() {
           </label>
           <label>
             Password
-            <input
+            <Input
               name="password"
               type="password"
               autoComplete="current-password"
@@ -70,9 +72,9 @@ export function Login() {
               {error}
             </p>
           )}
-          <button disabled={busy} className="primary">
+          <Button variant="default" disabled={busy} className="primary">
             {busy ? "Signing in…" : "Sign In"}
-          </button>
+          </Button>
           {/* <p className="clique-login-help">Need access or a password reset? Ask your salon administrator.</p>
         <Link to="/availability">Find an available salon time →</Link>
         <Link to="/help">Questions? Ask the salon guide →</Link> */}

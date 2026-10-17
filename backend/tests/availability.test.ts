@@ -198,3 +198,24 @@ test("calendar validates month and the same strict service/staff plan as daily s
     assert.equal(calendarAvailabilitySchema.safeParse(value).success, false);
   }
 });
+
+test("retained service snapshots keep their duration, name, and explicit zero buffer", () => {
+  const d = data();
+  d.services[0]!.name = "Updated catalog name";
+  d.services[0]!.durationMinutes = 120;
+  d.serviceOverrides = [{ name: "Original haircut", durationMinutes: 30, bufferMinutes: 0 }];
+  const plan = planAt(specific, at("17:30"), d);
+  assert.ok(plan);
+  assert.equal(plan.services[0]!.serviceName, "Original haircut");
+  assert.equal(plan.services[0]!.durationMinutes, 30);
+  assert.equal(plan.services[0]!.bufferMinutes, 0);
+  assert.equal(plan.services[0]!.reservedUntilAt, at("18:00").toISOString());
+  assert.equal(planAt(specific, at("17:31"), d), null);
+});
+
+test("a requested professional never falls back to another qualified professional", () => {
+  const d = data();
+  d.qualifications = d.qualifications.filter(row => row.staffId !== "a");
+  assert.equal(planAt(specific, at("09:00"), d), null);
+  assert.equal(planAt(input, at("09:00"), d)?.services[0]?.staffId, "b");
+});

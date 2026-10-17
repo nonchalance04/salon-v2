@@ -1,3 +1,7 @@
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/NativeSelect";
+import { Badge } from "@/components/ui/Badge";
 import { useEffect, useState, type FormEvent } from "react";
 import { api, type User } from "../../lib/api";
 import { useAuth } from "../../contexts/AuthProvider";
@@ -73,7 +77,7 @@ export function Accounts() {
           <h2 id="accounts-title">People & permissions</h2>
           <p className="muted">Manage Admin and Cashier accounts.</p>
         </div>
-        <button
+        <Button variant="default"
           className="primary"
           onClick={() => {
             setEditing("new");
@@ -82,12 +86,12 @@ export function Accounts() {
           }}
         >
           + Add account
-        </button>
+        </Button>
       </div>
       {error && (
         <p role="alert" className="error">
           {error}{" "}
-          {!editing && <button onClick={() => void load()}>Retry</button>}
+          {!editing && <Button variant="outline" onClick={() => void load()}>Retry</Button>}
         </p>
       )}
       {notice && (
@@ -105,7 +109,7 @@ export function Accounts() {
           <div className="form-grid">
             <label>
               First name
-              <input
+              <Input
                 name="firstName"
                 required
                 maxLength={100}
@@ -114,7 +118,7 @@ export function Accounts() {
             </label>
             <label>
               Last name
-              <input
+              <Input
                 name="lastName"
                 required
                 maxLength={100}
@@ -123,7 +127,7 @@ export function Accounts() {
             </label>
             <label>
               Email address
-              <input
+              <Input
                 name="email"
                 type="email"
                 required
@@ -133,14 +137,14 @@ export function Accounts() {
             </label>
             <label>
               Role
-              <select name="role" defaultValue={selected?.role ?? "CASHIER"}>
-                <option value="CASHIER">Cashier</option>
-                <option value="ADMIN">Admin</option>
-              </select>
+              <NativeSelect name="role" defaultValue={selected?.role ?? "CASHIER"}>
+                <NativeSelectOption value="CASHIER">Cashier</NativeSelectOption>
+                <NativeSelectOption value="ADMIN">Admin</NativeSelectOption>
+              </NativeSelect>
             </label>
             <label>
               {selected ? "New password (optional)" : "Password"}
-              <input
+              <Input
                 name="password"
                 type="password"
                 autoComplete="new-password"
@@ -167,10 +171,10 @@ export function Accounts() {
             </p>
           )}
           <div className="actions">
-            <button className="primary" disabled={busy}>
+            <Button variant="default" className="primary" disabled={busy}>
               {busy ? "Saving…" : "Save account"}
-            </button>
-            <button
+            </Button>
+            <Button variant="outline"
               type="button"
               disabled={busy}
               onClick={() => {
@@ -179,7 +183,7 @@ export function Accounts() {
               }}
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       )}
@@ -213,14 +217,14 @@ export function Accounts() {
                   <td>{account.email}</td>
                   <td>{account.role === "ADMIN" ? "Admin" : "Cashier"}</td>
                   <td>
-                    <span
+                    <Badge variant="secondary"
                       className={`badge ${account.isActive ? "active" : ""}`}
                     >
                       {account.isActive ? "Active" : "Inactive"}
-                    </span>
+                    </Badge>
                   </td>
                   <td>
-                    <button
+                    <Button variant="outline"
                       aria-label={`Edit ${account.firstName} ${account.lastName}`}
                       onClick={() => {
                         setEditing(account);
@@ -229,7 +233,7 @@ export function Accounts() {
                       }}
                     >
                       Edit
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               ))}

@@ -951,6 +951,15 @@ in `lib`, and global styles in `styles`. The public layout retains the shared
 customer stylesheet imports in their established cascade order. Existing
 frontend unit tests remain in `frontend/tests`.
 
+Shared presentation primitives use source-owned shadcn/ui components under
+`components/ui/<Component>/<Component>.tsx`, with folder exports. Feature
+components compose these primitives and keep their domain state, API calls,
+and workflow-specific CSS. `@/` resolves to `frontend/src` in Vite and TypeScript;
+`lib/utils.ts` owns utility-class merging. Semantic tokens in `styles/tailwind.css`
+retain the public and staff themes without a global Preflight reset. Modal
+portals remain inside their current theme root and use Radix focus management.
+UI primitives do not decide availability, appointment state, or payment outcomes.
+
 See `frontend/README.md` for the component-folder convention and validation.
 
 ---
