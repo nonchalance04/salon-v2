@@ -182,7 +182,7 @@ const settingsCards: Card[] = [
   },
   {
     title: "Appointment Settings",
-    description: "Manage appointment fees and booking policies",
+    description: "Manage appointment fees and booking rules",
     icon: "calendar",
     page: "configuration",
     section: "policies",

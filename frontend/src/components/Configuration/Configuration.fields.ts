@@ -10,7 +10,7 @@ export const definitions: Record<Section, { title: string; singular: string; des
   ] },
   services: { title: "Services", singular: "service", description: "Manage your service menu. Existing bookings keep their original prices and durations.", fields: [
     { key: "name", label: "Service name" }, { key: "category", label: "Booking category (e.g. Hair Services, Hair Treatments)", initial: "Other" }, { key: "description", label: "Description", optional: true }, { key: "price", label: "Price (PHP)", type: "money", min: .01 },
-    { key: "durationMinutes", label: "Duration (minutes)", type: "number", min: 1 }, { key: "bufferMinutes", label: "Buffer (minutes; blank uses booking policy)", type: "number", optional: true }, active,
+    { key: "durationMinutes", label: "Duration (minutes)", type: "number", min: 1 }, { key: "bufferMinutes", label: "Extra time after service (minutes; blank uses appointment settings)", type: "number", optional: true }, active,
   ] },
   staff: { title: "Staff", singular: "staff member", description: "Manage staff and their skills. Use Manage skills to choose exactly which services each person can perform.", fields: [
     { key: "firstName", label: "First name" }, { key: "lastName", label: "Last name" }, { key: "phone", label: "Phone", optional: true }, active,
@@ -27,17 +27,17 @@ export const definitions: Record<Section, { title: string; singular: string; des
   ] },
   closures: { title: "Salon closures", singular: "salon closure", description: "Set temporary closures. Changes that conflict with reservations are rejected.", fields: range },
   unavailability: { title: "Staff time off", singular: "unavailable period", description: "Record temporary staff absences without changing recurring shifts.", fields: [staff, ...range] },
-  policies: { title: "Booking policies", singular: "policy version", description: "Publish a new version for future bookings. Existing appointments keep their original policy.", fields: [
-    { key: "appointmentFeeAmount", label: "Fixed appointment fee (PHP)", type: "money", initial: "100.00" },
-    { key: "bookingHoldMinutes", label: "Payment hold (minutes)", type: "number", min: 1, initial: "10" },
-    { key: "defaultBufferMinutes", label: "Default buffer (minutes)", type: "number", initial: "15" },
-    { key: "maxReschedules", label: "Maximum reschedules", type: "number", initial: "2" },
-    { key: "rescheduleCutoffHours", label: "Reschedule cutoff (hours)", type: "number", initial: "4" },
-    { key: "cancellationCutoffHours", label: "Cancellation cutoff (hours)", type: "number", initial: "4" },
-    { key: "noShowGraceHours", label: "No-show recovery window (hours)", type: "number", initial: "72" },
-    { key: "advanceBookingDays", label: "Advance booking limit (days)", type: "number", min: 1, initial: "30" },
-    { key: "minimumBookingLeadMinutes", label: "Minimum booking lead (minutes)", type: "number", initial: "60" },
-    { key: "effectiveFrom", label: "Effective at (blank activates immediately)", type: "datetime", optional: true },
+  policies: { title: "Appointment Settings", singular: "settings update", description: "Set appointment fees and booking rules. Changes apply to new bookings from the chosen start date. Existing appointments keep their original settings.", fields: [
+    { key: "appointmentFeeAmount", label: "Appointment fee (PHP)", type: "money", initial: "100.00" },
+    { key: "bookingHoldMinutes", label: "Time allowed to pay (minutes)", type: "number", min: 1, initial: "10" },
+    { key: "defaultBufferMinutes", label: "Extra time after each service (minutes)", type: "number", initial: "15" },
+    { key: "maxReschedules", label: "Maximum number of appointment changes", type: "number", initial: "2" },
+    { key: "rescheduleCutoffHours", label: "Minimum notice to change an appointment (hours)", type: "number", initial: "4" },
+    { key: "cancellationCutoffHours", label: "Minimum notice to cancel an appointment (hours)", type: "number", initial: "4" },
+    { key: "noShowGraceHours", label: "Time allowed to rebook after a missed appointment (hours)", type: "number", initial: "72" },
+    { key: "advanceBookingDays", label: "How far ahead customers can book (days)", type: "number", min: 1, initial: "30" },
+    { key: "minimumBookingLeadMinutes", label: "Minimum notice to book an appointment (minutes)", type: "number", initial: "60" },
+    { key: "effectiveFrom", label: "Start using these settings on (blank means immediately)", type: "datetime", optional: true },
   ] },
 };
 export const days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];

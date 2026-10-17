@@ -8,3 +8,9 @@ export const availabilitySchema = z.object({
   startAt: z.iso.datetime({ offset: true }).optional(),
 }).strict();
 export type AvailabilityInput = z.infer<typeof availabilitySchema>;
+
+export const calendarAvailabilitySchema = z.object({
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+  services: availabilitySchema.shape.services,
+}).strict();
+export type CalendarAvailabilityInput = z.infer<typeof calendarAvailabilitySchema>;

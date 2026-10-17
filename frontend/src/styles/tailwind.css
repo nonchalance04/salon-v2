@@ -1,0 +1,38 @@
+/*
+ * Tailwind CSS v4 entry.
+ *
+ * Preflight (Tailwind's base reset) is intentionally NOT imported so the
+ * existing hand-written CSS keeps rendering exactly as before. Only the
+ * theme tokens and utility classes are loaded.
+ *
+ * Note: Tailwind utilities live inside the `utilities` cascade layer, while
+ * the legacy stylesheets are unlayered. Unlayered rules win over layered
+ * ones regardless of specificity, so a legacy element rule such as
+ * `button { background: white }` will override `bg-*` utilities on that
+ * element until the component is migrated off the legacy CSS.
+ */
+@layer theme, base, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/*
+ * The public site already defines its own `.container` class. Tailwind's
+ * `container` utility would add breakpoint max-widths to it and change the
+ * layout, so it is excluded from generation.
+ */
+@source not inline("container");
+
+/* Project design tokens, exposed as utilities (e.g. bg-forest, text-ink). */
+@theme {
+  --color-forest: #203c34;
+  --color-forest-hover: #31584c;
+  --color-ink: #203c34;
+  --color-muted: #64736b;
+  --color-cream: #faf9f5;
+  --color-line: #dce0d8;
+  --color-accent: #b67a3d;
+
+  --font-serif: Georgia, "Times New Roman", serif;
+  --font-sans: Arial, Helvetica, sans-serif;
+}

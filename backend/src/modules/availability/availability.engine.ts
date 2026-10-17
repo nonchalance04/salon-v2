@@ -1,6 +1,6 @@
 import { Temporal } from "@js-temporal/polyfill";
 import { coversIntervals, reservationWindows, overlaps, type WeeklyWindow } from "../scheduling/coverage.js";
-import type { AvailabilityInput } from "./availability.schema.js";
+import type { AvailabilityInput, CalendarAvailabilityInput } from "./availability.schema.js";
 
 export type Reservation = {
   staffId: string; scheduledStartAt: Date; reservedUntilAt: Date; membershipStatus: string;
@@ -85,7 +85,7 @@ function planner(input: AvailabilityInput, data: AvailabilityData) {
 export function planAt(input: AvailabilityInput, start: Date, data: AvailabilityData) {
   return planner(input, data)(start);
 }
-export function calculateAvailability(input: AvailabilityInput, data: AvailabilityData) {
+export function calculateAvailability(input: AvailabilityInput, data: AvailabilityData, limit = Infinity) {
   const resolve = planner(input, data);
   if (input.startAt) {
     const plan = resolve(new Date(input.startAt));
@@ -102,7 +102,18 @@ export function calculateAvailability(input: AvailabilityInput, data: Availabili
   for (let ms = firstStart;
     ms < day.end.getTime() && ms <= latest.getTime(); ms += intervalMs) {
     const plan = resolve(new Date(ms));
-    if (plan) result.push(plan);
+    if (plan) {
+      result.push(plan);
+      if (result.length >= limit) break;
+    }
   }
   return result;
+}
+
+export function calculateCalendarAvailability(input: CalendarAvailabilityInput, data: AvailabilityData) {
+  const first = Temporal.PlainDate.from(`${input.month}-01`);
+  return Array.from({ length: first.daysInMonth }, (_, index) => {
+    const date = first.add({ days: index }).toString();
+    return { date, available: calculateAvailability({ date, services: input.services }, data, 1).length > 0 };
+  });
 }

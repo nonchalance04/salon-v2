@@ -97,3 +97,15 @@ tests pass. Mocked browser checks cover both return URLs, absence of intermediat
 lookup/reservation screens, delayed verification, failed checkout, expired
 sessions, restoration and verification retries, and navigation away during an
 in-flight check. No live payment was collected or changed during verification.
+
+## Booking calendar availability — 2026-10-17
+
+Select Date and Time now enables only dates with a complete available service
+plan for the current selections. The calendar checks one month at a time via
+`POST /api/availability/calendar`; loading and failed checks disable unverified
+dates and errors offer retry. Month/professional changes discard stale data,
+and a time search returning no slots disables that date and clears selection.
+Backend type checking, all 105 backend tests, and all 32 frontend tests passed.
+Mocked browser checks verified loading/past/unavailable dates, enabled-date time
+search, month changes, stale responses, professional-specific dates, retry, empty
+months, and dates becoming unavailable. No bookings were submitted.

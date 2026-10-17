@@ -7,7 +7,7 @@ import type { AvailabilityInput } from "./availability.schema.js";
 // freshly discovered candidate belongs to its complete ordered lock set.
 export async function loadAvailabilityData(tx: Prisma.TransactionClient, input: AvailabilityInput, timeZone: string, now: Date,
   policy: Awaited<ReturnType<Prisma.TransactionClient["bookingPolicyVersion"]["findFirstOrThrow"]>>,
-  options: { retainedServiceIds?: string[]; excludeAppointmentId?: string } = {}) {
+  options: { retainedServiceIds?: string[]; excludeAppointmentId?: string; rangeEnd?: Date } = {}) {
   if (new Set(input.services.map(service => service.serviceId)).size !== input.services.length) {
     throw new ApiError(400, "DUPLICATE_SERVICE", "Select each service only once.");
   }
@@ -24,12 +24,13 @@ export async function loadAvailabilityData(tx: Prisma.TransactionClient, input: 
   const qualifications = await tx.staffService.findMany({ where: { isActive: true, serviceId: { in: services.map(s => s.id) } }, select: { staffId: true, serviceId: true, commissionRate: true } });
   const hours = await tx.salonOperatingHour.findMany({ where: { isActive: true } });
   const schedules = await tx.staffSchedule.findMany({ where: { isActive: true, staffId: { in: staff.map(s => s.id) } } });
-  const interval = { startsAt: { lt: day.end }, endsAt: { gt: day.start } };
+  const rangeEnd = options.rangeEnd ?? day.end;
+  const interval = { startsAt: { lt: rangeEnd }, endsAt: { gt: day.start } };
   const closures = await tx.salonClosure.findMany({ where: interval });
   const unavailability = await tx.staffUnavailability.findMany({ where: { ...interval, staffId: { in: staff.map(s => s.id) } } });
   const reservations = await tx.appointmentService.findMany({ where: {
     appointmentId: options.excludeAppointmentId ? { not: options.excludeAppointmentId } : undefined,
-    membershipStatus: "ACTIVE", staffId: { in: staff.map(s => s.id) }, scheduledStartAt: { lt: day.end }, reservedUntilAt: { gt: day.start },
+    membershipStatus: "ACTIVE", staffId: { in: staff.map(s => s.id) }, scheduledStartAt: { lt: rangeEnd }, reservedUntilAt: { gt: day.start },
     appointment: { OR: [{ status: "CONFIRMED" }, { status: "COMPLETED" }, { status: "PENDING_PAYMENT", holdExpiresAt: { gte: now } }] },
   }, select: { staffId: true, scheduledStartAt: true, reservedUntilAt: true, membershipStatus: true, appointment: { select: { status: true, holdExpiresAt: true } } } });
   return { now, timeZone, policy, services, staff, qualifications, hours: hours.map(h => ({ ...h, startTime: h.openTime, endTime: h.closeTime })), schedules, closures, unavailability, reservations };

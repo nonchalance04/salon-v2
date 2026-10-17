@@ -447,7 +447,7 @@ export function Configuration({
               {busy
                 ? "Saving…"
                 : section === "policies"
-                  ? "Publish policy version"
+                  ? "Save appointment settings"
                   : "Save changes"}
             </button>
             <button type="button" disabled={busy} onClick={() => setEdit(null)}>
@@ -468,7 +468,7 @@ export function Configuration({
                 <div className="record-heading">
                   <h3>
                     {section === "policies"
-                      ? `Version ${row.version}`
+                      ? `Settings update ${row.version}`
                       : section === "staff"
                         ? `${row.firstName} ${row.lastName}`
                         : section === "qualifications"

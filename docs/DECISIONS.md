@@ -526,3 +526,18 @@ customers can retry or choose to view their appointment while checking continues
 Network errors support retry, missing sessions fall back to OTP, and leaving the
 page aborts outstanding requests. Payment, receipt, authorization, and scheduling
 rules are unchanged; no backend or database changes are required.
+
+
+## 2026-10-17 — Disable unavailable booking-calendar dates
+
+At the user's request, the Select Date and Time calendar disables dates with no
+complete available plan for the selected services and professionals. A bounded
+monthly read reuses the existing availability rules, fresh policy/time, and
+transactional coordination, loading the month in one database snapshot rather
+than requesting each date separately. Dates remain disabled while checking or
+after a failed check; failures provide a retry. Month and selection changes
+discard stale results, and an empty subsequent time search disables that date
+and clears its selection. Closures, schedules, qualifications, buffers, live
+holds, lead time, and advance bounds retain their existing business rules.
+Calendar results remain advisory and final booking still revalidates under locks.
+No models, migrations, or persisted slots are introduced.

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { availabilitySchema, type AvailabilityInput } from "../src/modules/availability/availability.schema.js";
-import { calculateAvailability, planAt, isBlocking, localDay, policyBounds, type AvailabilityData, type Reservation } from "../src/modules/availability/availability.engine.js";
+import { availabilitySchema, calendarAvailabilitySchema, type AvailabilityInput } from "../src/modules/availability/availability.schema.js";
+import { calculateAvailability, calculateCalendarAvailability, planAt, isBlocking, localDay, policyBounds, type AvailabilityData, type Reservation } from "../src/modules/availability/availability.engine.js";
 const at = (time: string) => new Date(`2026-10-05T${time}:00+08:00`);
 const clock = (time: string) => new Date(`1970-01-01T${time}:00Z`);
 const input: AvailabilityInput = { date: "2026-10-05", services: [{ serviceId: "s1", assignmentMode: "ANY_AVAILABLE" }] };
@@ -149,5 +149,52 @@ test("quarter-hour availability excludes preparation buffers even after early co
     assert.equal(starts.includes(at("09:30").toISOString()), false);
     assert.equal(starts.includes(at("09:45").toISOString()), true);
     assert.equal(calculateAvailability(input, d).find(s => s.startAt === at("09:30").toISOString())?.services[0]?.staffId, "b");
+  }
+});
+
+test("monthly calendar matches daily complete-plan availability for closures and staff time off", () => {
+  const d = data();
+  d.closures = [{ startsAt: new Date("2026-10-12T00:00:00+08:00"), endsAt: new Date("2026-10-13T00:00:00+08:00") }];
+  d.unavailability = [{ staffId: "a", startsAt: new Date("2026-10-19T00:00:00+08:00"), endsAt: new Date("2026-10-20T00:00:00+08:00") }];
+  for (const services of [input.services, specific.services, [...input.services, { serviceId: "s2", assignmentMode: "ANY_AVAILABLE" as const }]]) {
+    const dates = calculateCalendarAvailability({ month: "2026-10", services }, d);
+    assert.equal(dates.length, 31);
+    for (const day of dates) assert.equal(day.available, calculateAvailability({ date: day.date, services }, d).length > 0, day.date);
+    assert.equal(dates.find(day => day.date === "2026-10-12")!.available, false);
+  }
+  const open = (services: AvailabilityInput["services"]) => calculateCalendarAvailability({ month: "2026-10", services }, d).find(day => day.date === "2026-10-19")!.available;
+  assert.equal(open(specific.services), false);
+  assert.equal(open(input.services), true);
+});
+
+test("calendar applies full bookings, live hold expiration, lead time, and advance bounds", () => {
+  const d = data();
+  const held = { ...reservation("PENDING_PAYMENT"), scheduledStartAt: new Date("2026-10-12T08:00:00+08:00"), reservedUntilAt: new Date("2026-10-12T18:00:00+08:00") };
+  d.reservations = [held];
+  const open = () => calculateCalendarAvailability({ month: "2026-10", services: specific.services }, d).filter(day => day.available).map(day => day.date);
+  assert.ok(!open().includes("2026-10-12"));
+  held.appointment.holdExpiresAt = new Date(d.now.getTime() - 1);
+  assert.ok(open().includes("2026-10-12"));
+  d.policy.advanceBookingDays = 7;
+  assert.deepEqual(open(), ["2026-10-05"]);
+  d.now = at("17:30");
+  d.policy.advanceBookingDays = 0;
+  assert.deepEqual(open(), []);
+});
+
+test("calendar supports leap months and first-match searches preserve the first actual slot", () => {
+  const d = data();
+  assert.equal(calculateCalendarAvailability({ month: "2028-02", services: input.services }, d).length, 29);
+  const all = calculateAvailability(input, d);
+  assert.ok(all.length > 1);
+  assert.deepEqual(calculateAvailability(input, d, 1), [all[0]]);
+});
+
+test("calendar validates month and the same strict service/staff plan as daily searches", () => {
+  const valid = { month: "2026-10", services: [{ serviceId: "12345678-1234-4234-8234-123456789abc", assignmentMode: "ANY_AVAILABLE" }] };
+  assert.equal(calendarAvailabilitySchema.safeParse(valid).success, true);
+  for (const value of [{ ...valid, month: "2026-13" }, { ...valid, month: "2026-1" }, { ...valid, month: "2026-10-01" },
+    { ...valid, services: [] }, { ...valid, startAt: "2026-10-05T09:00:00Z" }, { ...valid, services: [{ ...valid.services[0], staffId: "x" }] }]) {
+    assert.equal(calendarAvailabilitySchema.safeParse(value).success, false);
   }
 });

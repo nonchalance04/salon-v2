@@ -648,6 +648,15 @@ blocking ACTIVE AppointmentService reservations
 
 `AppointmentService` is the authoritative reservation unit.
 
+The public booking calendar uses `POST /api/availability/calendar` with a month
+and the same ordered service/staff plan as daily availability. It loads one
+salon-local month of closures, time off, and reservations under the existing
+coordination and staff locks, then uses the same availability engine to report
+whether each date has at least one complete bookable plan. Calendar results
+remain advisory; daily time lookup and final transactional booking validation
+remain authoritative. No availability slots are persisted.
+
+
 ---
 
 # 21. Booking Architecture

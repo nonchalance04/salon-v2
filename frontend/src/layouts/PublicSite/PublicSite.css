@@ -265,6 +265,15 @@ textarea:focus-visible {
   background: var(--ink);
   color: white;
 }
+/* Overrides the global `button:hover` light background (which also applies
+   to disabled buttons) so the white label stays readable on hover. */
+.button--dark:hover {
+  background: var(--ink);
+  color: white;
+}
+.button--dark:hover:not(:disabled) {
+  background: #3d3e3b;
+}
 .button--secondary {
   background: #f0f0eb;
   color: var(--ink);
