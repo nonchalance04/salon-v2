@@ -1,8 +1,9 @@
+import { closurePeriod } from "./closure-period.js";
 import { Prisma, type PrismaClient } from "../../../generated/prisma/client.js";
 import { ApiError } from "../../shared/http.js";
 import { lockSalon, lockStaff, freshTime } from "../scheduling/coordination.js";
 import { coversReservation, overlaps } from "../scheduling/coverage.js";
-import type { StaffSkillsInput, StaffPublicProfileInput, ProfileInput, ServiceInput, StaffInput, QualificationInput, HoursInput, ScheduleInput, ClosureInput, UnavailabilityInput, PolicyInput } from "./configuration.schema.js";
+import type { StaffSkillsInput, StaffPublicProfileInput, ProfileInput, ServiceInput, StaffInput, QualificationInput, HoursInput, DayHoursInput, ScheduleInput, ClosureRequestInput, UnavailabilityInput, PolicyInput } from "./configuration.schema.js";
 
 type Tx = Prisma.TransactionClient;
 const time = (value: string) => new Date(`1970-01-01T${value.length === 5 ? `${value}:00` : value}Z`);
@@ -195,6 +196,40 @@ export function createConfigurationService(prisma: PrismaClient, timeZone: strin
         return row;
       });
     },
+    saveDayHours(actorId: string, dayOfWeek: HoursInput["dayOfWeek"], input: DayHoursInput) {
+      return write(actorId, "exclusive", [], async tx => {
+        const existing = await tx.salonOperatingHour.findMany({ where: { dayOfWeek }, orderBy: { openTime: "asc" } });
+        if (input.periods.some(period => period.id && !existing.some(row => row.id === period.id))) {
+          throw new ApiError(400, "INVALID_REFERENCE", "Select opening hours belonging to this day.");
+        }
+        const requested = input.periods.map(period => ({ ...period, openTime: time(period.openTime), closeTime: time(period.closeTime) }));
+        if (existing.some(row => row.isActive)) {
+          const otherHours = await tx.salonOperatingHour.findMany({ where: { isActive: true, dayOfWeek: { not: dayOfWeek } } });
+          const windows = [...otherHours, ...requested.map(period => ({ ...period, dayOfWeek }))]
+            .map(row => ({ ...row, startTime: row.openTime, endTime: row.closeTime }));
+          await protect(tx, {}, row => !coversReservation(row.scheduledStartAt, row.reservedUntilAt, windows, timeZone));
+        }
+        const retained = new Set<string>();
+        for (const period of requested) {
+          const before = period.id ? existing.find(row => row.id === period.id)! : existing.find(row =>
+            !row.isActive && !retained.has(row.id) && row.openTime.getTime() === period.openTime.getTime() && row.closeTime.getTime() === period.closeTime.getTime());
+          const values = { dayOfWeek, openTime: period.openTime, closeTime: period.closeTime, isActive: true };
+          if (before?.isActive && before.openTime.getTime() === values.openTime.getTime() && before.closeTime.getTime() === values.closeTime.getTime()) {
+            retained.add(before.id);
+            continue;
+          }
+          const row = before ? await tx.salonOperatingHour.update({ where: { id: before.id }, data: values })
+            : await tx.salonOperatingHour.create({ data: values });
+          retained.add(row.id);
+          await audit(tx, actorId, "SalonOperatingHour", row.id, before ?? null, row);
+        }
+        for (const before of existing.filter(row => row.isActive && !retained.has(row.id))) {
+          const row = await tx.salonOperatingHour.update({ where: { id: before.id }, data: { isActive: false } });
+          await audit(tx, actorId, "SalonOperatingHour", row.id, before, row);
+        }
+        return tx.salonOperatingHour.findMany({ where: { dayOfWeek }, orderBy: { openTime: "asc" } });
+      });
+    },
     saveSchedule(actorId: string, input: ScheduleInput, id?: string) {
       return write(actorId, "shared", [input.staffId], async tx => {
         const before = id ? required(await tx.staffSchedule.findUnique({ where: { id } })) : null;
@@ -207,10 +242,11 @@ export function createConfigurationService(prisma: PrismaClient, timeZone: strin
         return row;
       });
     },
-    saveClosure(actorId: string, input: ClosureInput, id?: string) {
+    saveClosure(actorId: string, input: ClosureRequestInput, id?: string) {
       return write(actorId, "exclusive", [], async tx => {
         const before = id ? required(await tx.salonClosure.findUnique({ where: { id } })) : null;
-        const row = id ? await tx.salonClosure.update({ where: { id }, data: input }) : await tx.salonClosure.create({ data: { ...input, createdByUserId: actorId } });
+        const period = closurePeriod(input, timeZone);
+        const row = id ? await tx.salonClosure.update({ where: { id }, data: period }) : await tx.salonClosure.create({ data: { ...period, createdByUserId: actorId } });
         await protect(tx, { scheduledStartAt: { lt: row.endsAt }, reservedUntilAt: { gt: row.startsAt } }, r => overlaps(r.scheduledStartAt, r.reservedUntilAt, row.startsAt, row.endsAt));
         await audit(tx, actorId, "SalonClosure", row.id, before, row);
         return row;

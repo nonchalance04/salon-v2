@@ -189,7 +189,7 @@ const settingsCards: Card[] = [
   },
   {
     title: "Opening hours",
-    description: "Set weekly salon operating hours",
+    description: "Set open days and opening and closing times",
     icon: "clock",
     page: "configuration",
     section: "hours",

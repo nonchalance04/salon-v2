@@ -1442,3 +1442,16 @@ The cashier workspace handles customer check-in, service outcomes, eligible no-s
 ## Automatic customer e-receipts (updated 2026-10-16)
 
 Verified successful PayMongo appointment-fee captures automatically issue one immutable e-receipt in the same transaction as payment settlement. System issuance has no staff issuer and records a SYSTEM receipt-issuance audit. Pending, failed, expired and returned payments cannot create a new e-receipt. Existing receipts are reused without rewriting their issuer or snapshots. Authorized customer access may idempotently issue a missing receipt for an already verified successful PayMongo capture from before this feature. The receipt states the actual fee paid, provider payment reference, customer, salon and booked schedule; scheduled service charges remain separate. Customers can preview and print/save the e-receipt after restoring their authorized appointment session. Manual and service-payment staff issuance rules remain unchanged.
+
+
+## All-day salon closures (2026-10-17)
+
+The Admin closure form creates a whole-day closure by selecting a salon-local
+date and an optional reason. The interval begins at the start of that date and
+ends, exclusively, at the start of the next date in the salon's configured
+timezone (`Asia/Manila` for the MVP). No time entry is required. The selected
+date has no bookable appointment starts in the customer calendar. Creation or
+editing must retain the existing rejection of conflicts with blocking service
+reservations, including preparation buffers and live payment holds. Existing
+custom-hours and multi-day closure records retain their original intervals and
+remain editable; they must not be silently converted to single-day closures.

@@ -1417,3 +1417,28 @@ Admin configuration exposes `PUT /api/configuration/staff/:id/profile` using the
 ### Automatic PayMongo customer receipts
 
 PaymentService owns automatic receipt issuance inside the verified capture transaction and idempotent legacy receipt recovery. Guest-authorized POST /api/payments/customer-receipt validates booking access and payment ownership before accepting only successful PayMongo appointment-fee payments. System receipts have nullable issuedByUserId and a SYSTEM audit. React renders the immutable receipt snapshot in the shared branded receipt layout; a customer dialog supports preview and browser Print / Save as PDF.
+
+
+### Date-only salon closure input
+
+Closure POST/PUT requests accept `{ date, reason? }` in addition to the existing
+strict interval format. The configuration service converts a validated date
+into salon-local midnight-to-next-midnight instants before writing within the
+existing exclusive salon coordination transaction. Conflict checks and audit
+snapshots use the normalized period. The Admin UI creates date-only closures
+and recognizes exact single-day intervals when displaying/editing existing
+records; custom-hours/multi-day records continue to use their original interval
+editor. No database schema change is required.
+
+
+### Weekly opening-hours editor
+
+The Admin opening-hours screen presents Monday through Sunday with Open/Closed
+controls and salon-local opening/closing time inputs. Existing split hours
+remain separate ranges. Each day saves through authenticated, admin-only
+`PUT /api/configuration/hours/day/:dayOfWeek`, validating the day, state, ranges,
+and record identities. The configuration service saves the whole day in one
+exclusive salon transaction, checks reservation coverage including buffers before
+mutation, retains unchanged records, audits each change, and deactivates removed
+periods instead of deleting them. The existing individual-period endpoints stay
+compatible. There are no new models or database migrations.

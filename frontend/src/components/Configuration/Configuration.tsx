@@ -1,10 +1,12 @@
+import { OpeningHours, type OpeningHour } from "../OpeningHours";
+import { allDayClosureDate } from "./closure-date";
 import { StaffProfileEditor } from "../StaffProfileEditor";
 import { StaffSkillsEditor } from "../StaffSkillsEditor";
 import type { StaffPublicProfile } from "../../utils/staff-profile";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Temporal } from "@js-temporal/polyfill";
 import { api, ApiError } from "../../lib/api";
-import { definitions, days, type Section, type Field } from "./Configuration.fields";
+import { definitions, days, closureIntervalFields, type Section, type Field } from "./Configuration.fields";
 
 type Row = { id: string; [key: string]: unknown };
 type Snapshot = { timeZone: string; profile: Row | null } & Record<
@@ -31,6 +33,7 @@ export function Configuration({
   const [section, setSection] = useState<Section>(initialSection);
   const [edit, setEdit] = useState<{
     id?: string;
+    customHours?: boolean;
     values: Record<string, string | boolean>;
   } | null>(null);
   const [profileStaff, setProfileStaff] = useState<Row | null>(null);
@@ -48,6 +51,9 @@ export function Configuration({
     if (error) errorPanel.current?.scrollIntoView({ block: "nearest" });
   }, [error]);
   const definition = definitions[section];
+  const fields = section === "closures" && edit?.customHours ? closureIntervalFields : definition.fields;
+  const closureDate = (row: Row) => allDayClosureDate(String(row.startsAt), String(row.endsAt), data!.timeZone);
+  const recordFields = (row: Row) => section === "closures" && !closureDate(row) ? closureIntervalFields : definition.fields;
   async function load() {
     setData(await api<Snapshot>("/configuration"));
   }
@@ -92,9 +98,11 @@ export function Configuration({
             (p) => new Date(String(p.effectiveFrom)) <= new Date(),
           )
         : row;
+    const day = section === "closures" && source ? closureDate(source) : null;
+    const customHours = section === "closures" && Boolean(source) && !day;
     const values: Record<string, string | boolean> = {};
-    for (const field of definition.fields) {
-      const raw = source?.[field.key];
+    for (const field of customHours ? closureIntervalFields : definition.fields) {
+      const raw = section === "closures" && field.key === "date" ? day : source?.[field.key];
       if (field.type === "active")
         values[field.key] = raw === undefined ? true : Boolean(raw);
       else if (section === "policies" && field.key === "effectiveFrom")
@@ -109,12 +117,12 @@ export function Configuration({
         values[field.key] = Temporal.Instant.from(String(raw))
           .toZonedDateTimeISO(data!.timeZone)
           .toPlainDateTime()
-          .toString({ smallestUnit: "second" });
+          .toString({ smallestUnit: customHours ? "millisecond" : "second" });
       else if (field.type === "percent")
         values[field.key] = String(Number(raw) * 100);
       else values[field.key] = String(raw);
     }
-    setEdit({ id: row?.id, values });
+    setEdit({ id: row?.id, values, customHours });
     setError("");
     setNotice("");
     setConflicts([]);
@@ -141,7 +149,7 @@ export function Configuration({
     setConflicts([]);
     try {
       const body: Record<string, unknown> = {};
-      for (const field of definition.fields) {
+      for (const field of fields) {
         const value = edit.values[field.key];
         if (field.type === "active") body[field.key] = Boolean(value);
         else if (value === "" && field.optional) body[field.key] = null;
@@ -230,7 +238,7 @@ export function Configuration({
           <h2>{definition.title}</h2>
           <p className="muted">{definition.description}</p>
         </div>
-        {data && (
+        {data && section !== "hours" && (
           <button
             className="primary"
             disabled={busy}
@@ -283,6 +291,14 @@ export function Configuration({
         </p>
       )}
       {!data && !error && <p role="status">Loading configuration…</p>}
+      {data && section === "hours" && <OpeningHours
+        hours={data.hours.map(row => ({ id: row.id, dayOfWeek: String(row.dayOfWeek), openTime: String(row.openTime), closeTime: String(row.closeTime), isActive: Boolean(row.isActive) }) satisfies OpeningHour)}
+        busy={busy}
+        onBusy={setBusy}
+        onStart={() => { setError(""); setNotice(""); setConflicts([]); }}
+        onSaved={async day => { await load(); setNotice(`${day} opening hours saved.`); }}
+        onError={fail}
+      />}
       {skillsStaff && data && (
         <StaffSkillsEditor
           key={skillsStaff.id}
@@ -354,8 +370,13 @@ export function Configuration({
           <h3>
             {edit.id ? "Edit" : "New"} {definition.singular}
           </h3>
+          {section === "closures" && <p className="muted">
+            {edit.customHours
+              ? "This existing closure uses custom hours. Its time range is preserved."
+              : `The salon will be closed all day on the selected date (${data!.timeZone}).`}
+          </p>}
           <div className="form-grid">
-            {definition.fields.map((field) => {
+            {fields.map((field) => {
               const value = edit.values[field.key] ?? "";
               const update = (next: string | boolean) =>
                 setEdit({
@@ -428,7 +449,9 @@ export function Configuration({
                     min={numeric ? (field.min ?? 0) : undefined}
                     max={field.type === "percent" ? 100 : undefined}
                     step={
-                      field.type === "money" || field.type === "percent"
+                      field.type === "datetime" && edit.customHours
+                        ? "any"
+                        : field.type === "money" || field.type === "percent"
                         ? "0.01"
                         : field.type === "time" ||
                             field.type === "datetime" ||
@@ -456,7 +479,7 @@ export function Configuration({
           </div>
         </form>
       )}
-      {data &&
+      {data && section !== "hours" &&
         (rows.length === 0 ? (
           <p className="empty-state">
             No {definition.title.toLowerCase()} configured yet.
@@ -532,17 +555,17 @@ export function Configuration({
                           disabled={busy}
                           onClick={() => void remove(row.id)}
                         >
-                          Remove period
+                          {section === "closures" ? "Remove closure" : "Remove period"}
                         </button>
                       )}
                     </div>
                   )}
                 </div>
                 <dl>
-                  {definition.fields.map((field) => (
+                  {recordFields(row).map((field) => (
                     <div key={field.key}>
                       <dt>{field.label}</dt>
-                      <dd>{display(field, row[field.key])}</dd>
+                      <dd>{display(field, section === "closures" && field.key === "date" ? closureDate(row) : row[field.key])}{section === "closures" && field.key === "date" && " · Closed all day"}</dd>
                     </div>
                   ))}
                 </dl>

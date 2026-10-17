@@ -5,7 +5,7 @@ import { validateRequest } from "../../shared/http.js";
 import { createAuthMiddleware } from "../auth/auth.middleware.js";
 import { browserSecurity, type AuthConfig } from "../auth/auth.security.js";
 import { createConfigurationService } from "./configuration.service.js";
-import { staffSkillsSchema, staffPublicProfileSchema, profileSchema, serviceSchema, staffSchema, staffUpdateSchema, qualificationSchema, hoursSchema, scheduleSchema, closureSchema, unavailabilitySchema, policySchema, recordId } from "./configuration.schema.js";
+import { staffSkillsSchema, staffPublicProfileSchema, profileSchema, serviceSchema, staffSchema, staffUpdateSchema, qualificationSchema, hoursSchema, dayHoursSchema, days, scheduleSchema, closureRequestSchema, unavailabilitySchema, policySchema, recordId } from "./configuration.schema.js";
 
 export function createConfigurationRouter(prisma: PrismaClient, config: AuthConfig) {
   const router = Router();
@@ -41,8 +41,13 @@ export function createConfigurationRouter(prisma: PrismaClient, config: AuthConf
   });
   register("qualifications", qualificationSchema, service.saveQualification);
   register("hours", hoursSchema, service.saveHours);
+  router.put("/configuration/hours/day/:dayOfWeek", validateRequest(z.object({
+    params: z.object({ dayOfWeek: z.enum(days) }), body: dayHoursSchema,
+  })), async (_req, res) => {
+    res.json({ hours: await service.saveDayHours(res.locals.user.id, res.locals.validated.params.dayOfWeek, res.locals.validated.body) });
+  });
   register("schedules", scheduleSchema, service.saveSchedule);
-  register("closures", closureSchema, service.saveClosure);
+  register("closures", closureRequestSchema, service.saveClosure);
   register("unavailability", unavailabilitySchema, service.saveUnavailability);
   router.post("/configuration/policies", validateRequest(z.object({ body: policySchema })), async (_req, res) => {
     res.status(201).json({ record: await service.createPolicy(res.locals.user.id, res.locals.validated.body) });

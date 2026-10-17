@@ -541,3 +541,31 @@ and clears its selection. Closures, schedules, qualifications, buffers, live
 holds, lead time, and advance bounds retain their existing business rules.
 Calendar results remain advisory and final booking still revalidates under locks.
 No models, migrations, or persisted slots are introduced.
+
+
+## 2026-10-17 — Date picker for all-day salon closures
+
+At the user's request, simplify new salon closures to one closure date and an
+optional reason. The server interprets the date in the configured salon timezone
+and stores the existing half-open midnight-to-next-midnight interval. Retain
+admin/origin protection, exclusive salon coordination, blocking-reservation
+conflict rejection, rollback, and audit behavior. Customer availability uses the
+existing closure intervals to disable the whole selected date. Preserve legacy
+custom-hours/multi-day records without rewriting them; their existing editor
+retains interval access. Existing interval API requests remain compatible. No
+new database fields or migration are introduced.
+
+
+## 2026-10-17 — Simplified weekly opening-hours controls
+
+At the user's request, replace the generic opening-period add/edit cards with a
+seven-day weekly editor. Each weekday has an Open/Closed control, time inputs,
+and its own Save/Reset controls. Existing split ranges remain editable, but the
+editor does not offer adding another time range. Ordinary time inputs show hours/minutes;
+existing nonzero seconds remain editable and preserved. Other days' unsaved
+drafts survive a day save. One-day exceptions remain Salon closures. The server
+saves each day's periods atomically, retaining authorization, exclusive
+coordination, fresh booking-conflict checks including buffers, and audit history.
+Removed or closed periods are deactivated; historical rows and unrelated days
+are preserved. A weekday without active periods is closed. No scheduling rules,
+models, or database schema change.

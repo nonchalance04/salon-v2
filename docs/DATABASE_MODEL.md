@@ -538,6 +538,12 @@ A closure that conflicts with future blocking appointments must be rejected unti
 
 Closure creation/modification participates in the salon-wide availability coordination protocol.
 
+The all-day Admin form accepts a salon-local date and optional reason. The
+application converts that date into the existing `startsAt`/`endsAt` fields:
+start of the selected day inclusive, start of the next day exclusive, using
+`Asia/Manila`. There is no separate date column, model, or migration. Existing
+custom-hours and multi-day intervals are preserved.
+
 ---
 
 # 12. StaffSchedule

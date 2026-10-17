@@ -109,3 +109,13 @@ Backend type checking, all 105 backend tests, and all 32 frontend tests passed.
 Mocked browser checks verified loading/past/unavailable dates, enabled-date time
 search, month changes, stale responses, professional-specific dates, retry, empty
 months, and dates becoming unavailable. No bookings were submitted.
+
+## Weekly opening-hours verification — 2026-10-17
+
+The Admin Opening hours screen now shows a weekly Open/Closed schedule with
+time fields, optional split ranges, and separate day saves. Backend type
+checking, the frontend build, all 117 backend tests, and all 38 frontend tests
+pass. Mocked browser checks verify all seven days, existing split hours and
+seconds, closed-day inputs, independent unsaved drafts, additional ranges,
+conflict feedback/reset, successful closure without deleting periods, and
+desktop/mobile layouts without horizontal overflow. No live hours were changed.
