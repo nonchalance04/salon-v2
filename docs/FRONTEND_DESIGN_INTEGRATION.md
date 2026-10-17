@@ -18,9 +18,11 @@ provide the SPA index fallback for frontend routes.
 | `/services` | Searchable backend service catalog |
 | `/about` | About layout with backend salon contact information |
 | `/booking`, `/availability` | Four-step booking using live qualified staff and availability |
-| `/manage`, `/appointment` | Secure guest lookup, payments, receipts and appointment changes |
+| `/manage` | Secure guest lookup, payments, receipts and appointment changes |
+| `/booking-confirmed`, `/appointment` | Restore guest access and verify pending PayMongo checkout before displaying the actual booking state |
 | `/help` | Existing salon guide, presented in the new public layout |
 | `/staff`, `/login`, `/admin` | Existing authenticated Admin/Cashier workspace |
+| `/staff/:page` | Workspace deep links; query parameters retain section, report kind, filters, and booking selection |
 | `/payment`, `/confirmation/:reference` | Secure appointment lookup; a reference alone does not authorize access |
 
 Booking permits ordered service occurrences and per-service staff assignment,
@@ -40,9 +42,8 @@ accept those fields.
 
 The reference did not include its six photo assets. CSS salon artwork fills the
 hero/about areas until real photographs are supplied. Styles are scoped to the
-public customer shell to preserve staff screens and receipt printing. No new
-runtime dependencies are required; the implementation uses React and TypeScript
-already installed in `frontend/`.
+public customer shell to preserve staff screens and receipt printing. The implementation uses React and TypeScript in `frontend/`, with React Router
+providing client-side navigation (added on 2026-10-17).
 
 ## Verification
 
@@ -62,3 +63,37 @@ assigned staff summary, contact form, secure guest lookup screen and staff login
 screen. Narrow (390px) and wide (1366px) layouts were inspected; the mobile homepage
 has no horizontal overflow and its navigation opens/closes correctly. No real
 reservation or external payment was submitted during these browser checks.
+
+## React Router verification — 2026-10-17
+
+The frontend build and all 24 unit tests pass, including private-fragment parsing
+regressions. Browser checks with mocked API responses verify navigation without
+document reload, catalog search URL synchronization, booking preselection,
+refresh and Back navigation, missing pages, authentication, admin deep links,
+cashier role restrictions, short and legacy private-link fragment replacement,
+and cashier cancel/discard behavior for internal navigation and browser Back.
+No live appointments or payments were changed. The production build reports
+non-fatal React Router `use client` directive and bundle-size warnings.
+
+## Component Folder Pattern verification — 2026-10-17
+
+Components, pages, layouts, and authentication context now use named folders
+with local entry points. Shared contracts and non-UI helpers have separate
+locations; unit test imports follow the moved helpers. See `frontend/README.md`.
+The TypeScript/production build and all 24 frontend unit tests pass. Browser
+checks with mocked APIs pass for public navigation, catalog search, booking
+preselection, refresh/history, authentication, staff deep links, role access,
+private-link replacement, and cashier navigation guards. The production CSS
+is byte-for-byte identical to the build before this folder refactor. The
+existing non-fatal bundler warnings remain; no business data was changed.
+
+## Checkout return verification — 2026-10-17
+
+The return screen shows “Checking your payment…” until session restoration and
+any pending PayMongo verification finish, then displays the confirmed booking
+directly. Missing sessions require OTP; network errors and delayed verification
+provide retry/recovery controls. The production build and all 32 frontend unit
+tests pass. Mocked browser checks cover both return URLs, absence of intermediate
+lookup/reservation screens, delayed verification, failed checkout, expired
+sessions, restoration and verification retries, and navigation away during an
+in-flight check. No live payment was collected or changed during verification.

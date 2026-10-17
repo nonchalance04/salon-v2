@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { CHAT_SESSION_KEY, readChatSession, saveChatSession } from "../src/chatbot-session.ts";
+import { CHAT_SESSION_KEY, readChatSession, saveChatSession } from "../src/components/Chatbot/chatbot-session.ts";
 function storage() {
   const values = new Map<string, string>();
   return { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); }, removeItem: (key: string) => { values.delete(key); } };

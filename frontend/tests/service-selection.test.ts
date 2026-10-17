@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { selectService } from "../src/service-selection.ts";
+import { selectService } from "../src/utils/service-selection.ts";
 
 const brazilian = { id: "brazilian", category: "Hair" };
 const haircut = { id: "haircut", category: " Hair " };

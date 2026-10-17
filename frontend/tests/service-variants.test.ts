@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { groupServiceVariants } from "../src/service-variants.ts";
-import { selectService } from "../src/service-selection.ts";
+import { groupServiceVariants } from "../src/utils/service-variants.ts";
+import { selectService } from "../src/utils/service-selection.ts";
 
 test("haircut choices retain their exact catalog price, duration and ID in menu order", () => {
   const standard = { id: "cut", name: "Ladies Haircut", category: "Hair", price: "120.00", durationMinutes: 30 };

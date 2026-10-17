@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { startPaymentSync } from "../src/payment-sync.ts";
+import { startPaymentSync } from "../src/utils/payment-sync.ts";
 
 function environment() {
   const page = Object.assign(new EventTarget(), { visibilityState: "visible" });

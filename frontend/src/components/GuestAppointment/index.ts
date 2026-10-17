@@ -1,0 +1,1 @@
+export { GuestAppointment } from "./GuestAppointment";

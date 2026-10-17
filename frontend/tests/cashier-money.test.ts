@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { cashChange, centavos } from "../src/cashier-money.ts";
+import { cashChange, centavos } from "../src/utils/cashier-money.ts";
 
 test("cash change is exact to the centavo and permits exact payment", () => {
   assert.equal(cashChange("1000", "780.30"), "219.70");

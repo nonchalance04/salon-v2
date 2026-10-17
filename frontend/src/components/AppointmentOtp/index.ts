@@ -1,0 +1,1 @@
+export { AppointmentOtp } from "./AppointmentOtp";

@@ -1,0 +1,1 @@
+export { AdminAppointments } from "./AdminAppointments";

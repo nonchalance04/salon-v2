@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { chatbotHistory } from "../src/chatbot-history.ts";
+import { chatbotHistory } from "../src/components/Chatbot/chatbot-history.ts";
 
 test("chat history preserves complete recent turns and recommended service context", () => {
   const result = chatbotHistory([{ question: "dry hair", reply: { answer: "Tell me more", recommendations: [{ name: "Hair Treatment", reason: "For dryness" }] } }]);

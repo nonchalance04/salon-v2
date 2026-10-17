@@ -1,0 +1,1 @@
+export { ReceiptPrintButton } from "./ReceiptPrintButton";

@@ -893,35 +893,56 @@ Any action that changes authoritative business data must go through the same dom
 
 # 30. Frontend Architecture
 
-The frontend uses a feature-based structure.
+The frontend uses the Component Folder Pattern, with separate component, page,
+layout, and authentication-context folders.
 
-Recommended organization:
+React Router owns client-side navigation through the route table in
+`frontend/src/app/router.tsx`. The public layout shares catalog and salon data across
+its child pages. Staff routes retain the lightweight authentication context and
+role-specific workspace; `/staff/:page` and query parameters represent workspace
+navigation. Form values and private guest tokens remain in component memory.
+Use router links and navigation APIs for internal pages, with ordinary anchors
+for contact links, document fragments, and hosted payment checkout. Production
+hosting must serve the SPA index for frontend deep links while preserving `/api`.
+
+Source organization:
 
 ```text
 frontend/src/
-│
-├── app/
-├── api/
+├── main.tsx
+├── app/router.tsx
 ├── components/
-├── features/
-│   ├── auth/
-│   ├── booking/
-│   ├── appointments/
-│   ├── services/
-│   ├── staff/
-│   ├── payments/
-│   └── reports/
-│
+│   ├── BookingForm/
+│   │   ├── BookingForm.tsx
+│   │   └── index.ts
+│   ├── Chatbot/
+│   │   ├── Chatbot.tsx
+│   │   ├── Chatbot.css
+│   │   ├── chatbot-history.ts
+│   │   ├── chatbot-session.ts
+│   │   └── index.ts
+│   └── ...
+├── contexts/AuthProvider/
 ├── layouts/
+│   ├── PublicSite/
+│   └── WorkspaceLayout/
 ├── pages/
-├── hooks/
+├── lib/api.ts
+├── styles/
 ├── types/
 └── utils/
 ```
 
-Reusable generic UI belongs in `components`.
+Each public React component has a PascalCase folder, a matching `.tsx` file,
+and an `index.ts` that exports that component and its associated public types.
+Consumers import the component folder; avoid an application-wide component
+barrel. Keep component styles and private helpers beside their owner. Shared
+contracts live in `types`, reusable non-UI functions in `utils`, API transport
+in `lib`, and global styles in `styles`. The public layout retains the shared
+customer stylesheet imports in their established cascade order. Existing
+frontend unit tests remain in `frontend/tests`.
 
-Feature-specific components should remain inside their corresponding feature module.
+See `frontend/README.md` for the component-folder convention and validation.
 
 ---
 

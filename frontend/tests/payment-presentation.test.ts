@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { paymentStatusLabel, visibleReportEntries } from "../src/payment-presentation.ts";
+import { paymentStatusLabel, visibleReportEntries } from "../src/utils/payment-presentation.ts";
 
 test("legacy payment statuses use a readable label without changing transaction state", () => {
   assert.equal(paymentStatusLabel("REFUNDED"), "Returned payment");

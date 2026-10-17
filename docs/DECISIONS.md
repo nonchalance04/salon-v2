@@ -483,3 +483,46 @@ The user explicitly selected automatic issuance after verified PayMongo payment.
 ## 2026-10-16 — Cashier outcome management and no-show correction
 
 At the user’s request, active Cashiers may record and correct service outcomes before finalization and restore eligible no-shows through the existing late-arrival correction workflow. This supersedes earlier Admin-only restrictions for those two operations. Enforce account activity in services and preserve revision checks, transaction locks, original-interval availability checks, physical-presence confirmation, reasons, and audit attribution to the actual actor role. Show confirmed visits with pending outcomes in the cashier desk and expose no-show correction through booking-code lookup. No-service closure, commission details, no-show marking and other Admin permissions remain unchanged. No database migration is required.
+
+
+## 2026-10-17 — React Router frontend navigation
+
+At the user's request, replace manual pathname branching and workspace page state
+with React Router. Keep existing public URLs, staff entry aliases, and secure
+checkout return routes. Staff pages use `/staff/:page`, with configuration
+section, report kind, appointment filters, and selected booking code in query
+parameters so navigation survives refresh and browser history. Authentication
+and backend role enforcement retain their existing rules. Cashier navigation
+blocks while busy and asks before discarding unsaved changes, including browser
+Back/Forward and links out of the workspace. Private booking fragments are read
+into component memory and removed with router replacement; tokens never enter
+query parameters or browser storage. No business rules or models change.
+
+
+## 2026-10-17 — Component Folder Pattern for React
+
+At the user's request, organize public React components into named folders with
+a matching component file and a small `index.ts` entry point. Colocate owned
+styles and private helpers, and separate route pages, layouts, authentication
+context, shared types, API transport, utilities, and global styles. Split the
+previous grouped booking, payment, receipt, public-site, appointment-management,
+and staff-entry modules into independently importable components. Preserve the
+existing React Router routes, authentication, API calls, and business behavior.
+The production stylesheet and its cascade order remain unchanged.
+
+
+## 2026-10-17 — Checkout return loading and verification state
+
+At the user's request, `/booking-confirmed` and the legacy `/appointment` return
+path show a dedicated checking state while restoring the HttpOnly appointment
+session and verifying a pending PayMongo payment. Session restoration occurs
+before rendering the general appointment lookup. The return flow uses the
+existing authorized `/payments/status` verification endpoint and then reloads
+the authoritative appointment through `/appointments/access`. Only an actual
+`CONFIRMED` booking renders the confirmation layout. Failed, expired, cancelled,
+or reconciliation-required results retain their real booking state. Pending
+checks retry with the existing visibility/focus-aware polling; after 30 seconds
+customers can retry or choose to view their appointment while checking continues.
+Network errors support retry, missing sessions fall back to OTP, and leaving the
+page aborts outstanding requests. Payment, receipt, authorization, and scheduling
+rules are unchanged; no backend or database changes are required.

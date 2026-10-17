@@ -1,0 +1,242 @@
+import { useEffect, useState, type FormEvent } from "react";
+import { api, type User } from "../../lib/api";
+import { useAuth } from "../../contexts/AuthProvider";
+
+const message = (error: unknown) =>
+  error instanceof Error ? error.message : "Please try again.";
+
+export function Accounts() {
+  const { user, refresh } = useAuth();
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<User | "new" | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  async function load() {
+    setLoading(true);
+    setError("");
+    try {
+      setUsers((await api<{ users: User[] }>("/users")).users);
+    } catch (err) {
+      setError(message(err));
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(() => {
+    void load();
+  }, []);
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const password = String(data.get("password"));
+    if (password && new TextEncoder().encode(password).length > 72) {
+      setError("Password must fit within 72 UTF-8 bytes.");
+      return;
+    }
+    const target = editing;
+    const body = {
+      firstName: String(data.get("firstName")),
+      lastName: String(data.get("lastName")),
+      email: String(data.get("email")).trim().toLowerCase(),
+      role: String(data.get("role")),
+      isActive: data.get("isActive") === "on",
+      ...(password ? { password } : {}),
+    };
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      await api(target === "new" ? "/users" : `/users/${(target as User).id}`, {
+        method: target === "new" ? "POST" : "PATCH",
+        body: JSON.stringify(body),
+      });
+      setEditing(null);
+      setNotice("Account saved.");
+      if (target !== "new" && target?.id === user?.id) {
+        await refresh();
+        if (body.role === "ADMIN" && body.isActive) await load();
+      } else await load();
+    } catch (err) {
+      setError(message(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+  const selected = editing && editing !== "new" ? editing : null;
+  return (
+    <section aria-labelledby="accounts-title">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">WORKSPACE ACCESS</p>
+          <h2 id="accounts-title">People & permissions</h2>
+          <p className="muted">Manage Admin and Cashier accounts.</p>
+        </div>
+        <button
+          className="primary"
+          onClick={() => {
+            setEditing("new");
+            setError("");
+            setNotice("");
+          }}
+        >
+          + Add account
+        </button>
+      </div>
+      {error && (
+        <p role="alert" className="error">
+          {error}{" "}
+          {!editing && <button onClick={() => void load()}>Retry</button>}
+        </p>
+      )}
+      {notice && (
+        <p role="status" className="success">
+          {notice}
+        </p>
+      )}
+      {editing && (
+        <form
+          className="account-form"
+          onSubmit={save}
+          key={selected?.id ?? "new"}
+        >
+          <h3>{selected ? "Edit account" : "New account"}</h3>
+          <div className="form-grid">
+            <label>
+              First name
+              <input
+                name="firstName"
+                required
+                maxLength={100}
+                defaultValue={selected?.firstName}
+              />
+            </label>
+            <label>
+              Last name
+              <input
+                name="lastName"
+                required
+                maxLength={100}
+                defaultValue={selected?.lastName}
+              />
+            </label>
+            <label>
+              Email address
+              <input
+                name="email"
+                type="email"
+                required
+                maxLength={254}
+                defaultValue={selected?.email}
+              />
+            </label>
+            <label>
+              Role
+              <select name="role" defaultValue={selected?.role ?? "CASHIER"}>
+                <option value="CASHIER">Cashier</option>
+                <option value="ADMIN">Admin</option>
+              </select>
+            </label>
+            <label>
+              {selected ? "New password (optional)" : "Password"}
+              <input
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                minLength={12}
+                required={!selected}
+              />
+              <small>
+                At least 12 characters; no more than 72 UTF-8 bytes.
+              </small>
+            </label>
+            <label className="checkbox">
+              <input
+                name="isActive"
+                type="checkbox"
+                defaultChecked={selected?.isActive ?? true}
+              />{" "}
+              Active account
+            </label>
+          </div>
+          {selected?.id === user?.id && (
+            <p className="muted">
+              Changing your own role or active status changes your workspace
+              access immediately.
+            </p>
+          )}
+          <div className="actions">
+            <button className="primary" disabled={busy}>
+              {busy ? "Saving…" : "Save account"}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setEditing(null);
+                setError("");
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+      {loading ? (
+        <p role="status">Loading accounts…</p>
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>
+                  <span className="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((account) => (
+                <tr key={account.id}>
+                  <td>
+                    <strong>
+                      {account.firstName} {account.lastName}
+                    </strong>
+                    {account.id === user?.id && (
+                      <small className="you">You</small>
+                    )}
+                  </td>
+                  <td>{account.email}</td>
+                  <td>{account.role === "ADMIN" ? "Admin" : "Cashier"}</td>
+                  <td>
+                    <span
+                      className={`badge ${account.isActive ? "active" : ""}`}
+                    >
+                      {account.isActive ? "Active" : "Inactive"}
+                    </span>
+                  </td>
+                  <td>
+                    <button
+                      aria-label={`Edit ${account.firstName} ${account.lastName}`}
+                      onClick={() => {
+                        setEditing(account);
+                        setError("");
+                        setNotice("");
+                      }}
+                    >
+                      Edit
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}

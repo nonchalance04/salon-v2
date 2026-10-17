@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createPaymentKey } from "../src/payment-key.ts";
+import { createPaymentKey } from "../src/utils/payment-key.ts";
 
 test("payment keys remain valid and distinct without crypto.randomUUID on HTTP origins", () => {
   const descriptor = Object.getOwnPropertyDescriptor(crypto, "randomUUID");
