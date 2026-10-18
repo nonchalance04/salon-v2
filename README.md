@@ -6,7 +6,7 @@ For a complete walkthrough, see the [step-by-step setup and testing guide](docs/
 including database creation, local configuration, automated checks, and guest/Admin/Cashier acceptance tests.
 
 For notification providers, follow the [email and SMS setup guide](docs/EMAIL_SMS_SETUP.md)
-for Gmail email, PhilSMS SMS, worker startup, reminders, and delivery verification.
+for Gmail email, TextBee SMS, worker startup, reminders, and delivery verification.
 
 The backend foundation uses Node.js, TypeScript, Express, PostgreSQL, Prisma, and
 Zod. Admin/Cashier authentication and Admin account management are implemented.
@@ -17,7 +17,7 @@ payments, confirmation, receipts, Admin reconciliation, and Phase 7 appointment
 changes/no-show recovery. The user reported Phase 6 testing complete and authorized
 Phase 7; future payment diagnostics remain separately scoped. Phase 8 service
 outcomes, settlement, receipts, and commissions are implemented. Phase 9 adds an
-independent notification worker, reminders, and optional Gmail/PhilSMS adapters.
+independent notification worker, reminders, and optional Gmail/TextBee adapters.
 Phase 10 adds authorized reports, dashboards, Cashier collection
 summaries and a guided salon assistant.
 
@@ -569,11 +569,11 @@ Optional live adapters (neither account is configured by this repository):
 | Channel | Configuration | Setup |
 | --- | --- | --- |
 | Email | `NOTIFICATION_EMAIL_PROVIDER=gmail`, `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `NOTIFICATION_EMAIL_FROM` | Enable Google 2-Step Verification and an App Password; FROM must match GMAIL_USER |
-| SMS | `NOTIFICATION_SMS_PROVIDER=philsms`, `PHILSMS_API_TOKEN`, `PHILSMS_SENDER_ID` | Configure an API token and approved sender for the PhilSMS dashboard v3 API |
+| SMS | `NOTIFICATION_SMS_PROVIDER=textbee`, `TEXTBEE_API_KEY`, `TEXTBEE_DEVICE_ID` | Register an Android gateway device; see [TextBee setup](docs/TEXTBEE_SETUP.md) |
 
 Messages use plain text and the event's stored booking code. Reminder times use
 `SALON_TIMEZONE`. Guest tokens, hashes, internal payment IDs, and customer names are
-excluded. Philippine `09XXXXXXXXX` numbers become `+639XXXXXXXXX`; the PhilSMS adapter accepts Philippine mobile numbers only and sends digits without `+`. Email remains the preferred channel
+excluded. Philippine `09XXXXXXXXX` numbers become `+639XXXXXXXXX`. Email remains the preferred channel
 when an email address was supplied; there is no automatic channel fallback.
 
 Paid email bookings receive one combined payment, confirmation and arrival-reminder
@@ -600,7 +600,7 @@ and waits for the active attempt before disconnecting.
 
 `SENT` means provider acceptance, not verified inbox/handset receipt. Delivery is at
 least once. Gmail uses a stable Message-ID derived from the queue ID, but SMTP does
-not guarantee deduplication. Gmail and PhilSMS have no assumed idempotency guarantee.
+not guarantee deduplication. Gmail and TextBee have no assumed idempotency guarantee.
 A crash after acceptance can therefore duplicate external delivery. Keep provider
 and template configuration stable while retrying a queue item.
 
@@ -612,10 +612,7 @@ addresses, credentials, and raw provider errors. A reminder-scan error does not 
 already queued deliveries. Configure process supervision for both workers in deployment.
 
 Provider references: [Google App Passwords](https://support.google.com/accounts/answer/185833),
-[Nodemailer Gmail guide](https://nodemailer.com/guides/using-gmail),
-[PhilSMS dashboard](https://dashboard.philsms.com/).
-Use a token from this dashboard; sending uses its `/api/v3/sms/send` endpoint.
-Tokens from the older `app.philsms.com` portal are not interchangeable.
+[Nodemailer Gmail guide](https://nodemailer.com/guides/using-gmail).
 See [Phase 9 verification](docs/PHASE_9_VERIFICATION.md) for local evidence and remaining
 live-delivery acceptance.
 

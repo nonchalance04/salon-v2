@@ -2,14 +2,16 @@
 
 The Admin dashboard links to live appointment and payment workflows.
 
-- Today's appointments use the salon's configured calendar date and include all stored statuses.
-- Pending appointment fees count `PENDING_PAYMENT` bookings with a live hold across all dates. Expired holds are excluded even before the cleanup worker updates their stored status.
-- Unsettled services count `CONFIRMED` bookings whose scheduled start has passed, across all dates. The normal settlement service still validates outcomes and eligibility.
-- Payment reconciliation counts successful captures with reconciliation status `REQUIRED`, across all dates. The card opens the existing reconciliation queue.
-- Collections use capture time, and finalized commissions use finalization time. Net collections reflect recorded payment adjustments. Carried credits do not create new collections.
-- Scheduling shows closures and staff absences overlapping the next seven days, with up to 20 entries of each kind. Review links show bookings on the affected salon dates; these are review lists, not assertions that every booking conflicts.
+- The simplified dashboard contains today's appointment totals, financial summaries, and a three-row preview of today's appointments ordered by scheduled time. It uses the salon's configured calendar date and includes all stored statuses in the total; confirmed, completed, cancelled and no-show counts are shown separately.
+- The preview shows customer, booking code, services/stylists, booking status and arrival information. Confirmed rows open service review; other rows open the matching appointment list. **View all** opens appointments filtered to today.
+- The unsettled badge counts `CONFIRMED` bookings whose scheduled start has passed across all dates. It opens the existing unsettled filter without restricting dates. Settlement still validates outcomes and eligibility.
+- Financial cards show total collections, appointment-fee/service-payment capture breakdowns, net collections after recorded adjustments, and finalized commissions separately. Collections use capture time and commissions use finalization time. Carried credits do not create new collections.
+- Refresh reloads all dashboard data; it also refreshes every 30 seconds while visible and on window focus. Failed refreshes retain the last successful snapshot with an explicit error.
+- Payment reconciliation, pending-fee cards, quick-action panels and schedule-change panels are not displayed on the dashboard. The existing sidebar is unchanged.
 
-Appointment filtering runs on the server before cursor pagination. Filters cover inclusive salon dates, status, assigned stylist, customer name or booking code, active payment holds, and unsettled services. Clearing filters restores the full booking list. Appointment details link to service settlement/receipts without requiring another code entry.
+The simplified Appointments tab opens on today’s salon-local date when opened without filters. Its main controls are customer/booking-code search, a single date, status and Clear. Search applies after a short typing pause; date and status changes apply immediately. Clearing filters restores all dates and statuses. Existing date-range, stylist and attention filters from dashboard/configuration links remain supported and visibly identified. Filtering runs on the server before cursor pagination; Previous and Next browse 50-record pages without inventing a total count. Refresh reloads the current page.
+
+The compact table shows time (and date for multi-date lists), customer/booking code, services/stylists, booking status, arrival status and View details. The details dialog preserves customer check-in, eligible no-show marking/correction, and service settlement/receipt links. The waiting queue is no longer duplicated above the appointment list.
 
 Appointment-fee payments are registered automatically after the backend verifies a successful PayMongo payment. The same transaction records the capture, issues the receipt, and confirms the booking if its hold and reservations remain valid. Repeated callbacks do not duplicate these records. Late or additional captures are recorded and flagged for reconciliation without restoring expired bookings. Admin has no manual Appointment fees screen or recording button; payment history, receipts, and reconciliation remain visible in Reports. Old Admin payment-screen links redirect to Appointments, retaining the booking code as a search filter. Cashier service-payment collection is unchanged.
 
@@ -19,8 +21,8 @@ Rescheduling retains the existing customer private-link workflow and original po
 
 ## Confirmed services
 
-The Admin dashboard and service-outcome workspace automatically list confirmed,
-unfinalized bookings across all dates. Choose **Review services** to open the
+The service-outcome workspace automatically lists confirmed,
+unfinalized bookings across all dates. The dashboard shows a short preview of today’s appointments. Choose **Review services** to open the
 selected appointment without entering its booking code. The shared list refreshes
 every 30 seconds while visible and on tab focus, supports customer-name or booking
 code search, and uses bounded pagination. Cashiers see the same confirmed bookings

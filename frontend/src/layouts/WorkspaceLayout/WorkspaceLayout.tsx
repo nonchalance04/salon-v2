@@ -626,7 +626,7 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
             </>
           ) : (
             <>
-              {admin && page !== "dashboard" && (
+              {admin && page !== "dashboard" && page !== "appointments" && (
                 <button
                   className="clique-back"
                   onClick={() => navigate(active as Page)}
@@ -639,6 +639,7 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
               )}
               {page === "dashboard" && admin ? (
                 <AdminDashboard
+                  onAppointments={openAppointments}
                   onSettlement={(code) => navigate("settlement", code)}
                 />
               ) : !admin || page === "payments" ? (

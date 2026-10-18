@@ -15,7 +15,7 @@ export const envSchema = z.object({
   GEMINI_MODEL: z.preprocess(v => v === "" ? undefined : v, z.string().trim().regex(/^[A-Za-z0-9._-]+$/).optional()),
   CHATBOT_TIMEOUT_MS: z.coerce.number().int().min(1000).max(30000).default(15000),
   NOTIFICATION_EMAIL_PROVIDER: z.enum(["disabled", "test", "gmail"]).default("disabled"),
-  NOTIFICATION_SMS_PROVIDER: z.enum(["disabled", "test", "philsms", "textbee"]).default("disabled"),
+  NOTIFICATION_SMS_PROVIDER: z.enum(["disabled", "test", "textbee"]).default("disabled"),
   APPOINTMENT_EMAIL_OTP_PROVIDER: z.enum(["disabled", "gmail"]).default("disabled"),
   PASSWORD_RESET_EMAIL_PROVIDER: z.enum(["disabled", "gmail"]).default("disabled"),
   APPOINTMENT_OTP_PROVIDER: z.enum(["disabled", "textbee"]).default("disabled"),
@@ -25,8 +25,6 @@ export const envSchema = z.object({
   GMAIL_USER: z.preprocess(v => v === "" ? undefined : v, z.email().optional()),
   GMAIL_APP_PASSWORD: z.preprocess(v => typeof v === "string" ? v.replace(/ /g, "") || undefined : v, z.string().regex(/^[A-Za-z]{16}$/).optional()),
   NOTIFICATION_EMAIL_FROM: z.preprocess(v => v === "" ? undefined : v, z.email().optional()),
-  PHILSMS_API_TOKEN: z.preprocess(v => v === "" ? undefined : v, z.string().trim().min(1).regex(/^\S+$/).optional()),
-  PHILSMS_SENDER_ID: z.preprocess(v => v === "" ? undefined : v, z.string().trim().min(1).max(11).regex(/^[A-Za-z0-9 ]+$/).optional()),
   NOTIFICATION_SMS_POLICY: z.enum(["single", "minimal", "all"]).default("minimal"),
   PUBLIC_SITE_URL: z.preprocess(v => v === "" ? undefined : v, z.url().optional()),
   NOTIFICATION_LEASE_MS: z.coerce.number().int().min(5000).max(600000).default(60000),
@@ -81,7 +79,6 @@ export const envSchema = z.object({
   const notificationFields = [
     ...(value.NOTIFICATION_SMS_PROVIDER === "textbee" || value.APPOINTMENT_OTP_PROVIDER === "textbee" ? ["TEXTBEE_API_KEY", "TEXTBEE_DEVICE_ID"] as const : []),
     ...(value.NOTIFICATION_EMAIL_PROVIDER === "gmail" || value.APPOINTMENT_EMAIL_OTP_PROVIDER === "gmail" || value.PASSWORD_RESET_EMAIL_PROVIDER === "gmail" ? ["GMAIL_USER", "GMAIL_APP_PASSWORD", "NOTIFICATION_EMAIL_FROM"] as const : []),
-    ...(value.NOTIFICATION_SMS_PROVIDER === "philsms" ? ["PHILSMS_API_TOKEN", "PHILSMS_SENDER_ID"] as const : []),
   ];
   for (const field of notificationFields) {
     if (!value[field]) context.addIssue({ code: "custom", path: [field], message: "Notification provider configuration is required." });

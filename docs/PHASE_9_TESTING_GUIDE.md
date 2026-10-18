@@ -76,7 +76,7 @@ NOTIFICATION_RETRY_BASE_MS=60000
 ```
 
 Starting with reminders off makes the first event counts easier to inspect.
-No Gmail/PhilSMS credentials are needed for test providers. Remove invalid stale values
+No Gmail/TextBee credentials are needed for test providers. Remove invalid stale values
 from optional provider variables if startup validation reports them.
 
 For the browser confirmation scenario, you can use the existing test payment
@@ -541,26 +541,24 @@ Gmail does not guarantee deduplication even though Message-ID is stable. A timeo
 or crash after acceptance may duplicate a message during retry. Inspect recipient
 receipt and sender evidence before manually retrying uncertain deliveries.
 
-### 12.2 PhilSMS SMS
+### 12.2 TextBee SMS
 
-1. Configure an API token and approved sender with available SMS credits.
-   Use the [PhilSMS dashboard](https://dashboard.philsms.com/) token.
-   The adapter uses `https://dashboard.philsms.com/api/v3/sms/send`; the older
-   portal does not accept dashboard tokens.
+1. Configure an API key and device ID for a registered, online Android gateway.
+   See [TextBee setup](TEXTBEE_SETUP.md).
 2. Set:
 
 ```dotenv
 NOTIFICATION_EMAIL_PROVIDER=disabled
-NOTIFICATION_SMS_PROVIDER=philsms
-PHILSMS_API_TOKEN=YOUR_PRIVATE_API_TOKEN
-PHILSMS_SENDER_ID=YourSalon
+NOTIFICATION_SMS_PROVIDER=textbee
+TEXTBEE_API_KEY=YOUR_PRIVATE_API_KEY
+TEXTBEE_DEVICE_ID=YOUR_24_CHARACTER_DEVICE_ID
 ```
 
 3. Restart the worker. Make a new QA booking **without email**, using a mobile number
-   you control. Confirm it and inspect queue and PhilSMS message records.
+   you control. Confirm it and inspect queue and TextBee message records.
 4. Read the SMS on the handset. Check the booking code and any reminder time.
 
-**Pass:** intended handset receives the correct text and PhilSMS shows an appropriate
+**Pass:** intended handset receives the correct text and TextBee shows an appropriate
 result. SENT in the application alone is insufficient. Provider delivery status may
 later become failed/undelivered; this app does not currently synchronize those later
 changes back into NotificationQueue.

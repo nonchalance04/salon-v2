@@ -1,7 +1,7 @@
 # Email and SMS notification setup: step-by-step guide
 
 Checked against this repository and official provider documentation on October 11,
-2026. This system uses **Gmail SMTP for email** and **PhilSMS for SMS**.
+2026. This system uses **Gmail SMTP for email** and **TextBee for SMS**.
 Both integrations already exist. Configure the backend and run the notification
 worker; Nodemailer is installed with the backend dependencies; credentials stay on the backend.
 
@@ -15,7 +15,7 @@ production operation. Existing detailed failure/recovery tests remain in the
 Booking/payment/change transaction
     -> NotificationQueue in PostgreSQL
     -> separate notification worker
-    -> Gmail email OR PhilSMS SMS
+    -> Gmail email OR TextBee SMS
     -> customer's inbox or phone
 ```
 
@@ -43,7 +43,7 @@ Creating an unpaid hold does not create a confirmation notification.
 | --- | --- |
 | `disabled` | The worker does not claim that channel's queued messages |
 | `test` | Simulates acceptance and marks the row SENT; sends nothing externally |
-| `gmail` / `philsms` | Calls the corresponding provider and can send real messages |
+| `gmail` / `textbee` | Calls the corresponding provider and can send real messages |
 
 For real providers, `SENT` means the provider accepted the request. It does not
 prove inbox/handset delivery. There is currently no notification management screen,
@@ -98,7 +98,7 @@ NOTIFICATION_RETRY_BASE_MS=60000
 ```
 
 Keep reminders off initially so confirmation events are easy to count. Gmail and
-PhilSMS credentials are not needed in test mode. Leave unused provider fields blank
+TextBee credentials are not needed in test mode. Leave unused provider fields blank
 if stale invalid values cause environment validation errors.
 
 Start these in separate terminals, using Node 24 in each:
@@ -246,44 +246,35 @@ Personal Gmail accounts may block sending after more than 500 emails per day;
 multiple messages and reminders count separately. Workspace limits differ. See
 [Google's sending limits](https://support.google.com/mail/answer/22839).
 
-## 6. Set up PhilSMS for Philippine recipients
+## 6. Set up TextBee for SMS
 
-1. Create an account at [PhilSMS](https://philsms.com/), obtain an API token,
-   register your sender ID and wait for approval. Ensure SMS credits are available.
-2. Use your `dashboard.philsms.com` account token. The adapter sends to
-   `https://dashboard.philsms.com/api/v3/sms/send`. The older `app.philsms.com`
-   portal does not accept this dashboard token. Read-only balance and message
-   history requests against the dashboard API verified authentication; handset
-   delivery still requires a controlled send after sender approval.
-3. Stop the notification worker and inspect pending recipients using Step 5's query.
+1. Follow [TextBee setup](TEXTBEE_SETUP.md) to register the Android gateway device and
+   obtain `TEXTBEE_API_KEY` and `TEXTBEE_DEVICE_ID`.
+2. Stop the notification worker and inspect pending recipients using Step 5's query.
    Use only recipients who expect these messages. Edit existing backend/.env entries:
 
 ```dotenv
 NOTIFICATION_EMAIL_PROVIDER=disabled
-NOTIFICATION_SMS_PROVIDER=philsms
-PHILSMS_API_TOKEN=YOUR_PRIVATE_API_TOKEN
-PHILSMS_SENDER_ID=YourSalon
+NOTIFICATION_SMS_PROVIDER=textbee
+TEXTBEE_API_KEY=YOUR_PRIVATE_API_KEY
+TEXTBEE_DEVICE_ID=YOUR_24_CHARACTER_DEVICE_ID
 NOTIFICATION_REMINDER_HOURS=0
 ```
 
-4. Replace placeholders with your token and approved alphanumeric sender name
-   (up to 11 characters). Remove obsolete TWILIO_* entries. Keep SMS disabled
-   until credentials and pending recipients are ready. No webhook/ngrok is needed.
-5. Restart the API and workers. Create a new booking with email blank and your own
-   Philippine mobile in local 09 or international +639 format. The adapter sends
-   digits beginning 639; unsupported destinations fail before a network request.
-6. Confirm the booking before expiration. Inspect SMS PAYMENT_RECEIVED and
+3. Replace placeholders with your credentials. Remove obsolete TWILIO_* entries. Keep SMS
+   disabled until credentials and pending recipients are ready. No webhook/ngrok is needed.
+4. Restart the API and workers. Create a new booking with email blank and your own
+   Philippine mobile in local 09 or international +639 format. Unsupported destinations
+   fail before a network request.
+5. Confirm the booking before expiration. Inspect SMS PAYMENT_RECEIVED and
    BOOKING_CONFIRMED rows using Step 4's query. Email supplied selects EMAIL even
    when its provider is disabled.
-7. Check the PhilSMS dashboard and actual handset for correct booking text/time.
+6. Check the actual handset for correct booking text/time.
 
 **Pass:** the intended handset receives the correct text. SENT means API acceptance,
-not carrier delivery. An HTTP success containing status error becomes terminal
-PROVIDER_REJECTED; malformed responses become retryable INVALID_PROVIDER_RESPONSE.
-Raw provider errors are never stored. Non-ASCII text uses Unicode mode, which can
-increase billable segments. Use a new controlled booking after fixing failures;
-do not reset queue history. Complete provider sender/recipient requirements before
-customer rollout.
+not carrier delivery. Raw provider errors are never stored. Use a new controlled
+booking after fixing failures; do not reset queue history. Complete provider
+requirements before customer rollout.
 
 ## 7. Enable both providers together
 
@@ -295,9 +286,9 @@ NOTIFICATION_EMAIL_PROVIDER=gmail
 GMAIL_USER=your-salon@gmail.com
 GMAIL_APP_PASSWORD=YOUR_16_LETTER_APP_PASSWORD
 NOTIFICATION_EMAIL_FROM=your-salon@gmail.com
-NOTIFICATION_SMS_PROVIDER=philsms
-PHILSMS_API_TOKEN=YOUR_PRIVATE_API_TOKEN
-PHILSMS_SENDER_ID=YourSalon
+NOTIFICATION_SMS_PROVIDER=textbee
+TEXTBEE_API_KEY=YOUR_PRIVATE_API_KEY
+TEXTBEE_DEVICE_ID=YOUR_24_CHARACTER_DEVICE_ID
 NOTIFICATION_REMINDER_HOURS=24
 NOTIFICATION_POLL_MS=5000
 NOTIFICATION_LEASE_MS=60000
@@ -369,7 +360,7 @@ LIMIT 100;
 ```
 
 Gmail messages have a stable Message-ID derived from the queue ID, but SMTP does
-not guarantee deduplication. Neither Gmail nor PhilSMS has an assumed idempotency
+not guarantee deduplication. Neither Gmail nor TextBee has an assumed idempotency
 guarantee: a timeout or crash after acceptance can cause a duplicate on retry. Inspect provider history before retrying uncertain deliveries. There is
 no implemented Admin retry button: investigate terminal failures and use a fresh
 controlled booking for setup retests rather than bulk-resetting rows.
@@ -386,8 +377,8 @@ controlled booking for setup retests rather than bulk-resetting rows.
 | `GMAIL_AUTH_FAILED` / `GMAIL_SMTP_535` | Check the mailbox, 2-Step Verification, and App Password; generate a new App Password if the Google password changed. |
 | `GMAIL_SMTP_4xx` / `GMAIL_SMTP_5xx` | Temporary 4xx responses retry; permanent 5xx responses stop. Check account limits, recipient validity, and sender bounce mail. |
 | Email accepted but missing | Check Gmail Sent, sender bounce mail, and recipient spam filters. |
-| PhilSMS 400/401/403 | Inspect PhilSMS Console details: API token, approved sender, credits, recipient, and account status. |
-| PhilSMS accepted but phone receives nothing | Inspect subsequent carrier delivery/error status and Philippine sender registration. |
+| TextBee 4xx | Inspect the TextBee dashboard: API key, device ID, device online status, recipient, and account status. |
+| TextBee accepted but phone receives nothing | Check the Android gateway device, SIM/network, and carrier delivery status. |
 | `INVALID_RECIPIENT` | Correct email/phone format; dummy numbers are unsuitable for real delivery. |
 | `PROVIDER_HTTP_429` or 5xx | Review provider limits/health; allow scheduled retries and inspect attempt count. |
 | `PROVIDER_TIMEOUT` / `PROVIDER_UNAVAILABLE` | Check outbound SMTP port 465 for Gmail, HTTPS for SMS, DNS, credentials, and provider evidence; inspect acceptance before retrying. |
@@ -397,8 +388,8 @@ controlled booking for setup retests rather than bulk-resetting rows.
 | `notification_worker_failed` | Inspect database connectivity, migrations, and process environment. |
 | `notification_reminder_scan_failed` | Check database/scanner configuration; delivery of existing queued messages may still continue. |
 
-Email needs outbound TLS SMTP access to `smtp.gmail.com:465`. PhilSMS needs HTTPS
-access to `dashboard.philsms.com`. No public notification webhook is required.
+Email needs outbound TLS SMTP access to `smtp.gmail.com:465`. TextBee needs HTTPS
+access to its API host. No public notification webhook is required.
 
 ## 11. Run checks and operate in production
 

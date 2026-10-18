@@ -1,5 +1,5 @@
 import { createGmailProvider } from "./gmail-provider.js";
-import { createTextBeeProvider, createTestNotificationProvider, createPhilSmsProvider } from "./notification-provider.js";
+import { createTextBeeProvider, createTestNotificationProvider } from "./notification-provider.js";
 export function configuredNotificationProviders(env) {
     const providers = {};
     // Test delivery logs only the queue identity and channel, never message/contact data.
@@ -12,8 +12,6 @@ export function configuredNotificationProviders(env) {
         providers.SMS = test;
     if (env.NOTIFICATION_EMAIL_PROVIDER === "gmail")
         providers.EMAIL = createGmailProvider(env.GMAIL_USER, env.GMAIL_APP_PASSWORD, env.NOTIFICATION_EMAIL_FROM, env.NOTIFICATION_TIMEOUT_MS);
-    if (env.NOTIFICATION_SMS_PROVIDER === "philsms")
-        providers.SMS = createPhilSmsProvider(env.PHILSMS_API_TOKEN, env.PHILSMS_SENDER_ID);
     if (env.NOTIFICATION_SMS_PROVIDER === "textbee")
         providers.SMS = createTextBeeProvider(env.TEXTBEE_API_KEY, env.TEXTBEE_DEVICE_ID);
     return providers;
