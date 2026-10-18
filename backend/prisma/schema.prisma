@@ -21,6 +21,7 @@ model User {
   id           String    @id @default(uuid()) @db.Uuid
   email        String    @unique
   passwordHash String
+  sessionVersion Int @default(0)
   role         UserRole
   firstName    String
   lastName     String
@@ -42,6 +43,24 @@ model User {
   receiptsIssued                      Receipt[]
   commissionRecordsFinalized          CommissionRecord[]
   auditLogs                           AuditLog[]
+  passwordResets                      PasswordResetChallenge[]
+}
+
+// Short-lived staff recovery data. Raw codes, emails and IPs are never stored here.
+model PasswordResetChallenge {
+  id String @id @db.Uuid
+  identityKey String
+  ipKey String
+  userId String? @db.Uuid
+  codeHash String
+  attempts Int @default(0)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt DateTime @db.Timestamptz(3)
+  consumedAt DateTime? @db.Timestamptz(3)
+  user User? @relation(fields: [userId], references: [id], onDelete: Restrict)
+  @@index([identityKey, createdAt])
+  @@index([ipKey, createdAt])
+  @@index([expiresAt])
 }
 
 model Customer {

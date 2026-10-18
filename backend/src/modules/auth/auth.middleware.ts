@@ -12,15 +12,18 @@ export function createAuthMiddleware(prisma: PrismaClient, config: AuthConfig) {
   const authenticate: RequestHandler = async (req, res, next) => {
     const raw = sessionCookie(req.headers.cookie);
     let id: string;
+    let sessionVersion: number;
     try {
       if (!raw) throw new Error("Missing token");
-      id = (await tokens.verify(raw)).userId;
+      const claims = await tokens.verify(raw);
+      id = claims.userId;
+      sessionVersion = claims.sessionVersion ?? 0;
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) throw new Error("Invalid subject");
     } catch {
       res.clearCookie(COOKIE_NAME, cookie);
       throw new ApiError(401, "UNAUTHORIZED", "Please sign in again.");
     }
-    res.locals.user = await service.currentUser(id);
+    res.locals.user = await service.currentUser(id, sessionVersion);
     next();
   };
   const adminOnly: RequestHandler = (_req, res, next) => {

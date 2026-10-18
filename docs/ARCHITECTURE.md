@@ -1,5 +1,16 @@
 # Salon Booking and Appointment System
 
+## Staff password recovery — 2026-10-18
+
+The shared Admin/Cashier login exposes username-based email-code recovery through
+`POST /api/auth/forgot-password` and `POST /api/auth/reset-password`. Controllers
+validate requests and enforce browser origin checks; `PasswordResetService` owns
+durable request limits, challenge issuance/consumption, Gmail delivery and atomic
+password updates. Codes are HMAC-bound to the current account email/password and
+never returned to the browser. Reset increments `User.sessionVersion`; staff
+authentication compares the JWT version with the current database value to revoke
+earlier sessions. Gmail recovery is enabled separately from appointment emails.
+
 ## MVP scope update — 2026-10-18
 
 Audit logging and audit-log viewing are removed from this MVP. Runtime workflows

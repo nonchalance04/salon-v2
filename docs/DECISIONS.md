@@ -2,6 +2,30 @@
 
 This document records important architectural decisions.
 
+## 2026-10-18 — Staff password recovery
+
+- Admin and Cashier recover through their existing username and registered email.
+  Issue a six-digit cryptographically random code with a ten-minute lifetime;
+  retain only an HMAC bound to the challenge, current password hash and email.
+  Unknown, inactive and ambiguous usernames receive the same public response
+  without email delivery. Never return or log codes or recipient addresses.
+- `PasswordResetChallenge` stores ephemeral recovery state and HMAC identities.
+  Database advisory locks serialize request limits across processes: ten requests
+  per IP and three per username in fifteen minutes, with a sixty-second cooldown.
+  Five unsuccessful checks consume a challenge. Resending replaces earlier codes.
+- Reset validates the existing password policy and confirmation, locks the User
+  and challenge, atomically changes the hash, consumes all outstanding codes, and
+  increments `User.sessionVersion`. Staff JWTs carry that version; every protected
+  request compares it to the current User. Legacy JWTs use version zero. Ordinary
+  Admin password edits retain their previous session behavior but invalidate codes
+  through the password-bound digest.
+- Gmail recovery is independently enabled with `PASSWORD_RESET_EMAIL_PROVIDER`.
+  Direct delivery starts after the generic response, keeping SMTP timing out of
+  account-existence responses. Failed delivery consumes the code; a process crash
+  can lose a send, so the UI supports requesting a new code after the cooldown.
+  Reset completion sends a separate change notice and requires a normal sign-in.
+  Recovery requests prune challenge rows expired for more than a day.
+
 ## 2026-10-18 — Username login for Admin and Cashier
 
 - Both workspace roles sign in with the part before `@` in their existing account

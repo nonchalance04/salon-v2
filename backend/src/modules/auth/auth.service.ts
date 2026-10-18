@@ -31,12 +31,15 @@ export function createAuthService(prisma: PrismaClient) {
         data: { lastLoginAt: new Date() },
       });
       if (result.count !== 1) throw new ApiError(401, "INVALID_CREDENTIALS", "Username or password is incorrect.");
-      return this.currentUser(user.id);
+      return { ...await this.currentUser(user.id), sessionVersion: user.sessionVersion };
     },
-    async currentUser(id: string) {
-      const user = await prisma.user.findUnique({ where: { id }, select: publicUserSelect });
-      if (!user?.isActive) throw new ApiError(401, "UNAUTHORIZED", "Please sign in again.");
-      return user;
+    async currentUser(id: string, expectedVersion?: number) {
+      const user = await prisma.user.findUnique({ where: { id }, select: { ...publicUserSelect, sessionVersion: true } });
+      if (!user?.isActive || (expectedVersion !== undefined && user.sessionVersion !== expectedVersion)) {
+        throw new ApiError(401, "UNAUTHORIZED", "Please sign in again.");
+      }
+      const { sessionVersion: _version, ...publicUser } = user;
+      return publicUser;
     },
   };
 }

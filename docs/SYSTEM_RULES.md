@@ -1,5 +1,21 @@
 # Salon Booking and Appointment System
 
+## Staff password recovery — 2026-10-18
+
+Admin and Cashier may recover a forgotten password using their username and a
+six-digit code sent to their registered account email. Recovery applies only to
+one uniquely matching active account; unknown/inactive/ambiguous usernames receive
+the same public response. Codes expire after ten minutes and are consumed after
+use or five unsuccessful checks. Resending invalidates the earlier code.
+
+Request limits are three per username and ten per source IP in fifteen minutes,
+with at least sixty seconds between requests for a username. Recovery must not
+lock the account or change its password until a valid code is submitted with a
+confirmed password meeting the existing account password policy. Successful reset
+invalidates all outstanding recovery codes and existing staff sessions, notifies
+the account email, and requires signing in again. Admin-managed password editing
+and account activation/role rules otherwise retain their existing behavior.
+
 ## MVP scope update — 2026-10-18
 
 Audit logging and audit-log viewing are removed from this MVP. Runtime workflows

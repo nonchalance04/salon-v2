@@ -1,5 +1,18 @@
 # Salon Booking and Appointment System
 
+## Staff password recovery — 2026-10-18
+
+`User.sessionVersion` is a required integer defaulting to zero. Successful staff
+password recovery increments it to invalidate previously issued staff JWTs.
+
+`PasswordResetChallenge` holds ephemeral recovery state: UUID `id`, HMAC
+`identityKey` and `ipKey`, nullable UUID `userId` referencing User with restricted
+deletion, `codeHash`, integer `attempts` (0–5), and timestamptz(3) `createdAt`,
+`expiresAt`, nullable `consumedAt`. Index `(identityKey, createdAt)`,
+`(ipKey, createdAt)` and `expiresAt`. Unknown, inactive and ambiguous usernames
+create challenges with no User reference. Never store raw codes, IPs or emails.
+Requests prune rows expired for over a day; no transactional history is removed.
+
 ## MVP scope update — 2026-10-18
 
 Audit logging and audit-log viewing are removed from this MVP. Runtime workflows

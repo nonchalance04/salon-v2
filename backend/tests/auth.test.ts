@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { SignJWT } from "jose";
 import { createTokenService } from "../src/modules/auth/auth.token.js";
 import { cookieOptions, sessionCookie } from "../src/modules/auth/auth.security.js";
-import { createAccountSchema, updateAccountSchema, loginSchema } from "../src/modules/auth/auth.schema.js";
+import { createAccountSchema, updateAccountSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from "../src/modules/auth/auth.schema.js";
 import bcrypt from "bcrypt";
 import type { PrismaClient } from "../generated/prisma/client.js";
 import { createAuthService } from "../src/modules/auth/auth.service.js";
@@ -11,6 +11,19 @@ import { parseEnv } from "../src/config/env.schema.js";
 
 const secret = "test-secret-for-phase-two-at-least-32-characters";
 const id = "10000000-0000-4000-8000-000000000001";
+test("password recovery validates usernames, six-digit codes and confirmed password policy", () => {
+  assert.deepEqual(forgotPasswordSchema.parse({ body: { username: " ADMIN " } }).body, { username: "admin" });
+  const body = { challengeId: id, code: "123456", password: "replacement-password", confirmPassword: "replacement-password" };
+  assert.equal(resetPasswordSchema.safeParse({ body }).success, true);
+  for (const change of [
+    { code: "12345" }, { code: "abcdef" }, { challengeId: "invalid" },
+    { password: "short", confirmPassword: "short" }, { confirmPassword: "different-password" },
+    { password: "é".repeat(37), confirmPassword: "é".repeat(37) }, { userId: id },
+  ]) assert.equal(resetPasswordSchema.safeParse({ body: { ...body, ...change } }).success, false);
+  const env = { DATABASE_URL: "postgresql://localhost/test", JWT_SECRET: secret, PASSWORD_RESET_EMAIL_PROVIDER: "gmail" };
+  assert.throws(() => parseEnv(env));
+  assert.equal(parseEnv({ ...env, GMAIL_USER: "sender@example.test", GMAIL_APP_PASSWORD: "abcdefghijklmnop", NOTIFICATION_EMAIL_FROM: "sender@example.test" }).PASSWORD_RESET_EMAIL_PROVIDER, "gmail");
+});
 test("login accepts normalized usernames and rejects emails and empty credentials", () => {
   assert.deepEqual(loginSchema.parse({ body: { username: " Admin ", password: "secret" } }).body,
     { username: "admin", password: "secret" });
@@ -57,7 +70,7 @@ test("username login authenticates both roles and rejects missing, inactive, amb
 });
 test("JWT validates signature, expiration, and all required claims", async () => {
   const tokens = createTokenService(secret);
-  assert.deepEqual(await tokens.verify(await tokens.sign({ userId: id, role: "ADMIN" })), { userId: id, role: "ADMIN" });
+  assert.deepEqual(await tokens.verify(await tokens.sign({ userId: id, role: "ADMIN" })), { userId: id, role: "ADMIN", sessionVersion: 0 });
   await assert.rejects(tokens.verify(await createTokenService("wrong-secret-that-is-also-32-characters").sign({ userId: id, role: "ADMIN" })));
   const key = new TextEncoder().encode(secret);
   for (const token of [

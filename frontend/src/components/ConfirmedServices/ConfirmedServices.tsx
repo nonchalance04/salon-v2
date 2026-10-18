@@ -32,12 +32,14 @@ export function ConfirmedServices({
   disabled = false,
   arrivalOnly = false,
   manageOutcomes = false,
+  paymentDesk = false,
 }: {
   admin: boolean;
   onSelect: (code: string) => void;
   disabled?: boolean;
   arrivalOnly?: boolean;
   manageOutcomes?: boolean;
+  paymentDesk?: boolean;
 }) {
   const heading = useId();
   const [data, setData] = useState<ConfirmedBookings | null>(null);
@@ -109,7 +111,7 @@ export function ConfirmedServices({
   }
   return (
     <section
-      className="confirmed-services dashboard-list"
+      className={`confirmed-services dashboard-list${paymentDesk ? " payment-ready-list" : ""}`}
       aria-labelledby={heading}
     >
       <div className="section-heading">
@@ -127,12 +129,7 @@ export function ConfirmedServices({
               : `Select a customer to ${admin || manageOutcomes ? "review their services" : "process their service payment"}. Includes all appointment dates and refreshes every 30 seconds.`}
           </p>
         </div>
-        {/* <button
-          disabled={busy || disabled}
-          onClick={() => setRefresh((value) => value + 1)}
-        >
-          {busy ? "Refreshing…" : "Refresh services"}
-        </button> */}
+        {paymentDesk && <Button variant="outline" disabled={busy || disabled} onClick={() => setRefresh(value => value + 1)}>{busy ? "Refreshing…" : "Refresh list"}</Button>}
       </div>
       <form className="cashier-search" onSubmit={submit}>
         <label>
@@ -172,8 +169,8 @@ export function ConfirmedServices({
       {busy && !data && <p role="status">Loading confirmed services…</p>}
       {data && (
         <>
-          <p>
-            {data.total} confirmed {data.total === 1 ? "booking" : "bookings"} ·{" "}
+          <p className={paymentDesk ? "payment-list-count" : undefined} aria-live="polite">
+            {data.total} {paymentDesk ? (data.total === 1 ? "visit ready for payment" : "visits ready for payment") : `confirmed ${data.total === 1 ? "booking" : "bookings"}`} ·{" "}
             {data.timeZone}
           </p>
           {data.rows.length ? (
@@ -233,7 +230,7 @@ export function ConfirmedServices({
                           />
                         )}
                         {!arrivalOnly && (
-                          <Button variant="outline"
+                          <Button variant={paymentDesk ? "default" : "outline"} className={paymentDesk ? "primary" : undefined}
                             disabled={disabled || busy}
                             onClick={() => onSelect(row.bookingCode)}
                           >

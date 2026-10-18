@@ -469,6 +469,18 @@
   color: #dedede;
   margin: 0;
 }
+.clique-login-form > button[data-variant="link"],
+.clique-login-form small {
+  color: #dedede;
+}
+.clique-login-form > button[data-variant="link"] {
+  background: transparent;
+  border-color: transparent;
+  text-decoration: underline;
+}
+.clique-login-form .success {
+  color: #203c34;
+}
 @media (min-width: 1500px) {
   .clique-main {
     padding: 36px 48px;

@@ -173,3 +173,20 @@ provider validation, remote CI and salon sign-off remain release gates.
 References: [Caddy SPA/proxy pattern](https://caddyserver.com/docs/caddyfile/patterns),
 [PostgreSQL pg_dump](https://www.postgresql.org/docs/18/app-pgdump.html),
 [PostgreSQL pg_restore](https://www.postgresql.org/docs/18/app-pgrestore.html).
+
+## Staff password recovery
+
+Apply the `20261018100000_staff_password_recovery` migration with `npm run db:migrate`
+and regenerate/rebuild the backend before restarting services. This additive
+migration adds ephemeral recovery challenges and the User session version; it
+does not alter existing passwords or historical appointments/payments.
+
+Set `PASSWORD_RESET_EMAIL_PROVIDER=gmail`, `GMAIL_USER`, `GMAIL_APP_PASSWORD` and
+matching `NOTIFICATION_EMAIL_FROM` on the backend to enable recovery. Existing
+Gmail credentials can be reused; routine notification and appointment OTP switches
+remain independent. `disabled` returns a clear recovery-unavailable response.
+Configure account emails to reachable mailboxes and use distinct local parts for
+staff usernames. No frontend secrets or new worker are required. Code delivery
+starts after the generic HTTP response; a process crash can lose a send, and staff
+can request another code after sixty seconds. Failed provider sends invalidate
+the code and log a fixed event without message/contact details.

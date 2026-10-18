@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/Input";
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router";
 import { useAuth } from "../../contexts/AuthProvider";
+import { api } from "../../lib/api";
 
 const message = (error: unknown) =>
   error instanceof Error ? error.message : "Please try again.";
@@ -11,16 +12,49 @@ export function Login() {
   const { login } = useAuth();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [mode, setMode] = useState<"login" | "request" | "reset">("login");
+  const [username, setUsername] = useState("");
+  const [challengeId, setChallengeId] = useState("");
+  const [notice, setNotice] = useState("");
+  const [retryAt, setRetryAt] = useState(0);
+  function changeMode(next: "login" | "request" | "reset") {
+    setMode(next);
+    setError("");
+    setNotice("");
+  }
+  async function requestCode() {
+    const remaining = Math.ceil((retryAt - Date.now()) / 1000);
+    if (remaining > 0) throw new Error(`Please wait ${remaining} seconds before requesting another code.`);
+    const result = await api<{ challengeId: string; message: string; retryAfterSeconds: number }>("/auth/forgot-password", {
+      method: "POST", body: JSON.stringify({ username: username.trim().toLowerCase() }),
+    });
+    setChallengeId(result.challengeId);
+    setNotice(result.message);
+    setRetryAt(Date.now() + result.retryAfterSeconds * 1000);
+    setMode("reset");
+  }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     setBusy(true);
     setError("");
     try {
-      await login(
-        String(data.get("username")).trim().toLowerCase(),
-        String(data.get("password")),
-      );
+      if (mode === "request") {
+        await requestCode();
+      } else if (mode === "reset") {
+        const password = String(data.get("password"));
+        const confirmPassword = String(data.get("confirmPassword"));
+        if (password !== confirmPassword) throw new Error("Passwords must match.");
+        if (new TextEncoder().encode(password).length > 72) throw new Error("Password must fit within 72 UTF-8 bytes.");
+        const result = await api<{ message: string }>("/auth/reset-password", {
+          method: "POST", body: JSON.stringify({ challengeId, code: String(data.get("code")), password, confirmPassword }),
+        });
+        setChallengeId("");
+        setMode("login");
+        setNotice(result.message);
+      } else {
+        await login(username.trim().toLowerCase(), String(data.get("password")));
+      }
     } catch (err) {
       setError(message(err));
     } finally {
@@ -44,9 +78,10 @@ export function Login() {
           src="/images/login.jpg"
           alt="A client enjoying a salon appointment"
         />
-        <form onSubmit={submit} className="clique-login-form">
-          <h1>Sign in to your workspace</h1>
-          <label>
+        <form key={`${mode}:${challengeId}`} onSubmit={submit} className="clique-login-form">
+          <h1>{mode === "login" ? "Sign in to your workspace" : mode === "request" ? "Forgot your password?" : "Reset your password"}</h1>
+          {mode === "request" && <p>Enter your username to receive a verification code at your account email.</p>}
+          {mode !== "reset" && <label>
             Username
             <Input
               name="username"
@@ -57,29 +92,50 @@ export function Login() {
               autoCapitalize="none"
               spellCheck={false}
               placeholder="Username"
+              value={username}
+              onChange={event => setUsername(event.target.value)}
             />
-          </label>
-          <label>
-            Password
+          </label>}
+          {mode === "reset" && <>
+            <p>Resetting the password for <strong>{username}</strong>. Check your account email, including spam.</p>
+            <label>
+              Verification code
+              <Input name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" minLength={6} maxLength={6} required placeholder="6-digit code" />
+            </label>
+          </>}
+          {mode !== "request" && <label>
+            {mode === "reset" ? "New password" : "Password"}
             <Input
               name="password"
               type="password"
-              autoComplete="current-password"
+              autoComplete={mode === "reset" ? "new-password" : "current-password"}
+              minLength={mode === "reset" ? 12 : undefined}
+              aria-describedby={mode === "reset" ? "reset-password-help" : undefined}
               required
               placeholder="Password"
             />
-          </label>
+          </label>}
+          {mode === "reset" && <small id="reset-password-help">At least 12 characters; no more than 72 UTF-8 bytes.</small>}
+          {mode === "reset" && <label>
+            Confirm new password
+            <Input name="confirmPassword" type="password" autoComplete="new-password" minLength={12} required placeholder="Confirm new password" />
+          </label>}
+          {notice && <p role="status" className="success">{notice}</p>}
           {error && (
             <p role="alert" className="error">
               {error}
             </p>
           )}
           <Button variant="default" disabled={busy} className="primary">
-            {busy ? "Signing in…" : "Sign In"}
+            {busy ? (mode === "login" ? "Signing in…" : mode === "request" ? "Requesting code…" : "Resetting password…") : (mode === "login" ? "Sign In" : mode === "request" ? "Send verification code" : "Reset password")}
           </Button>
-          {/* <p className="clique-login-help">Need access or a password reset? Ask your salon administrator.</p>
-        <Link to="/availability">Find an available salon time →</Link>
-        <Link to="/help">Questions? Ask the salon guide →</Link> */}
+          {mode === "login" ? <Button type="button" variant="link" disabled={busy} onClick={() => changeMode("request")}>Forgot your password?</Button> : <>
+            {mode === "reset" && <Button type="button" variant="link" disabled={busy} onClick={async () => {
+              setBusy(true); setError("");
+              try { await requestCode(); } catch (err) { setError(message(err)); } finally { setBusy(false); }
+            }}>Send a new code</Button>}
+            <Button type="button" variant="link" disabled={busy} onClick={() => changeMode("login")}>Back to sign in</Button>
+          </>}
         </form>
       </section>
     </main>

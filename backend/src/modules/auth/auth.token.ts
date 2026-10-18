@@ -9,6 +9,7 @@ const JWT_LIFETIME = "8h";
 export type StaffTokenClaims = {
   userId: string;
   role: UserRole;
+  sessionVersion?: number;
 };
 
 function isUserRole(value: unknown): value is UserRole {
@@ -25,6 +26,7 @@ export function createTokenService(secret: string) {
   ): Promise<string> {
     return new SignJWT({
       role: claims.role,
+      sessionVersion: claims.sessionVersion ?? 0,
     })
       .setProtectedHeader({
         alg: JWT_ALGORITHM,
@@ -46,7 +48,8 @@ export function createTokenService(secret: string) {
     if (
       typeof payload.sub !== "string" ||
       payload.sub.length === 0 ||
-      !isUserRole(payload.role)
+      !isUserRole(payload.role) ||
+      (payload.sessionVersion !== undefined && (!Number.isSafeInteger(payload.sessionVersion) || (payload.sessionVersion as number) < 0))
     ) {
       throw new Error("Invalid staff token claims.");
     }
@@ -54,6 +57,7 @@ export function createTokenService(secret: string) {
     return {
       userId: payload.sub,
       role: payload.role,
+      sessionVersion: (payload.sessionVersion as number | undefined) ?? 0,
     };
   }
   return { sign: signStaffToken, verify: verifyStaffToken };
