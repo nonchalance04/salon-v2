@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { api, ApiError, type User } from "../../lib/api";
 
-type Session = { user: User | null; loading: boolean; error: string; refresh: () => Promise<void>; login: (email: string, password: string) => Promise<void>; logout: () => Promise<void> };
+type Session = { user: User | null; loading: boolean; error: string; refresh: () => Promise<void>; login: (username: string, password: string) => Promise<void>; logout: () => Promise<void> };
 const AuthContext = createContext<Session | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -31,10 +31,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.addEventListener("focus", focus);
     return () => { window.removeEventListener("session-expired", expired); window.removeEventListener("focus", focus); };
   }, [refresh]);
-  const login = async (email: string, password: string) => {
+  const login = async (username: string, password: string) => {
     generation.current++; authenticating.current = true;
     try {
-      setUser((await api<{ user: User }>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) })).user);
+      setUser((await api<{ user: User }>("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) })).user);
       setError("");
     } finally { authenticating.current = false; }
   };

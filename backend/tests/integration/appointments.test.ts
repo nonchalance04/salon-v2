@@ -533,7 +533,7 @@ test("change HTTP routes enforce guest authentication, strict requests, browser 
     assert.equal(available.headers.get("cache-control"), "no-store"); assert.ok((await available.json()).slots.length);
     assert.equal((await post("/appointments/change", f.change)).status, 200);
     assert.equal((await post("/appointments/no-show", { bookingCode: f.appointment.bookingCode })).status, 401);
-    const login = await post("/auth/login", { email: "cashier@example.test", password: "phase5-cashier-password" });
+    const login = await post("/auth/login", { username: "cashier", password: "phase5-cashier-password" });
     assert.equal(login.status, 200); const cookie = login.headers.get("set-cookie")!.split(";")[0]!;
     assert.equal((await post("/appointments/no-show", { bookingCode: f.appointment.bookingCode }, cookie)).status, 403);
     assert.equal((await fetch(root + "/appointments", { headers: { Cookie: cookie } })).status, 403);
@@ -590,7 +590,7 @@ test("check-in HTTP rejects guest access, forged arrival fields and untrusted or
   const input = { bookingCode: f.booking.bookingCode };
   try {
     assert.equal((await post("/appointments/check-in", input)).status, 401);
-    const login = await post("/auth/login", { email: "cashier@example.test", password: "phase5-cashier-password" });
+    const login = await post("/auth/login", { username: "cashier", password: "phase5-cashier-password" });
     assert.equal(login.status, 200); const cookie = login.headers.get("set-cookie")!.split(";")[0]!;
     assert.equal((await post("/appointments/check-in", input, cookie, "https://attacker.test")).status, 403);
     for (const forged of [{ checkedInAt: new Date().toISOString() }, { checkedInByUserId: adminId }]) {
@@ -599,7 +599,7 @@ test("check-in HTTP rejects guest access, forged arrival fields and untrusted or
     const arrival = await post("/appointments/check-in", input, cookie);
     assert.equal(arrival.status, 200);
     assert.equal((await arrival.json()).checkedInByUserId, cashierId);
-    const adminLogin = await post("/auth/login", { email: "admin@example.test", password: "phase5-admin-password" });
+    const adminLogin = await post("/auth/login", { username: "admin", password: "phase5-admin-password" });
     const adminCookie = adminLogin.headers.get("set-cookie")!.split(";")[0]!;
     assert.equal((await post("/appointments/check-in", { ...input, checkedInAt: new Date().toISOString() }, adminCookie)).status, 400);
     assert.equal((await post("/appointments/check-in", input, adminCookie)).status, 200);
@@ -797,11 +797,11 @@ test("correction HTTP allows Cashier/Admin and requires authentication, trusted 
   const path = "/appointments/no-show/correct";
   try {
     assert.equal((await post(path, f.correction)).status, 401);
-    const cashierLogin = await post("/auth/login", { email: "cashier@example.test", password: "phase5-cashier-password" });
+    const cashierLogin = await post("/auth/login", { username: "cashier", password: "phase5-cashier-password" });
     const cashierCookie = cashierLogin.headers.get("set-cookie")!.split(";")[0]!;
     assert.equal((await post(path, f.correction, cashierCookie, "https://attacker.test")).status, 403);
     assert.equal((await post(path, { ...f.correction, customerPresent: false }, cashierCookie)).status, 400);
-    const login = await post("/auth/login", { email: "admin@example.test", password: "phase5-admin-password" });
+    const login = await post("/auth/login", { username: "admin", password: "phase5-admin-password" });
     const cookie = login.headers.get("set-cookie")!.split(";")[0]!;
     assert.equal((await post(path, f.correction, cookie, "https://attacker.test")).status, 403);
     assert.equal((await post(path, { ...f.correction, customerPresent: false }, cookie)).status, 400);

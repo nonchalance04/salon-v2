@@ -18,7 +18,7 @@ export function Login() {
     setError("");
     try {
       await login(
-        String(data.get("email")).trim().toLowerCase(),
+        String(data.get("username")).trim().toLowerCase(),
         String(data.get("password")),
       );
     } catch (err) {
@@ -31,30 +31,32 @@ export function Login() {
     <main className="clique-login">
       <section className="clique-login-card" aria-labelledby="login-title">
         <div className="clique-login-heading">
-          <Link to="/" id="login-title">
+          <Link to="/" id="login-title" className="text-white">
             CLIQUE HAIRCUTTERS
           </Link>
-          <p>
+          <p className="text-white">
             Because you deserve more than just a beautiful look — you deserve a
             moment to relax, recharge, and feel your absolute best.
           </p>
         </div>
         <img
           className="clique-login-photo"
-          src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1200&q=85"
+          src="/images/login.jpg"
           alt="A client enjoying a salon appointment"
         />
         <form onSubmit={submit} className="clique-login-form">
           <h1>Sign in to your workspace</h1>
           <label>
-            Email address
+            Username
             <Input
-              name="email"
-              type="email"
+              name="username"
+              type="text"
               autoComplete="username"
               required
               maxLength={254}
-              placeholder="you@example.com"
+              autoCapitalize="none"
+              spellCheck={false}
+              placeholder="Username"
             />
           </label>
           <label>

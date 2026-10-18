@@ -69,7 +69,7 @@ test('integrated HTTP acceptance: 20 competing bookings, authenticated collectio
     assert.ok(response.ok, `${path}: ${response.status} ${JSON.stringify(data)}`); return data;
   }
   async function login(email: string) {
-    const response = await request('/auth/login', { email, password: fixtureEnv.SEED_ADMIN_PASSWORD }); assert.equal(response.status, 200);
+    const response = await request('/auth/login', { username: email.split('@')[0], password: fixtureEnv.SEED_ADMIN_PASSWORD }); assert.equal(response.status, 200);
     const header = response.headers.get('set-cookie')!;
     assert.match(header, /HttpOnly/); assert.match(header, /Secure/); assert.match(header, /SameSite=Lax/);
     return header.split(';')[0]!;

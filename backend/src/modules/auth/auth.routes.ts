@@ -30,8 +30,8 @@ export function createAuthRouter(prisma: PrismaClient, config: AuthConfig) {
     "/auth/login",
     validateRequest(loginSchema),
     async (_req, res) => {
-      const { email, password } = res.locals.validated.body;
-      const user = await service.login(email, password);
+      const { username, password } = res.locals.validated.body;
+      const user = await service.login(username, password);
       res.cookie(
         COOKIE_NAME,
         await tokens.sign({ userId: user.id, role: user.role }),

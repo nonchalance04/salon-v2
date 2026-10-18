@@ -4,7 +4,7 @@ export const email = z.string().trim().toLowerCase().pipe(z.email().max(254));
 export const password = z.string().min(12).refine(value => Buffer.byteLength(value, "utf8") <= 72,
   "Password must fit within 72 UTF-8 bytes.");
 export const loginSchema = z.object({ body: z.object({
-  email,
+  username: z.string().trim().toLowerCase().min(1).max(254).regex(/^[^@\s]+$/, "Enter your username without an email domain."),
   password: z.string().min(1).refine(value => Buffer.byteLength(value, "utf8") <= 72),
 }).strict() });
 export const accountFields = z.object({

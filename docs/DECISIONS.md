@@ -2,6 +2,17 @@
 
 This document records important architectural decisions.
 
+## 2026-10-18 — Username login for Admin and Cashier
+
+- Both workspace roles sign in with the part before `@` in their existing account
+  email. The login API accepts `{ username, password }` and rejects full email
+  addresses. Usernames are trimmed and compared without case sensitivity.
+- Keep account emails and the existing User schema. Account email edits also
+  change the derived login username. Password and session rules stay unchanged.
+- If multiple accounts share an email local part, reject login with the generic
+  credentials error, including when one account is inactive. An Admin must change
+  the conflicting account email to give it a distinct local part.
+
 ## 2026-10-03 — Phase 2 authentication implementation
 
 Implements the existing authentication architecture without adding models or

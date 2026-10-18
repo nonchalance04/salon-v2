@@ -3,11 +3,58 @@ import { test } from "node:test";
 import { SignJWT } from "jose";
 import { createTokenService } from "../src/modules/auth/auth.token.js";
 import { cookieOptions, sessionCookie } from "../src/modules/auth/auth.security.js";
-import { createAccountSchema, updateAccountSchema } from "../src/modules/auth/auth.schema.js";
+import { createAccountSchema, updateAccountSchema, loginSchema } from "../src/modules/auth/auth.schema.js";
+import bcrypt from "bcrypt";
+import type { PrismaClient } from "../generated/prisma/client.js";
+import { createAuthService } from "../src/modules/auth/auth.service.js";
 import { parseEnv } from "../src/config/env.schema.js";
 
 const secret = "test-secret-for-phase-two-at-least-32-characters";
 const id = "10000000-0000-4000-8000-000000000001";
+test("login accepts normalized usernames and rejects emails and empty credentials", () => {
+  assert.deepEqual(loginSchema.parse({ body: { username: " Admin ", password: "secret" } }).body,
+    { username: "admin", password: "secret" });
+  for (const body of [
+    { username: "admin@example.test", password: "secret" },
+    { email: "admin@example.test", password: "secret" },
+    { username: " ", password: "secret" },
+    { username: "admin user", password: "secret" },
+    { username: "admin", password: "" },
+  ]) assert.equal(loginSchema.safeParse({ body }).success, false);
+});
+
+test("username login authenticates both roles and rejects missing, inactive, ambiguous or changed accounts", async () => {
+  const passwordHash = await bcrypt.hash("test-password", 4);
+  let candidates: unknown[] = [];
+  let updates = 1;
+  let expectedPrefix = "admin@";
+  const prisma = { user: {
+    findMany: async (args: unknown) => {
+      assert.deepEqual(args, { where: { email: { startsWith: expectedPrefix, mode: "insensitive" } }, take: 2 });
+      return candidates;
+    },
+    updateMany: async () => ({ count: updates }),
+    findUnique: async () => candidates[0],
+  } } as unknown as PrismaClient;
+  const service = createAuthService(prisma);
+  for (const role of ["ADMIN", "CASHIER"]) {
+    candidates = [{ id, email: "admin@example.test", role, passwordHash, isActive: true }];
+    assert.equal((await service.login(" Admin ", "test-password")).role, role);
+    await assert.rejects(service.login("admin", "wrong"), { status: 401 });
+  }
+  candidates = [];
+  await assert.rejects(service.login("admin", "test-password"), { status: 401 });
+  candidates = [{ id, email: "admin@example.test", passwordHash, isActive: false }];
+  await assert.rejects(service.login("admin", "test-password"), { status: 401 });
+  candidates = [candidates[0], { email: "admin@another.test", passwordHash, isActive: true }];
+  await assert.rejects(service.login("admin", "test-password"), { status: 401 });
+  candidates = [{ id, email: "admin@example.test", passwordHash, isActive: true }];
+  updates = 0;
+  await assert.rejects(service.login("admin", "test-password"), { status: 401 });
+  candidates = [];
+  expectedPrefix = "front\\_desk\\%@";
+  await assert.rejects(service.login("front_desk%", "test-password"), { status: 401 });
+});
 test("JWT validates signature, expiration, and all required claims", async () => {
   const tokens = createTokenService(secret);
   assert.deepEqual(await tokens.verify(await tokens.sign({ userId: id, role: "ADMIN" })), { userId: id, role: "ADMIN" });

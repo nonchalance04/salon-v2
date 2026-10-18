@@ -233,7 +233,7 @@ test("authentication and account management enforce browser and database permiss
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
   };
-  const login = (email: string, password: string) => request("/auth/login", "POST", { email, password });
+  const login = (email: string, password: string) => request("/auth/login", "POST", { username: email.split("@")[0], password });
   let adminCookie = "";
   let cashierCookie = "";
   let newId = "";
@@ -258,6 +258,24 @@ test("authentication and account management enforce browser and database permiss
       const cashier = await login(fixtureEnv.SEED_CASHIER_EMAIL, fixtureEnv.SEED_CASHIER_PASSWORD);
       assert.equal(cashier.status, 200);
       cashierCookie = cashier.headers.get("set-cookie")!.split(";")[0]!;
+    });
+    await context.test("username-only login matches literal local parts and refuses ambiguous accounts", async () => {
+      assert.equal((await request("/auth/login", "POST", { email: fixtureEnv.SEED_ADMIN_EMAIL, password: fixtureEnv.SEED_ADMIN_PASSWORD })).status, 400);
+      assert.equal((await request("/auth/login", "POST", { username: fixtureEnv.SEED_ADMIN_EMAIL, password: fixtureEnv.SEED_ADMIN_PASSWORD })).status, 400);
+      assert.equal((await request("/auth/login", "POST", { username: " ADMIN ", password: fixtureEnv.SEED_ADMIN_PASSWORD })).status, 200);
+      const hash = await bcrypt.hash("local-part-password", 4);
+      const first = await prisma.user.create({ data: { email: "front_desk%check@example.test", passwordHash: hash, role: "CASHIER", firstName: "Front", lastName: "Desk" } });
+      const other = await prisma.user.create({ data: { email: "frontXdeskANYcheck@another.test", passwordHash: hash, role: "CASHIER", firstName: "Other", lastName: "Account" } });
+      const attempt = () => request("/auth/login", "POST", { username: "front_desk%check", password: "local-part-password" });
+      assert.equal((await attempt()).status, 200);
+      // Include inactive accounts in ambiguity checks; never pick by password.
+      await prisma.user.update({ where: { id: other.id }, data: { email: "front_desk%check@another.test", isActive: false } });
+      const ambiguous = await attempt();
+      assert.equal(ambiguous.status, 401);
+      assert.equal((await ambiguous.json()).error.code, "INVALID_CREDENTIALS");
+      await prisma.user.update({ where: { id: other.id }, data: { email: "other-account@another.test" } });
+      await prisma.user.update({ where: { id: first.id }, data: { isActive: false } });
+      assert.equal((await attempt()).status, 401);
     });
     await context.test("CSRF, Referer fallback, and credentialed CORS reject untrusted or missing sources", async () => {
       for (const value of ["http://localhost:5173.evil.test", "null", "", "__omit__"]) {
