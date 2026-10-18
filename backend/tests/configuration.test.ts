@@ -59,6 +59,14 @@ test("staff skill inputs reject duplicate services and invalid commission rates"
 });
 
 
+test("staff IDs cannot be supplied or changed through staff inputs", () => {
+  const input = { firstName: "Jamie", lastName: "Santos", phone: null, isActive: true };
+  for (const staffCode of ["STF-99", "", null]) {
+    assert.equal(staffSchema.safeParse({ ...input, staffCode }).success, false);
+    assert.equal(staffUpdateSchema.safeParse({ ...input, staffCode }).success, false);
+  }
+});
+
 test("staff edits allow a blank last name while new staff still require one", () => {
   const input = { firstName: "Jamie", phone: null, isActive: true };
   for (const lastName of ["", "   "]) {

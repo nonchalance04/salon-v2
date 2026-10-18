@@ -598,3 +598,12 @@ Continue creating immutable BookingPolicyVersion records through the existing
 admin API and preserve audit history and every appointment's original policy
 reference. This changes presentation only; no policy overrides, migrations,
 models, or changes to booking rules are introduced.
+
+## 2026-10-18 — Automatic readable staff IDs
+
+At the user's request, show permanent staff codes such as `STF-1` and `STF-2`
+in staff configuration. Generate them with a PostgreSQL sequence so simultaneous
+inserts cannot collide and deletion cannot cause reuse. Codes are read-only in
+the admin workflow. Preserve existing codes and assign missing codes during
+migration. Gaps are allowed. Retain UUID primary keys and existing appointment,
+qualification, schedule, and commission relationships.

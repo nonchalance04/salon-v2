@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { once } from "node:events";
+import { readFile } from "node:fs/promises";
 import { before, after, afterEach, test } from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
 import { Pool } from "pg";
@@ -54,6 +55,50 @@ after(async () => {
     }
   }
   finally { await adminPool.end(); }
+});
+
+test("staff code migration fills missing codes and preserves existing codes and IDs", async () => {
+  const sql = await readFile(new URL("../../prisma/migrations/20261018010000_generate_staff_codes/migration.sql", import.meta.url), "utf8");
+  const client = await observer.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query('CREATE SCHEMA staff_code_migration');
+    await client.query('SET LOCAL search_path TO staff_code_migration');
+    await client.query('CREATE TABLE "Staff" (id text PRIMARY KEY, "staffCode" text UNIQUE)');
+    await client.query(`INSERT INTO "Staff" VALUES ('legacy', NULL), ('blank', ''), ('coded', 'STF-40'), ('custom', 'TEAM-A')`);
+    await client.query(sql);
+    const rows = (await client.query('SELECT id, "staffCode" FROM "Staff" ORDER BY id')).rows;
+    assert.deepEqual(rows.map(row => row.id), ["blank", "coded", "custom", "legacy"]);
+    assert.equal(rows.find(row => row.id === "coded").staffCode, "STF-40");
+    assert.equal(rows.find(row => row.id === "custom").staffCode, "TEAM-A");
+    assert.deepEqual(rows.filter(row => ["blank", "legacy"].includes(row.id)).map(row => row.staffCode).sort(), ["STF-41", "STF-42"]);
+    const next = await client.query(`INSERT INTO "Staff" (id) VALUES ('new') RETURNING "staffCode"`);
+    assert.equal(next.rows[0].staffCode, "STF-43");
+  } finally {
+    await client.query("ROLLBACK");
+    client.release();
+  }
+});
+
+test("staff codes are automatic, unique under concurrency, stable on edit, and never reused after deletion", async () => {
+  const input = { firstName: "Code", lastName: "Test", phone: null, isActive: true };
+  const rows = await Promise.all(Array.from({ length: 4 }, () => service.saveStaff(adminId, input)));
+  const codes = rows.map(row => row.staffCode);
+  assert.equal(new Set(codes).size, rows.length);
+  for (const code of codes) assert.match(code, /^STF-[1-9]\d*$/);
+  const first = rows[0]!;
+  const edited = await service.saveStaff(adminId, { ...input, firstName: "Updated" }, first.id);
+  assert.equal(edited.id, first.id);
+  assert.equal(edited.staffCode, first.staffCode);
+  await service.removeStaff(adminId, first.id);
+  assert.equal((await prisma.staff.findUniqueOrThrow({ where: { id: first.id } })).staffCode, first.staffCode);
+  // Even deleting an unreferenced row must not make its code available again.
+  for (const row of rows) await prisma.staff.delete({ where: { id: row.id } });
+  const next = await service.saveStaff(adminId, input);
+  assert.ok(Number(next.staffCode.slice(4)) > Math.max(...codes.map(code => Number(code.slice(4)))));
+  const direct = await prisma.staff.create({ data: { firstName: "Direct", lastName: "Insert" } });
+  assert.match(direct.staffCode, /^STF-[1-9]\d*$/);
+  assert.notEqual(direct.staffCode, next.staffCode);
 });
 
 async function fixture(status: "CONFIRMED" | "PENDING_PAYMENT" = "CONFIRMED", holdExpiresAt = new Date(Date.now() + 60_000)) {

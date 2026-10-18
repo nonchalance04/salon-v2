@@ -241,6 +241,12 @@ Represents salon personnel who perform services.
   - UUID
   - Primary key
 
+- `staffCode`
+  - Unique, required, automatically generated display ID: `STF-1`, `STF-2`, etc.
+  - Allocated by a PostgreSQL sequence; codes remain stable on edit and deactivation.
+  - Existing codes are preserved; staff without codes receive one during migration.
+  - Sequence gaps are allowed. UUIDs remain the keys for relationships and scheduling.
+
 - `firstName`
   - String
   - Required

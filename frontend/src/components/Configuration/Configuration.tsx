@@ -355,6 +355,11 @@ export function Configuration({
               ? "This existing closure uses custom hours. Its time range is preserved."
               : `The salon will be closed all day on the selected date (${data!.timeZone}).`}
           </p>}
+          {section === "staff" && <p className="muted">
+            Staff ID: {edit.id
+              ? String(data?.staff.find(row => row.id === edit.id)?.staffCode ?? "—")
+              : "Generated automatically when saved (e.g. STF-1)."}
+          </p>}
           <div className="form-grid">
             {fields.map((field) => {
               const value = edit.values[field.key] ?? "";
@@ -534,6 +539,10 @@ export function Configuration({
                     </div>
                 </div>
                 <dl>
+                  {section === "staff" && <div>
+                    <dt>Staff ID</dt>
+                    <dd>{String(row.staffCode ?? "—")}</dd>
+                  </div>}
                   {recordFields(row).map((field) => (
                     <div key={field.key}>
                       <dt>{field.label}</dt>
