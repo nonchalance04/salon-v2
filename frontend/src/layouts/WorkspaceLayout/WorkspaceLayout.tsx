@@ -1,9 +1,20 @@
-import { Link, Navigate, useBlocker, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
+import {
+  Link,
+  Navigate,
+  useBlocker,
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "../../contexts/AuthProvider";
 import { Configuration } from "../../components/Configuration";
 import { StaffAvailability } from "../../components/StaffAvailability/StaffAvailability";
-import { definitions, type Section } from "../../components/Configuration/Configuration.fields";
+import {
+  definitions,
+  type Section,
+} from "../../components/Configuration/Configuration.fields";
 import { AdminAppointments } from "../../components/AdminAppointments";
 import { SettlementWorkspace } from "../../components/SettlementWorkspace";
 import { Reports } from "../../components/Reports";
@@ -270,25 +281,52 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
   const routerNavigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const allowedPages: Page[] = admin
-    ? ["dashboard", "payments", "master", "settings", "reports", "overview", "appointments", "settlement", "accounts", "configuration", "report-detail"]
+    ? [
+        "dashboard",
+        "payments",
+        "master",
+        "settings",
+        "reports",
+        "overview",
+        "appointments",
+        "settlement",
+        "accounts",
+        "configuration",
+        "report-detail",
+      ]
     : ["dashboard", "payments"];
   const validPage = allowedPages.includes(routePage as Page);
   const page = (validPage ? routePage : "dashboard") as Page;
   const requestedSection = params.get("section") ?? "profile";
-  const section: Section = Object.hasOwn(definitions, requestedSection) ? requestedSection as Section : "profile";
-  const availabilitySection = section === "schedules" || section === "unavailability";
+  const section: Section = Object.hasOwn(definitions, requestedSection)
+    ? (requestedSection as Section)
+    : "profile";
+  const availabilitySection =
+    section === "schedules" || section === "unavailability";
   const kind = params.get("kind") ?? "appointments";
   const bookingCode = params.get("code") || undefined;
   const appointmentFilters: AppointmentFilters = Object.fromEntries(
-    ["from", "to", "status", "staffId", "search", "attention"].flatMap(key => params.has(key) ? [[key, params.get(key)!]] : []),
+    ["from", "to", "status", "staffId", "search", "attention"].flatMap((key) =>
+      params.has(key) ? [[key, params.get(key)!]] : [],
+    ),
   );
-  const [cashierNavigation, setCashierNavigation] = useState({ busy: false, dirty: false });
-  const blocker = useBlocker(({ currentLocation, nextLocation }) =>
-    (cashierNavigation.busy || cashierNavigation.dirty) &&
-    (currentLocation.pathname !== nextLocation.pathname || currentLocation.search !== nextLocation.search));
+  const [cashierNavigation, setCashierNavigation] = useState({
+    busy: false,
+    dirty: false,
+  });
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      (cashierNavigation.busy || cashierNavigation.dirty) &&
+      (currentLocation.pathname !== nextLocation.pathname ||
+        currentLocation.search !== nextLocation.search),
+  );
   useEffect(() => {
     if (blocker.state !== "blocked") return;
-    if (!cashierNavigation.busy && window.confirm("Discard unsaved changes and leave this view?")) blocker.proceed();
+    if (
+      !cashierNavigation.busy &&
+      window.confirm("Discard unsaved changes and leave this view?")
+    )
+      blocker.proceed();
     else blocker.reset();
   }, [blocker, cashierNavigation.busy]);
   const [search, setSearch] = useState("");
@@ -297,7 +335,10 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
   const [error, setError] = useState("");
   const menu = useRef<HTMLButtonElement>(null);
   const content = useRef<HTMLElement>(null);
-  const previousContentLocation = useRef<{ pathname: string; section: string } | null>(null);
+  const previousContentLocation = useRef<{
+    pathname: string;
+    section: string;
+  } | null>(null);
   useEffect(() => {
     if (!open) return;
     const escape = (event: KeyboardEvent) => {
@@ -314,18 +355,37 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
     setOpen(false);
     setSearch("");
     const previous = previousContentLocation.current;
-    const switchingAvailabilityTabs = page === "configuration" && availabilitySection &&
-      previous?.pathname === location.pathname && ["schedules", "unavailability"].includes(previous.section);
-    if (!switchingAvailabilityTabs) content.current?.focus({ preventScroll: true });
+    const switchingAvailabilityTabs =
+      page === "configuration" &&
+      availabilitySection &&
+      previous?.pathname === location.pathname &&
+      ["schedules", "unavailability"].includes(previous.section);
+    if (!switchingAvailabilityTabs)
+      content.current?.focus({ preventScroll: true });
     previousContentLocation.current = { pathname: location.pathname, section };
   }, [location.key]);
-  function navigate(next: Page, code?: string, options: Record<string, string> = {}) {
+  function navigate(
+    next: Page,
+    code?: string,
+    options: Record<string, string> = {},
+  ) {
     const search = new URLSearchParams(options);
     if (code) search.set("code", code);
-    void routerNavigate({ pathname: `/staff/${next}`, search: search.toString() });
+    void routerNavigate({
+      pathname: `/staff/${next}`,
+      search: search.toString(),
+    });
   }
   function openAppointments(filters: AppointmentFilters) {
-    navigate("appointments", undefined, Object.fromEntries(Object.entries(filters).filter((entry): entry is [string, string] => entry[1] !== undefined)));
+    navigate(
+      "appointments",
+      undefined,
+      Object.fromEntries(
+        Object.entries(filters).filter(
+          (entry): entry is [string, string] => entry[1] !== undefined,
+        ),
+      ),
+    );
   }
   function choose(card: Card) {
     navigate(card.page, undefined, {
@@ -359,18 +419,37 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
   const heading = !admin
     ? page === "payments"
       ? ["Payments", "Collect service payments and review receipts"]
-      : ["Services", "Manage arrivals, service outcomes and no-show corrections"]
+      : [
+          "Services",
+          "Manage arrivals, service outcomes and no-show corrections",
+        ]
     : page === "configuration" && availabilitySection
-      ? ["Staff availability", "Manage regular working hours and temporary absences"]
-    : (headings[page] ?? [
-        "CLIQUE SALON AND SPA",
-        "Where everything you need meets you at the best time.",
-      ]);
+      ? [
+          "Staff availability",
+          "Manage regular working hours and temporary absences",
+        ]
+      : (headings[page] ?? [
+          "CLIQUE SALON AND SPA",
+          "Where everything you need meets you at the best time.",
+        ]);
   if (!validPage) return <Navigate to="/staff/dashboard" replace />;
-  if (admin && page === "configuration" && requestedSection === "qualifications") {
+  if (
+    admin &&
+    page === "configuration" &&
+    requestedSection === "qualifications"
+  ) {
     const updatedParams = new URLSearchParams(params);
     updatedParams.set("section", "staff");
-    return <Navigate to={{ pathname: location.pathname, search: updatedParams.toString(), hash: location.hash }} replace />;
+    return (
+      <Navigate
+        to={{
+          pathname: location.pathname,
+          search: updatedParams.toString(),
+          hash: location.hash,
+        }}
+        replace
+      />
+    );
   }
   return (
     <div
@@ -402,7 +481,7 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
       >
         <div className="clique-brand">
           <Link className="clique-logo" to="/" aria-label="Clique Salon home">
-            CLIQUE
+            <img src="/images/logo.jpg" alt="Clique Logo" />
           </Link>
           <div>
             {/* <strong>{user?.firstName}</strong> */}
@@ -567,19 +646,42 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
                   admin={admin}
                   mode={page === "payments" ? "payments" : "services"}
                   bookingCode={bookingCode}
-                  onNavigate={(view, code) => navigate(view === "payments" ? "payments" : admin ? "settlement" : "dashboard", code)}
+                  onNavigate={(view, code) =>
+                    navigate(
+                      view === "payments"
+                        ? "payments"
+                        : admin
+                          ? "settlement"
+                          : "dashboard",
+                      code,
+                    )
+                  }
                   onNavigationStateChange={setCashierNavigation}
                 />
               ) : page === "configuration" && admin ? (
-                availabilitySection ? <StaffAvailability
-                  tab={section}
-                  onTabChange={next => setParams(previous => { const updated = new URLSearchParams(previous); updated.set("section", next); return updated; })}
-                  onReviewBooking={(code) => openAppointments({ search: code })}
-                /> : <Configuration
-                  key={section}
-                  initialSection={section}
-                  onReviewBooking={(code) => openAppointments({ search: code })}
-                />
+                availabilitySection ? (
+                  <StaffAvailability
+                    tab={section}
+                    onTabChange={(next) =>
+                      setParams((previous) => {
+                        const updated = new URLSearchParams(previous);
+                        updated.set("section", next);
+                        return updated;
+                      })
+                    }
+                    onReviewBooking={(code) =>
+                      openAppointments({ search: code })
+                    }
+                  />
+                ) : (
+                  <Configuration
+                    key={section}
+                    initialSection={section}
+                    onReviewBooking={(code) =>
+                      openAppointments({ search: code })
+                    }
+                  />
+                )
               ) : page === "accounts" && admin ? (
                 accounts
               ) : page === "appointments" && admin ? (
@@ -595,7 +697,13 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
                   initialCode={bookingCode}
                   onNavigationStateChange={setCashierNavigation}
                   onBack={
-                    bookingCode ? () => setParams(previous => { previous.delete("code"); return previous; }) : undefined
+                    bookingCode
+                      ? () =>
+                          setParams((previous) => {
+                            previous.delete("code");
+                            return previous;
+                          })
+                      : undefined
                   }
                 />
               ) : (

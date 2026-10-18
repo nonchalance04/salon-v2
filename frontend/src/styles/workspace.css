@@ -79,6 +79,13 @@
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 2px;
+  overflow: hidden;
+}
+.clique-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 .clique-brand strong {
   font-size: 20px;
