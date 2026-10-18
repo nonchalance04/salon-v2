@@ -29,8 +29,8 @@ const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 let created = false;
 const fixtureEnv = {
   ...process.env, DATABASE_URL: testUrl.toString(), NODE_ENV: "test",
-  SEED_ADMIN_EMAIL: "admin@example.test", SEED_ADMIN_PASSWORD: "test-admin-password",
-  SEED_CASHIER_EMAIL: "cashier@example.test", SEED_CASHIER_PASSWORD: "test-cashier-password",
+  SEED_ADMIN_USERNAME: "admin", SEED_ADMIN_EMAIL: "admin@example.test", SEED_ADMIN_PASSWORD: "test-admin-password",
+  SEED_CASHIER_USERNAME: "cashier", SEED_CASHIER_EMAIL: "cashier@example.test", SEED_CASHIER_PASSWORD: "test-cashier-password",
 };
 
 async function cli(args: string[], env = fixtureEnv) {
@@ -259,21 +259,18 @@ test("authentication and account management enforce browser and database permiss
       assert.equal(cashier.status, 200);
       cashierCookie = cashier.headers.get("set-cookie")!.split(";")[0]!;
     });
-    await context.test("username-only login matches literal local parts and refuses ambiguous accounts", async () => {
-      assert.equal((await request("/auth/login", "POST", { email: fixtureEnv.SEED_ADMIN_EMAIL, password: fixtureEnv.SEED_ADMIN_PASSWORD })).status, 400);
+    await context.test("independent usernames remain unique and email changes do not change login", async () => {
       assert.equal((await request("/auth/login", "POST", { username: fixtureEnv.SEED_ADMIN_EMAIL, password: fixtureEnv.SEED_ADMIN_PASSWORD })).status, 400);
       assert.equal((await request("/auth/login", "POST", { username: " ADMIN ", password: fixtureEnv.SEED_ADMIN_PASSWORD })).status, 200);
-      const hash = await bcrypt.hash("local-part-password", 4);
-      const first = await prisma.user.create({ data: { email: "front_desk%check@example.test", passwordHash: hash, role: "CASHIER", firstName: "Front", lastName: "Desk" } });
-      const other = await prisma.user.create({ data: { email: "frontXdeskANYcheck@another.test", passwordHash: hash, role: "CASHIER", firstName: "Other", lastName: "Account" } });
-      const attempt = () => request("/auth/login", "POST", { username: "front_desk%check", password: "local-part-password" });
+      const hash = await bcrypt.hash("username-test-password", 4);
+      const first = await prisma.user.create({ data: { username: "front_desk%check", email: "mailbox@example.test", passwordHash: hash, role: "CASHIER", firstName: "Front", lastName: "Desk" } });
+      const attempt = (username = "front_desk%check") => request("/auth/login", "POST", { username, password: "username-test-password" });
       assert.equal((await attempt()).status, 200);
-      // Include inactive accounts in ambiguity checks; never pick by password.
-      await prisma.user.update({ where: { id: other.id }, data: { email: "front_desk%check@another.test", isActive: false } });
-      const ambiguous = await attempt();
-      assert.equal(ambiguous.status, 401);
-      assert.equal((await ambiguous.json()).error.code, "INVALID_CREDENTIALS");
-      await prisma.user.update({ where: { id: other.id }, data: { email: "other-account@another.test" } });
+      assert.equal((await attempt("mailbox")).status, 401);
+      await prisma.user.update({ where: { id: first.id }, data: { email: "changed@example.test" } });
+      assert.equal((await attempt()).status, 200);
+      await assert.rejects(prisma.user.create({ data: { username: first.username, email: "another@example.test", passwordHash: hash, role: "ADMIN", firstName: "Other", lastName: "User" } }), { code: "P2002" });
+      await assert.rejects(prisma.user.update({ where: { id: first.id }, data: { username: "UPPERCASE" } }));
       await prisma.user.update({ where: { id: first.id }, data: { isActive: false } });
       assert.equal((await attempt()).status, 401);
     });
@@ -293,13 +290,20 @@ test("authentication and account management enforce browser and database permiss
       assert.equal(denied.headers.get("access-control-allow-origin"), null);
     });
     await context.test("Cashier cannot list or mutate user accounts; Admin creates and edits without audit writes", async () => {
-      const input = { email: "new@example.test", password: "new-account-password", firstName: "New", lastName: "Account", role: "CASHIER" };
+      const input = { username: "new", email: "new@example.test", password: "new-account-password", firstName: "New", lastName: "Account", role: "CASHIER" };
       assert.equal((await request("/users", "GET", undefined, cashierCookie)).status, 403);
       assert.equal((await request("/users", "POST", input, cashierCookie)).status, 403);
       const created = await request("/users", "POST", input, adminCookie);
       assert.equal(created.status, 201);
       newId = (await created.json()).user.id;
       assert.equal((await request("/users", "POST", input, adminCookie)).status, 409);
+      const duplicate = await request("/users", "POST", { ...input, email: "different@example.test", username: " NEW " }, adminCookie);
+      assert.equal(duplicate.status, 409);
+      assert.equal((await duplicate.json()).error.code, "USERNAME_IN_USE");
+      assert.equal((await request(`/users/${newId}`, "PATCH", { username: " ADMIN " }, adminCookie)).status, 409);
+      assert.equal((await request(`/users/${newId}`, "PATCH", { username: "new-login", email: "another-mail@example.test" }, adminCookie)).status, 200);
+      assert.equal((await request("/auth/login", "POST", { username: "new", password: input.password })).status, 401);
+      assert.equal((await request("/auth/login", "POST", { username: "NEW-LOGIN", password: input.password })).status, 200);
       assert.equal((await request(`/users/${newId}`, "PATCH", { role: "ADMIN" }, cashierCookie)).status, 403);
       assert.equal((await request(`/users/${newId}`, "PATCH", { role: "STYLIST" }, adminCookie)).status, 400);
       assert.equal((await request(`/users/${newId}`, "PATCH", { firstName: "Updated", password: "replacement-password" }, adminCookie)).status, 200);
@@ -310,7 +314,7 @@ test("authentication and account management enforce browser and database permiss
     });
     await context.test("stale JWT role and deactivated accounts cannot retain access", async () => {
       assert.equal((await request(`/users/${newId}`, "PATCH", { role: "ADMIN" }, adminCookie)).status, 200);
-      const response = await login("new@example.test", "replacement-password");
+      const response = await login("new-login@example.test", "replacement-password");
       const oldAdminCookie = response.headers.get("set-cookie")!.split(";")[0]!;
       assert.equal((await request("/users", "GET", undefined, oldAdminCookie)).status, 200);
       await request(`/users/${newId}`, "PATCH", { role: "CASHIER" }, adminCookie);
@@ -319,7 +323,7 @@ test("authentication and account management enforce browser and database permiss
       assert.equal((await me.json()).user.role, "CASHIER");
       await request(`/users/${newId}`, "PATCH", { isActive: false }, adminCookie);
       assert.equal((await request("/auth/me", "GET", undefined, oldAdminCookie)).status, 401);
-      assert.equal((await login("new@example.test", "replacement-password")).status, 401);
+      assert.equal((await login("new-login@example.test", "replacement-password")).status, 401);
       await request(`/users/${newId}`, "PATCH", { firstName: "Still inactive" }, adminCookie);
       assert.equal((await prisma.user.findUniqueOrThrow({ where: { id: newId } })).isActive, false);
     });

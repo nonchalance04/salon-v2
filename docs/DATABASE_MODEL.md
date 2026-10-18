@@ -9,7 +9,7 @@ password recovery increments it to invalidate previously issued staff JWTs.
 `identityKey` and `ipKey`, nullable UUID `userId` referencing User with restricted
 deletion, `codeHash`, integer `attempts` (0–5), and timestamptz(3) `createdAt`,
 `expiresAt`, nullable `consumedAt`. Index `(identityKey, createdAt)`,
-`(ipKey, createdAt)` and `expiresAt`. Unknown, inactive and ambiguous usernames
+`(ipKey, createdAt)` and `expiresAt`. Unknown and inactive usernames
 create challenges with no User reference. Never store raw codes, IPs or emails.
 Requests prune rows expired for over a day; no transactional history is removed.
 
@@ -165,6 +165,10 @@ Only ADMIN and CASHIER are required for the MVP.
   - UUID
   - Primary key
 
+- `username`
+  - String
+  - Required, unique, lowercase; independent of email
+
 - `email`
   - String
   - Required
@@ -235,7 +239,7 @@ Customer does not require a User account.
 
 - `phone`
   - String
-  - Required
+  - Nullable
 
 - `email`
   - String
@@ -249,7 +253,8 @@ Customer does not require a User account.
 
 ## Rules
 
-Phone and email are not globally unique.
+Phone and email are not globally unique. New bookings require at least one valid
+contact method before payment. Historical customer rows are preserved.
 
 Customer records referenced by appointments must not be hard-deleted.
 
@@ -2353,3 +2358,8 @@ Business decision
 ## Customer arrival tracking
 
 Appointment has nullable `checkedInAt` (TIMESTAMPTZ(3)) and `checkedInByUserId` (UUID referencing User with restricted deletion). A database check requires both fields to be set together or both null. The named AppointmentCheckedInBy relation is independent of the completion actor. Existing appointments receive null arrival fields; historical arrival is not inferred from service completion.
+
+
+## Independent staff usernames — 2026-10-19
+
+`User.username` is required text with a unique index and a check enforcing lowercase, 1–254 characters, and no whitespace or @. Migration backfills lowercase email local parts without changing account IDs or history. Duplicate legacy names stop the migration for operator resolution; no account is silently renamed.

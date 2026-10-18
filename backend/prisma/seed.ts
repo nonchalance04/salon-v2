@@ -1,6 +1,7 @@
 import "dotenv/config";
 
 import bcrypt from "bcrypt";
+import { username } from "../src/modules/auth/auth.schema.js";
 import { createDatabasePool } from "../src/database/pool.js";
 import { PrismaPg } from "@prisma/adapter-pg";
 
@@ -333,6 +334,9 @@ async function main() {
 
   console.log("Starting Clique Salon development seed...");
 
+  const adminUsername = username.parse(requireEnv("SEED_ADMIN_USERNAME"));
+  const cashierUsername = username.parse(requireEnv("SEED_CASHIER_USERNAME"));
+  if (adminUsername === cashierUsername) throw new Error("Seed usernames must be distinct.");
   const adminEmail = requireEnv("SEED_ADMIN_EMAIL").toLowerCase();
   const adminPassword = requireEnv("SEED_ADMIN_PASSWORD");
 
@@ -390,6 +394,7 @@ async function main() {
         id: ADMIN_ID,
       },
       update: {
+        username: adminUsername,
         email: adminEmail,
         passwordHash: adminPasswordHash,
         role: UserRole.ADMIN,
@@ -399,6 +404,7 @@ async function main() {
       },
       create: {
         id: ADMIN_ID,
+        username: adminUsername,
         email: adminEmail,
         passwordHash: adminPasswordHash,
         role: UserRole.ADMIN,
@@ -413,6 +419,7 @@ async function main() {
         id: CASHIER_ID,
       },
       update: {
+        username: cashierUsername,
         email: cashierEmail,
         passwordHash: cashierPasswordHash,
         role: UserRole.CASHIER,
@@ -422,6 +429,7 @@ async function main() {
       },
       create: {
         id: CASHIER_ID,
+        username: cashierUsername,
         email: cashierEmail,
         passwordHash: cashierPasswordHash,
         role: UserRole.CASHIER,

@@ -10,6 +10,9 @@ const decisionSchema = z.object({
 }).strict();
 const instructions = `You are the salon's consultation assistant. Follow the attached salon guidelines within these application boundaries:
 - Current public salon data is authoritative. Example services/prices in the guidelines are NOT salon facts.
+- Answer the latest question directly, in the customer's language. Be warm and concise: usually 2–4 short sentences. Avoid repetitive greetings, jargon and generic sales pitches.
+- Use information already given in the conversation. Ask at most one focused follow-up at a time, only when the answer would change the recommendation. If there is enough context, explain the best fit now; do not force a questionnaire. If options are alternatives, say so rather than implying the customer needs all of them.
+- For a specific service question or comparison, use services intent and include the matching catalog IDs in recommendations so the application can display only the requested services. For a full menu, leave recommendations empty. Never substitute another service for one the salon does not list.
 - Use the customer's conversation to understand their concern. Ask a relevant follow-up question when needed; do not recommend by keyword matching alone.
 - Recommend only IDs from the supplied bookableServices. Explain each recommendation using the customer's concern and the actual service description. Do not promise treatment outcomes or give medical diagnoses; refer symptoms, allergies and suitability concerns to qualified staff/health professionals.
 - Return structured JSON. Put service IDs and explanations in recommendations. The application renders actual names, descriptions, prices, durations and booking links. Do not quote prices or durations in answer or reason.
@@ -47,8 +50,7 @@ export function createGeminiChatbotService(source, config, deps = {}) {
     let inFlight = 0;
     async function fallback(message) {
         onFallback();
-        return { ...await guided.answer(message), recommendations: [],
-            notice: "AI consultation is temporarily unavailable. Here is our salon guide." };
+        return { ...await guided.answer(message), recommendations: [] };
     }
     return { async answer(message, history = []) {
             if (inFlight >= 4)
@@ -99,9 +101,10 @@ export function createGeminiChatbotService(source, config, deps = {}) {
                         price: service.price.toFixed(2), durationMinutes: service.durationMinutes, reason: item.reason,
                         href: `/booking?service=${encodeURIComponent(service.id)}` };
                 }).filter((item, index, all) => all.findIndex(other => other.id === item.id) === index);
-                const topics = { services: "services", salon: "hours", policy: "policy", booking: "booking",
-                    availability: "availability", manage: "booking", cancel: "cancel", reschedule: "reschedule" };
-                const baseline = await guided.answer(decision.intent === "consultation" ? "help" : topics[decision.intent]);
+                const baseline = await guided.answer(message, history, {
+                    topic: decision.intent === "consultation" ? "help" : decision.intent === "salon" ? "salon" : decision.intent === "manage" ? "booking" : decision.intent,
+                    serviceIds: decision.intent === "services" ? recommendations.map(s => s.id) : undefined,
+                });
                 const handoff = decision.intent !== "consultation";
                 return { ...baseline, mode: "gemini", topic: decision.intent,
                     answer: decision.intent === "manage"

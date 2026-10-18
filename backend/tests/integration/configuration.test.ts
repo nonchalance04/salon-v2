@@ -37,7 +37,7 @@ let cashierId = "";
 let created = false;
 before(async () => {
   await adminPool.query(`CREATE DATABASE "${dbName}"`); created = true;
-  const env = { ...process.env, NODE_ENV: "test", DATABASE_URL: url.toString(), SEED_ADMIN_EMAIL: "admin@example.test", SEED_ADMIN_PASSWORD: "phase3-admin-password", SEED_CASHIER_EMAIL: "cashier@example.test", SEED_CASHIER_PASSWORD: "phase3-cashier-password" };
+  const env = { ...process.env, NODE_ENV: "test", DATABASE_URL: url.toString(), SEED_ADMIN_USERNAME: "admin", SEED_ADMIN_EMAIL: "admin@example.test", SEED_ADMIN_PASSWORD: "phase3-admin-password", SEED_CASHIER_USERNAME: "cashier", SEED_CASHIER_EMAIL: "cashier@example.test", SEED_CASHIER_PASSWORD: "phase3-cashier-password" };
   await run(process.execPath, ["node_modules/prisma/build/index.js", "migrate", "deploy", "--config", "prisma7.config.ts"], { env });
   await run(process.execPath, ["--import", "tsx", "prisma/seed.ts"], { env });
   adminId = (await prisma.user.findUniqueOrThrow({ where: { email: env.SEED_ADMIN_EMAIL } })).id;

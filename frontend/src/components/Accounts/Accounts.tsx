@@ -43,6 +43,7 @@ export function Accounts() {
     const body = {
       firstName: String(data.get("firstName")),
       lastName: String(data.get("lastName")),
+      username: String(data.get("username")).trim().toLowerCase(),
       email: String(data.get("email")).trim().toLowerCase(),
       role: String(data.get("role")),
       isActive: data.get("isActive") === "on",
@@ -126,6 +127,13 @@ export function Accounts() {
               />
             </label>
             <label>
+              Username
+              <Input name="username" required maxLength={254} pattern="[^@\s]+"
+                autoCapitalize="none" autoCorrect="off" spellCheck={false}
+                defaultValue={selected?.username} />
+              <small>Used to sign in. No spaces or @.</small>
+            </label>
+            <label>
               Email address
               <Input
                 name="email"
@@ -195,6 +203,7 @@ export function Accounts() {
             <thead>
               <tr>
                 <th>Name</th>
+                <th>Username</th>
                 <th>Email</th>
                 <th>Role</th>
                 <th>Status</th>
@@ -214,6 +223,7 @@ export function Accounts() {
                       <small className="you">You</small>
                     )}
                   </td>
+                  <td>{account.username}</td>
                   <td>{account.email}</td>
                   <td>{account.role === "ADMIN" ? "Admin" : "Cashier"}</td>
                   <td>

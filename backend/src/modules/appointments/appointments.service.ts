@@ -4,7 +4,7 @@ import { lockSalon, lockStaff, freshTime } from "../scheduling/coordination.js";
 import { loadAvailabilityData } from "../availability/availability.data.js";
 import { localDay, planAt } from "../availability/availability.engine.js";
 import { createGuestCredentials, validGuestAccess } from "./appointments.security.js";
-import type { BookingInput } from "./appointments.schema.js";
+import { bookingSchema, type BookingInput } from "./appointments.schema.js";
 
 export class RestartReservation extends Error {}
 const busy = () => new ApiError(409, "BOOKING_BUSY", "The salon schedule is changing. Please try again.");
@@ -61,6 +61,7 @@ export function guestView(row: Prisma.AppointmentGetPayload<{ select: typeof gue
 export function createAppointmentsService(prisma: PrismaClient, timeZone: string) {
   return {
     async book(input: BookingInput) {
+      input = bookingSchema.parse(input);
       const day = localDay(input.date, timeZone);
       const start = new Date(input.startAt);
       if (start < day.start || start >= day.end) throw new ApiError(400, "INVALID_DATE", "The starting time must fall on the selected salon-local date.");

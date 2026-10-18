@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import type { PrismaClient } from "../../../generated/prisma/client.js";
 import { accountFields } from "../auth/auth.schema.js";
 
-export const bootstrapAdminSchema = accountFields.pick({ email: true, password: true, firstName: true, lastName: true });
+export const bootstrapAdminSchema = accountFields.pick({ username: true, email: true, password: true, firstName: true, lastName: true });
 
 // Local operator command only; never exposed as an HTTP route.
 export async function bootstrapAdmin(prisma: PrismaClient, input: unknown) {

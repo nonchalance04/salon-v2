@@ -38,7 +38,7 @@ let cashierId = "";
 let created = false;
 before(async () => {
   await adminPool.query(`CREATE DATABASE "${dbName}"`); created = true;
-  const env = { ...process.env, NODE_ENV: "test", DATABASE_URL: url.toString(), SEED_ADMIN_EMAIL: "admin@example.test", SEED_ADMIN_PASSWORD: "phase5-admin-password", SEED_CASHIER_EMAIL: "cashier@example.test", SEED_CASHIER_PASSWORD: "phase5-cashier-password" };
+  const env = { ...process.env, NODE_ENV: "test", DATABASE_URL: url.toString(), SEED_ADMIN_USERNAME: "admin", SEED_ADMIN_EMAIL: "admin@example.test", SEED_ADMIN_PASSWORD: "phase5-admin-password", SEED_CASHIER_USERNAME: "cashier", SEED_CASHIER_EMAIL: "cashier@example.test", SEED_CASHIER_PASSWORD: "phase5-cashier-password" };
   await run(process.execPath, ["node_modules/prisma/build/index.js", "migrate", "deploy", "--config", "prisma7.config.ts"], { env });
   await run(process.execPath, ["--import", "tsx", "prisma/seed.ts"], { env });
   adminId = (await prisma.user.findUniqueOrThrow({ where: { email: env.SEED_ADMIN_EMAIL } })).id;
@@ -389,7 +389,7 @@ test("reschedule ignores only its own interval, preserves snapshots, and writes 
   assert.equal(history.snapshotSchemaVersion, 1);
   assert.ok(JSON.stringify(history.beforeSnapshot).includes('"commissionRateSnapshot":"0.4000"'));
   assert.ok(!JSON.stringify(history).includes(f.booked.guestToken));
-  assert.equal(await prisma.notificationQueue.count({ where: { appointmentId: f.appointment.id, eventType: "BOOKING_RESCHEDULED" } }), 1);
+  assert.equal(await prisma.notificationQueue.count({ where: { appointmentId: f.appointment.id, eventType: "BOOKING_RESCHEDULED" } }), 2);
   await assert.rejects(changes.change({ ...f.change, services: [...f.change.services, { serviceId: f.item.id, assignmentMode: "ANY_AVAILABLE" }] }));
   await assert.rejects(changes.change({ ...f.change, token: "a".repeat(43) }));
 });
@@ -423,7 +423,7 @@ test("cancellation is authorized, releases time, preserves payments and records 
   await changes.cancel(f.appointment.bookingCode, f.booked.guestToken);
   await changes.cancel(f.appointment.bookingCode, f.booked.guestToken);
   assert.equal(await prisma.appointmentService.count({ where: { appointmentId: f.appointment.id } }), 1);
-  assert.equal(await prisma.notificationQueue.count({ where: { appointmentId: f.appointment.id, eventType: "BOOKING_CANCELLED" } }), 1);
+  assert.equal(await prisma.notificationQueue.count({ where: { appointmentId: f.appointment.id, eventType: "BOOKING_CANCELLED" } }), 2);
   await bookings.book(f.input);
 });
 async function missedFixture(credit: boolean) {
@@ -451,7 +451,7 @@ test("no-show recovery consumes one original fee atomically, retains policy/hist
   assert.equal(await prisma.payment.count({ where: { appointmentId: original.id } }), 1);
   const history = await prisma.appointmentRescheduleHistory.findFirstOrThrow({ where: { appointmentId: original.id } });
   assert.ok(JSON.stringify(history.afterSnapshot).includes(replacement.id));
-  assert.equal(await prisma.notificationQueue.count({ where: { appointmentId: replacement.id, eventType: "BOOKING_CONFIRMED" } }), 1);
+  assert.equal(await prisma.notificationQueue.count({ where: { appointmentId: replacement.id, eventType: "BOOKING_CONFIRMED" } }), 2);
 });
 test("recovery without eligible credit creates a normal payment hold and grace/count cannot be bypassed", async () => {
   const f = await missedFixture(false);

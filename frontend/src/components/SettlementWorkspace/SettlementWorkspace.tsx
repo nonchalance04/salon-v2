@@ -212,31 +212,33 @@ export function SettlementWorkspace({
               })
             }
           />
-          <details className="outcomes-lookup">
-            <summary>Find another booking by code</summary>
-            <form
-              className="account-form"
-              onSubmit={(event) => {
-                event.preventDefault();
-                const code = String(
-                  new FormData(event.currentTarget).get("code"),
-                ).trim();
-                void act(async () => {
-                  setRow(null);
-                  await lookup(code);
-                  key.current = createPaymentKey();
-                });
-              }}
-            >
-              <label>
-                Booking code
-                <Input name="code" required maxLength={100} />
-              </label>
-              <Button variant="outline" disabled={busy}>
-                Find appointment
-              </Button>
-            </form>
-          </details>
+          {!admin && (
+            <details className="outcomes-lookup">
+              <summary>Find another booking by code</summary>
+              <form
+                className="account-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const code = String(
+                    new FormData(event.currentTarget).get("code"),
+                  ).trim();
+                  void act(async () => {
+                    setRow(null);
+                    await lookup(code);
+                    key.current = createPaymentKey();
+                  });
+                }}
+              >
+                <label>
+                  Booking code
+                  <Input name="code" required maxLength={100} />
+                </label>
+                <Button variant="outline" disabled={busy}>
+                  Find appointment
+                </Button>
+              </form>
+            </details>
+          )}
         </>
       )}
       {error && (

@@ -685,3 +685,18 @@ calls fall back to the configured return origin with the same canonical path.
 The existing session restoration, payment verification and confirmed-only rendering
 remain authoritative. Existing PayMongo sessions keep their original URLs; create
 a fresh booking/session to verify the change.
+
+## 2026-10-19 — Notify every supplied customer contact
+
+At the user's request, queue notifications independently for email and SMS when
+both contacts are supplied, or for the sole supplied contact. This supersedes
+the earlier email-otherwise-SMS selection. Phone is nullable for email-only
+customers. Booking validation and hosted checkout reject missing contacts before
+payment starts. Existing email combining, SMS policies, provider retry behavior
+and historical notification rows are preserved. Full-policy SMS reminders also
+apply to customers who supplied both contacts.
+
+
+## Independent staff usernames — 2026-10-19
+
+Store independent canonical usernames on User rather than deriving login identity from email. Preserve existing login names during backfill and stop on ambiguous legacy names. Keep email for recovery. Require explicit usernames for seed/bootstrap and account creation; allow Admin editing through Accounts.

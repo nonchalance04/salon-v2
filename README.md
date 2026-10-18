@@ -673,3 +673,16 @@ with Gmail credentials and the shared `APPOINTMENT_OTP_SECRET`. These settings a
 independent of routine notification providers. The API sends OTP directly; no
 notification worker is needed for verification. See
 [setup instructions](docs/EMAIL_SMS_SETUP.md#12-let-customers-verify-appointment-access-by-email-or-sms).
+
+
+### Independent staff usernames
+
+Before starting the updated backend, run `npm run db:migrate` and
+`npm run db:generate` from `backend/`. Existing usernames are preserved from email
+local parts. If migration reports duplicate legacy usernames, resolve the listed
+email local-part conflicts before retrying (then mark the failed migration rolled
+back with `prisma migrate resolve --rolled-back 20261019100000_independent_staff_usernames --config prisma7.config.ts`).
+Existing password reset codes must be requested again after this update.
+No database reset or reseeding is needed. In Accounts, edit Username and Email
+independently; email changes do not change login. Fresh development seeds require
+`SEED_ADMIN_USERNAME` and `SEED_CASHIER_USERNAME` alongside existing credentials.

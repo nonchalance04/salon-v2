@@ -1,3 +1,4 @@
+import { notificationRecipients } from "../notifications/notification-recipients.js";
 import { createHash, randomUUID } from "node:crypto";
 import { Prisma, type PrismaClient } from "../../../generated/prisma/client.js";
 import { ApiError } from "../../shared/http.js";
@@ -127,7 +128,9 @@ async function complete(tx: Tx, row: Row, actor: { id: string; role: "ADMIN" | "
   await tx.appointment.update({ where: { id: row.id }, data: { status: "COMPLETED", completionType, completedAt: now, completedByUserId: actor.id } });
 
   for (const eventType of paymentId ? ["PAYMENT_RECEIVED", "APPOINTMENT_COMPLETED"] as const : ["APPOINTMENT_COMPLETED"] as const) {
-    await tx.notificationQueue.create({ data: { appointmentId: row.id, customerId: row.customerId, eventType, channel: row.customer.email ? "EMAIL" : "SMS", recipient: row.customer.email ?? row.customer.phone,
-      status: "PENDING", scheduledAt: now, payload: { schemaVersion: 1, bookingCode: row.bookingCode, appointmentStatus: "COMPLETED", completionType, ...(paymentId ? { paymentId } : {}) } } });
+    for (const contact of notificationRecipients(row.customer)) {
+      await tx.notificationQueue.create({ data: { appointmentId: row.id, customerId: row.customerId, eventType, ...contact,
+        status: "PENDING", scheduledAt: now, payload: { schemaVersion: 1, bookingCode: row.bookingCode, appointmentStatus: "COMPLETED", completionType, ...(paymentId ? { paymentId } : {}) } } });
+    }
   }
 }

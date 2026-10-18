@@ -16,6 +16,7 @@ export const envSchema = z.object({
     NOTIFICATION_EMAIL_PROVIDER: z.enum(["disabled", "test", "gmail"]).default("disabled"),
     NOTIFICATION_SMS_PROVIDER: z.enum(["disabled", "test", "philsms", "textbee"]).default("disabled"),
     APPOINTMENT_EMAIL_OTP_PROVIDER: z.enum(["disabled", "gmail"]).default("disabled"),
+    PASSWORD_RESET_EMAIL_PROVIDER: z.enum(["disabled", "gmail"]).default("disabled"),
     APPOINTMENT_OTP_PROVIDER: z.enum(["disabled", "textbee"]).default("disabled"),
     TEXTBEE_API_KEY: z.preprocess(v => v === "" ? undefined : v, z.string().trim().min(1).regex(/^\S+$/).optional()),
     TEXTBEE_DEVICE_ID: z.preprocess(v => v === "" ? undefined : v, z.string().regex(/^[a-fA-F0-9]{24}$/).optional()),
@@ -83,13 +84,13 @@ export const envSchema = z.object({
     if ((value.APPOINTMENT_OTP_PROVIDER === "textbee" || value.APPOINTMENT_EMAIL_OTP_PROVIDER === "gmail") && !value.APPOINTMENT_OTP_SECRET) {
         context.addIssue({ code: "custom", path: ["APPOINTMENT_OTP_SECRET"], message: "A separate OTP secret is required." });
     }
-    if ((value.NOTIFICATION_EMAIL_PROVIDER === "gmail" || value.APPOINTMENT_EMAIL_OTP_PROVIDER === "gmail") && value.GMAIL_USER && value.NOTIFICATION_EMAIL_FROM &&
+    if ((value.NOTIFICATION_EMAIL_PROVIDER === "gmail" || value.APPOINTMENT_EMAIL_OTP_PROVIDER === "gmail" || value.PASSWORD_RESET_EMAIL_PROVIDER === "gmail") && value.GMAIL_USER && value.NOTIFICATION_EMAIL_FROM &&
         value.GMAIL_USER.toLowerCase() !== value.NOTIFICATION_EMAIL_FROM.toLowerCase()) {
         context.addIssue({ code: "custom", path: ["NOTIFICATION_EMAIL_FROM"], message: "Gmail sender must match GMAIL_USER." });
     }
     const notificationFields = [
         ...(value.NOTIFICATION_SMS_PROVIDER === "textbee" || value.APPOINTMENT_OTP_PROVIDER === "textbee" ? ["TEXTBEE_API_KEY", "TEXTBEE_DEVICE_ID"] : []),
-        ...(value.NOTIFICATION_EMAIL_PROVIDER === "gmail" || value.APPOINTMENT_EMAIL_OTP_PROVIDER === "gmail" ? ["GMAIL_USER", "GMAIL_APP_PASSWORD", "NOTIFICATION_EMAIL_FROM"] : []),
+        ...(value.NOTIFICATION_EMAIL_PROVIDER === "gmail" || value.APPOINTMENT_EMAIL_OTP_PROVIDER === "gmail" || value.PASSWORD_RESET_EMAIL_PROVIDER === "gmail" ? ["GMAIL_USER", "GMAIL_APP_PASSWORD", "NOTIFICATION_EMAIL_FROM"] : []),
         ...(value.NOTIFICATION_SMS_PROVIDER === "philsms" ? ["PHILSMS_API_TOKEN", "PHILSMS_SENDER_ID"] : []),
     ];
     for (const field of notificationFields) {

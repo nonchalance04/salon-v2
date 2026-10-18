@@ -31,7 +31,7 @@ let created = false;
 before(async () => {
   await admin.query(`CREATE DATABASE "${dbName}"`); created = true;
   await run(process.execPath, ["node_modules/prisma/build/index.js", "migrate", "deploy", "--config", "prisma7.config.ts"], { env: { ...process.env, DATABASE_URL: url.toString() } });
-  await run(process.execPath, ["--import", "tsx", "prisma/seed.ts"], { env: { ...process.env, NODE_ENV: "test", DATABASE_URL: url.toString(), SEED_ADMIN_EMAIL: "otp-admin@example.test", SEED_ADMIN_PASSWORD: "otp-admin-fixture-password", SEED_CASHIER_EMAIL: "otp-cashier@example.test", SEED_CASHIER_PASSWORD: "otp-cashier-fixture-password" } });
+  await run(process.execPath, ["--import", "tsx", "prisma/seed.ts"], { env: { ...process.env, NODE_ENV: "test", DATABASE_URL: url.toString(), SEED_ADMIN_USERNAME: "otp-admin", SEED_ADMIN_EMAIL: "otp-admin@example.test", SEED_ADMIN_PASSWORD: "otp-admin-fixture-password", SEED_CASHIER_USERNAME: "otp-cashier", SEED_CASHIER_EMAIL: "otp-cashier@example.test", SEED_CASHIER_PASSWORD: "otp-cashier-fixture-password" } });
 });
 beforeEach(async () => {
   sent.length = 0;

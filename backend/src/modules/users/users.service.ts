@@ -37,6 +37,16 @@ export function createUsersService(prisma: PrismaClient) {
         });
       } catch (error) {
         if (typeof error === "object" && error && "code" in error && error.code === "P2002") {
+          // Prisma's PostgreSQL adapter may report the index instead of field names.
+          const meta = "meta" in error ? error.meta as {
+            target?: string | string[];
+            driverAdapterError?: { cause?: { constraint?: { fields?: string[]; index?: string } } };
+          } | undefined : undefined;
+          const constraint = meta?.driverAdapterError?.cause?.constraint;
+          const target = meta?.target ?? constraint?.fields ?? constraint?.index;
+          if ((Array.isArray(target) && target.includes("username")) || target === "User_username_key") {
+            throw new ApiError(409, "USERNAME_IN_USE", "An account already uses this username.");
+          }
           throw new ApiError(409, "EMAIL_IN_USE", "An account already uses this email.");
         }
         throw error;

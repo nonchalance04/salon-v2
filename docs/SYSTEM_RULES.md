@@ -4,7 +4,7 @@
 
 Admin and Cashier may recover a forgotten password using their username and a
 six-digit code sent to their registered account email. Recovery applies only to
-one uniquely matching active account; unknown/inactive/ambiguous usernames receive
+one uniquely matching active account; unknown/inactive usernames receive
 the same public response. Codes expire after ten minutes and are consumed after
 use or five unsuccessful checks. Resending invalidates the earlier code.
 
@@ -1256,6 +1256,12 @@ Historical Payment, Receipt, AppointmentService, and CommissionRecord data must 
 
 # 34. Notification Rules
 
+Customers must provide at least one valid contact method: email or phone.
+Both fields are optional individually; a booking cannot proceed to payment without either.
+Notifications are queued independently for every supplied channel, including both
+email and SMS when both contacts are present. Existing channel-specific combining,
+reminder, suppression and retry policies continue to apply.
+
 Notification processing must not determine whether the primary booking or settlement transaction succeeds.
 
 Correct flow:
@@ -1496,3 +1502,8 @@ unchanged. This does not enable new staff manual or service-settlement methods.
 ## Admin payment processing (updated 2026-10-18)
 
 Admins may collect service payments through Payments or the service settlement workspace. Admin and Cashier payments use the same settlement prerequisites, full-amount validation, idempotency, receipt issuance, commission finalization, and audit attribution. No-service closure remains Admin-only.
+
+
+## Independent staff usernames — 2026-10-19
+
+Admin and Cashier accounts have an independent, unique username for login and password recovery. Usernames are trimmed and lowercased, contain 1–254 characters, and cannot contain whitespace or @. Email remains a separate required recovery destination. Changing email does not change username. Admins manage both fields in Accounts. Duplicate usernames are rejected, including inactive accounts. Recovery codes are invalidated by a username change.

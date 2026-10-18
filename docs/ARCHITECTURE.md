@@ -6,7 +6,7 @@ The shared Admin/Cashier login exposes username-based email-code recovery throug
 `POST /api/auth/forgot-password` and `POST /api/auth/reset-password`. Controllers
 validate requests and enforce browser origin checks; `PasswordResetService` owns
 durable request limits, challenge issuance/consumption, Gmail delivery and atomic
-password updates. Codes are HMAC-bound to the current account email/password and
+password updates. Codes are HMAC-bound to the current account username/email/password and
 never returned to the browser. Reset increments `User.sessionVersion`; staff
 authentication compares the JWT version with the current database value to revoke
 earlier sessions. Gmail recovery is enabled separately from appointment emails.
@@ -1477,3 +1477,8 @@ TRUSTED_ORIGINS match and builds /booking-confirmed on that origin, preserving t
 host-only guest-session cookie when several development/staging origins are in use.
 Missing request origin in internal calls falls back to PAYMONGO_RETURN_URL's origin.
 Neither browser JSON nor forwarding headers select a return destination.
+
+
+## Independent staff usernames — 2026-10-19
+
+AuthService and PasswordResetService query the canonical `User.username` directly. Account schemas validate independent username/email fields; UsersService handles uniqueness conflicts. Recovery HMACs bind to the current username, email and password. The Accounts UI edits both fields. Development seeding requires SEED_ADMIN_USERNAME and SEED_CASHIER_USERNAME; production bootstrap requires BOOTSTRAP_ADMIN_USERNAME.

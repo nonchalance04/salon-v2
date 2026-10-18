@@ -23,7 +23,7 @@ const admin = new Pool({ connectionString: adminUrl });
 const pool = createDatabasePool(url.toString());
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 const run = promisify(execFile);
-const fixtureEnv = { ...process.env, NODE_ENV: 'test', DATABASE_URL: url.toString(), SEED_ADMIN_EMAIL: 'admin@example.test', SEED_ADMIN_PASSWORD: 'release-test-password', SEED_CASHIER_EMAIL: 'cashier@example.test', SEED_CASHIER_PASSWORD: 'release-test-password' };
+const fixtureEnv = { ...process.env, NODE_ENV: 'test', DATABASE_URL: url.toString(), SEED_ADMIN_USERNAME: "admin", SEED_ADMIN_EMAIL: 'admin@example.test', SEED_ADMIN_PASSWORD: 'release-test-password', SEED_CASHIER_USERNAME: "cashier", SEED_CASHIER_EMAIL: 'cashier@example.test', SEED_CASHIER_PASSWORD: 'release-test-password' };
 let created = false;
 before(async () => {
   await admin.query(`CREATE DATABASE "${name}"`); created = true;
@@ -39,14 +39,14 @@ after(async () => {
 });
 
 test('first Admin bootstrap validates inputs, serializes concurrent runs and refuses existing users', async () => {
-  const input = { email: ' FIRST@example.test ', password: 'release-bootstrap-password', firstName: 'First', lastName: 'Admin' };
+  const input = { username: ' OWNER ', email: ' FIRST@example.test ', password: 'release-bootstrap-password', firstName: 'First', lastName: 'Admin' };
   await assert.rejects(bootstrapAdmin(prisma, { ...input, password: 'short' }));
   assert.equal(await prisma.user.count(), 0);
   const attempts = await Promise.allSettled([bootstrapAdmin(prisma, input), bootstrapAdmin(prisma, input)]);
   assert.equal(attempts.filter(r => r.status === 'fulfilled').length, 1);
   assert.equal(await prisma.user.count(), 1);
   const first = await prisma.user.findFirstOrThrow();
-  assert.equal(first.email, 'first@example.test'); assert.equal(first.role, 'ADMIN');
+  assert.equal(first.username, 'owner'); assert.equal(first.email, 'first@example.test'); assert.equal(first.role, 'ADMIN');
   assert.ok(await bcrypt.compare(input.password, first.passwordHash));
   assert.equal(await prisma.auditLog.count(), 0);
   await assert.rejects(bootstrapAdmin(prisma, { ...input, email: 'second@example.test' }));

@@ -4,6 +4,7 @@ import { lockSalon, lockStaff, freshTime } from "../scheduling/coordination.js";
 import { loadAvailabilityData } from "../availability/availability.data.js";
 import { localDay, planAt } from "../availability/availability.engine.js";
 import { createGuestCredentials, validGuestAccess } from "./appointments.security.js";
+import { bookingSchema } from "./appointments.schema.js";
 export class RestartReservation extends Error {
 }
 const busy = () => new ApiError(409, "BOOKING_BUSY", "The salon schedule is changing. Please try again.");
@@ -66,6 +67,7 @@ export function guestView(row, now, timeZone) {
 export function createAppointmentsService(prisma, timeZone) {
     return {
         async book(input) {
+            input = bookingSchema.parse(input);
             const day = localDay(input.date, timeZone);
             const start = new Date(input.startAt);
             if (start < day.start || start >= day.end)
@@ -104,9 +106,6 @@ export function createAppointmentsService(prisma, timeZone) {
                                     scheduledStartAt: new Date(part.startAt), scheduledEndAt: new Date(part.endAt), reservedUntilAt: new Date(part.reservedUntilAt) };
                             }) },
                     } });
-                await tx.auditLog.create({ data: { actorType: "CUSTOMER", actorCustomerId: appointment.customerId,
-                        action: "BOOKING_CREATED", entityType: "Appointment", entityId: appointment.id,
-                        afterData: { status: appointment.status, bookingPolicyVersionId: policy.id, holdExpiresAt: holdExpiresAt.toISOString() } } });
                 // No approved outbox event represents an unpaid hold or its expiration.
                 // BOOKING_CONFIRMED and PAYMENT_RECEIVED belong to Phase 6's transaction.
                 const row = await tx.appointment.findUniqueOrThrow({ where: { id: appointment.id }, select: guestSelect });
@@ -157,8 +156,6 @@ export function createAppointmentsService(prisma, timeZone) {
                     if (row.status !== "PENDING_PAYMENT" || !row.holdExpiresAt || row.holdExpiresAt >= now)
                         return 0;
                     await tx.appointment.update({ where: { id: row.id }, data: { status: "EXPIRED" } });
-                    await tx.auditLog.create({ data: { actorType: "SYSTEM", action: "BOOKING_HOLD_EXPIRED", entityType: "Appointment", entityId: row.id,
-                            beforeData: { status: "PENDING_PAYMENT" }, afterData: { status: "EXPIRED" } } });
                     return 1;
                 });
             }

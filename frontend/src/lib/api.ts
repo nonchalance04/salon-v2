@@ -1,5 +1,5 @@
 export type User = {
-  id: string; email: string; firstName: string; lastName: string;
+  id: string; username: string; email: string; firstName: string; lastName: string;
   role: "ADMIN" | "CASHIER"; isActive: boolean; lastLoginAt: string | null;
 };
 export class ApiError extends Error {

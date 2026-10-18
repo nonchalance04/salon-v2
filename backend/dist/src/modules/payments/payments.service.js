@@ -1,3 +1,4 @@
+import { notificationRecipients } from "../notifications/notification-recipients.js";
 import { randomUUID } from "node:crypto";
 import { Prisma, } from "../../../generated/prisma/client.js";
 import { ApiError } from "../../shared/http.js";
@@ -155,8 +156,6 @@ async function issueAutomaticReceipt(tx, payment, timeZone) {
     if (existing)
         return existing;
     const receipt = await issueReceipt(tx, payment, null, timeZone);
-    await tx.auditLog.create({ data: { actorType: "SYSTEM", action: "RECEIPT_ISSUED", entityType: "Receipt", entityId: receipt.id,
-            afterData: { paymentId: payment.id, issuance: "VERIFIED_PROVIDER_PAYMENT" } } });
     return receipt;
 }
 async function reservationsOwned(tx, row, now, timeZone) {
@@ -283,36 +282,7 @@ async function settle(tx, row, payment, event, actorId, timeZone = "Asia/Manila"
             where: { id: row.id },
             data: { status: "EXPIRED" },
         });
-        await tx.auditLog.create({
-            data: {
-                actorType: "SYSTEM",
-                action: "BOOKING_HOLD_EXPIRED",
-                entityType: "Appointment",
-                entityId: row.id,
-                beforeData: { status: "PENDING_PAYMENT" },
-                afterData: { status: "EXPIRED" },
-            },
-        });
     }
-    const actor = actorId
-        ? await tx.user.findUniqueOrThrow({ where: { id: actorId } })
-        : null;
-    await tx.auditLog.create({
-        data: {
-            actorType: actor?.role ?? "SYSTEM",
-            actorUserId: actorId,
-            action: `APPOINTMENT_FEE_${event.status}`,
-            entityType: "Payment",
-            entityId: payment.id,
-            afterData: {
-                status: updated.status,
-                amount: updated.amount.toFixed(2),
-                currency: updated.currency,
-                satisfiesObligation: confirm,
-                reconciliationReason: reason,
-            },
-        },
-    });
     if (event.status === "SUCCEEDED") {
         if (updated.provider === "paymongo")
             await issueAutomaticReceipt(tx, updated, timeZone);
@@ -322,50 +292,40 @@ async function settle(tx, row, payment, event, actorId, timeZone = "Asia/Manila"
             ? ["PAYMENT_RECEIVED", "BOOKING_CONFIRMED"]
             : ["PAYMENT_RECEIVED"];
         for (const eventType of eventTypes) {
-            const combineEmail = confirm && !!row.customer.email;
-            const skipPaymentEmail = combineEmail && eventType === "PAYMENT_RECEIVED";
-            await tx.notificationQueue.create({
-                data: {
-                    appointmentId: row.id,
-                    customerId: row.customerId,
-                    eventType,
-                    channel: row.customer.email ? "EMAIL" : "SMS",
-                    recipient: row.customer.email ?? row.customer.phone,
-                    status: skipPaymentEmail ? "SKIPPED" : "PENDING",
-                    lastError: skipPaymentEmail
-                        ? "EMAIL_COMBINED_WITH_CONFIRMATION"
-                        : null,
-                    scheduledAt: decisionTime,
-                    payload: {
-                        appointmentFeePaid: combineEmail && eventType === "BOOKING_CONFIRMED",
-                        schemaVersion: 1,
-                        bookingCode: row.bookingCode,
-                        paymentId: payment.id,
-                        amount: updated.amount.toFixed(2),
-                        currency: updated.currency,
-                        startAt: row.startAt.toISOString(),
-                        appointmentStatus: confirm
-                            ? "CONFIRMED"
-                            : row.status === "PENDING_PAYMENT" &&
-                                row.holdExpiresAt < decisionTime
-                                ? "EXPIRED"
-                                : row.status,
-                        reconciliationRequired: !confirm,
+            for (const contact of notificationRecipients(row.customer)) {
+                const combineEmail = confirm && contact.channel === "EMAIL";
+                const skipPaymentEmail = combineEmail && eventType === "PAYMENT_RECEIVED";
+                await tx.notificationQueue.create({
+                    data: {
+                        appointmentId: row.id,
+                        customerId: row.customerId,
+                        eventType,
+                        ...contact,
+                        status: skipPaymentEmail ? "SKIPPED" : "PENDING",
+                        lastError: skipPaymentEmail
+                            ? "EMAIL_COMBINED_WITH_CONFIRMATION"
+                            : null,
+                        scheduledAt: decisionTime,
+                        payload: {
+                            appointmentFeePaid: combineEmail && eventType === "BOOKING_CONFIRMED",
+                            schemaVersion: 1,
+                            bookingCode: row.bookingCode,
+                            paymentId: payment.id,
+                            amount: updated.amount.toFixed(2),
+                            currency: updated.currency,
+                            startAt: row.startAt.toISOString(),
+                            appointmentStatus: confirm
+                                ? "CONFIRMED"
+                                : row.status === "PENDING_PAYMENT" &&
+                                    row.holdExpiresAt < decisionTime
+                                    ? "EXPIRED"
+                                    : row.status,
+                            reconciliationRequired: !confirm,
+                        },
                     },
-                },
-            });
+                });
+            }
         }
-        if (confirm)
-            await tx.auditLog.create({
-                data: {
-                    actorType: "SYSTEM",
-                    action: "BOOKING_CONFIRMED",
-                    entityType: "Appointment",
-                    entityId: row.id,
-                    beforeData: { status: "PENDING_PAYMENT" },
-                    afterData: { status: "CONFIRMED", paymentId: payment.id },
-                },
-            });
     }
     const result = await view(tx, payment.id);
     // A late wait on inserts/foreign keys must not commit a stale confirmation.
@@ -439,12 +399,14 @@ export function createPaymentsService(prisma, provider, timeZone = "Asia/Manila"
                 return session.token;
             });
         },
-        async checkout(bookingCode, token, key) {
+        async checkout(bookingCode, token, key, returnOrigin) {
             if (!provider)
                 throw new ApiError(503, "ONLINE_PAYMENT_UNAVAILABLE", "Online payment is not configured. Contact the salon for payment assistance.");
             const pending = await transaction(prisma, async (tx) => {
                 const appointment = await guest(tx, bookingCode, token);
                 const row = await lockAppointment(tx, appointment.id);
+                if (!notificationRecipients(row.customer).length)
+                    throw new ApiError(400, "CUSTOMER_CONTACT_REQUIRED", "Enter an email address or phone number before proceeding to payment.");
                 const keyed = await tx.payment.findUnique({
                     where: { idempotencyKey: `checkout:${key}` },
                 });
@@ -485,7 +447,8 @@ export function createPaymentsService(prisma, provider, timeZone = "Asia/Manila"
                         appointmentId: row.id,
                         type: "APPOINTMENT_FEE",
                         provider: provider.name,
-                        method: provider.name === "test" ? "OTHER" : "GCASH",
+                        // The customer chooses the method on hosted checkout.
+                        method: "OTHER",
                         status: "PENDING",
                         amount: row.appointmentFeeAmount,
                         currency: "PHP",
@@ -493,21 +456,6 @@ export function createPaymentsService(prisma, provider, timeZone = "Asia/Manila"
                         ...(provider.name === "paymongo"
                             ? { metadata: { checkoutState: "REQUESTED" } }
                             : {}),
-                    },
-                });
-                await tx.auditLog.create({
-                    data: {
-                        actorType: "CUSTOMER",
-                        actorCustomerId: row.customerId,
-                        action: "PAYMENT_ATTEMPT_CREATED",
-                        entityType: "Payment",
-                        entityId: payment.id,
-                        afterData: {
-                            provider: provider.name,
-                            status: "PENDING",
-                            amount: payment.amount.toFixed(2),
-                            currency: "PHP",
-                        },
                     },
                 });
                 return { payment, appointment: row, create: true };
@@ -534,7 +482,7 @@ export function createPaymentsService(prisma, provider, timeZone = "Asia/Manila"
                     testMode: false,
                 };
             }
-            const checkout = await provider.createPayment(requestFor(pending.payment, pending.appointment));
+            const checkout = await provider.createPayment({ ...requestFor(pending.payment, pending.appointment), ...(returnOrigin ? { returnOrigin } : {}) });
             const result = await transaction(prisma, async (tx) => {
                 const appointment = await lockAppointment(tx, pending.appointment.id);
                 const row = await lockPayment(tx, pending.payment.id);
@@ -748,22 +696,12 @@ export function createPaymentsService(prisma, provider, timeZone = "Asia/Manila"
         async issueReceipt(actorId, paymentId) {
             return transaction(prisma, async (tx) => {
                 const payment = await lockPayment(tx, paymentId);
-                const actor = await authorize(tx, actorId);
+                await authorize(tx, actorId);
                 if (payment.type !== "APPOINTMENT_FEE")
                     throw new ApiError(400, "INVALID_PAYMENT_TYPE", "Only appointment-fee receipts are available here.");
                 const existing = await tx.receipt.findUnique({ where: { paymentId } });
                 if (!existing) {
-                    const receipt = await issueReceipt(tx, payment, actorId, timeZone);
-                    await tx.auditLog.create({
-                        data: {
-                            actorType: actor.role,
-                            actorUserId: actorId,
-                            action: "RECEIPT_ISSUED",
-                            entityType: "Receipt",
-                            entityId: receipt.id,
-                            afterData: { paymentId },
-                        },
-                    });
+                    await issueReceipt(tx, payment, actorId, timeZone);
                 }
                 return view(tx, paymentId);
             });
@@ -831,9 +769,18 @@ export function createPaymentsService(prisma, provider, timeZone = "Asia/Manila"
                     payment.externalReference !== event.reference &&
                     event.status === "SUCCEEDED")
                     throw conflict();
+                const capturedMethod = event.providerMethod === "qrph" ? "QRPH" : "GCASH";
+                if (event.status === "SUCCEEDED") {
+                    if (!event.providerMethod)
+                        throw conflict();
+                    // Never rewrite the method of a historical settled transaction.
+                    if ((payment.status === "SUCCEEDED" || payment.status === "REFUNDED") && payment.method !== capturedMethod)
+                        throw conflict();
+                }
                 payment = await tx.payment.update({
                     where: { id: payment.id },
                     data: {
+                        ...(event.status === "SUCCEEDED" ? { method: capturedMethod } : {}),
                         metadata: {
                             ...details,
                             checkoutState: "CREATED",
@@ -845,31 +792,12 @@ export function createPaymentsService(prisma, provider, timeZone = "Asia/Manila"
                             : {}),
                     },
                 });
-                if (actorId)
-                    await tx.auditLog.create({
-                        data: {
-                            actorType: "ADMIN",
-                            actorUserId: actorId,
-                            action: "PAYMONGO_CHECKOUT_RECOVERED",
-                            entityType: "Payment",
-                            entityId: payment.id,
-                            afterData: { checkoutReference: event.checkoutReference },
-                        },
-                    });
                 if (event.status !== "SUCCEEDED") {
                     // A session is not a captured transaction. Keep externalReference for pay_ identity.
                     if (event.status === "EXPIRED" && payment.status === "PENDING") {
                         await tx.payment.update({
                             where: { id: payment.id },
                             data: { status: "EXPIRED" },
-                        });
-                        await tx.auditLog.create({
-                            data: {
-                                actorType: "SYSTEM",
-                                action: "PAYMENT_ATTEMPT_EXPIRED",
-                                entityType: "Payment",
-                                entityId: payment.id,
-                            },
                         });
                     }
                     return view(tx, payment.id);

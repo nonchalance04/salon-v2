@@ -1,3 +1,4 @@
+import { notificationRecipients } from "../notifications/notification-recipients.js";
 import { createHash, randomUUID } from "node:crypto";
 import { Prisma } from "../../../generated/prisma/client.js";
 import { ApiError } from "../../shared/http.js";
@@ -55,9 +56,6 @@ async function view(tx, row, admin) {
         ...(admin ? { commissions: row.commissionRecords.map(c => ({ appointmentServiceId: c.appointmentServiceId, staffId: c.staffId,
                 serviceAmount: c.serviceAmount.toFixed(2), allocatedAppointmentFee: c.allocatedAppointmentFee.toFixed(2), commissionBase: c.commissionBase.toFixed(2), commissionRate: c.commissionRate.toFixed(4), commissionAmount: c.commissionAmount.toFixed(2) })) } : {}) };
 }
-async function audit(tx, row, actor, action, afterData, beforeData) {
-    await tx.auditLog.create({ data: { actorType: actor.role, actorUserId: actor.id, action, entityType: "Appointment", entityId: row.id, afterData, ...(beforeData ? { beforeData } : {}) } });
-}
 export function createSettlementService(prisma) {
     const transact = (work) => reservationTransaction(prisma, work).catch(error => {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")
@@ -83,7 +81,6 @@ export function createSettlementService(prisma) {
                         throw fail("INVALID_SERVICE_CHARGE", "Performed services must have a positive historical price.");
                     await tx.appointmentService.update({ where: { id: s.id }, data: { outcome, actualChargedAmount: outcome === "PERFORMED" ? s.priceSnapshot : "0.00" } });
                 }
-                await audit(tx, row, actor, "SERVICE_OUTCOMES_RECORDED", { services: input.services }, { services: row.appointmentServices.map(s => ({ id: s.id, outcome: s.outcome })) });
                 return view(tx, await tx.appointment.findUniqueOrThrow({ where: { id: row.id }, include }), actor.role === "ADMIN");
             });
         },
@@ -93,14 +90,14 @@ export function createSettlementService(prisma) {
             const reference = input.externalReference ?? `SALON-SERVICE-${input.idempotencyKey}`;
             return transact(async (tx) => {
                 const row = await locked(tx, input.bookingCode);
-                const actor = await authorize(tx, actorId, "CASHIER");
+                const actor = await authorize(tx, actorId);
                 const key = `settlement:${input.idempotencyKey}`;
                 const matches = await tx.payment.findMany({ where: { OR: [{ idempotencyKey: key }, { provider: "manual", externalReference: reference }] } });
                 if (matches.length) {
                     const p = matches[0];
                     if (matches.length !== 1 || p.appointmentId !== row.id || p.type !== "SERVICE_PAYMENT" || p.status !== "SUCCEEDED" || p.method !== input.method || p.currency !== input.currency || !p.amount.equals(input.amount) || p.externalReference !== reference || row.completionType !== "SERVICE_SETTLEMENT")
                         throw fail("PAYMENT_IDENTITY_CONFLICT", "This payment identity is associated with different details.");
-                    return view(tx, row, false);
+                    return view(tx, row, actor.role === "ADMIN");
                 }
                 editable(row, input.revision);
                 if (row.appointmentServices.some(s => s.outcome === "SCHEDULED"))
@@ -115,16 +112,14 @@ export function createSettlementService(prisma) {
                 const payment = await tx.payment.create({ data: { appointmentId: row.id, type: "SERVICE_PAYMENT", method: input.method, provider: "manual", status: "SUCCEEDED", amount,
                         currency: "PHP", idempotencyKey: key, externalReference: reference, satisfiesObligation: true, recordedByUserId: actor.id, paidAt: now } });
                 const salon = await tx.salonProfile.findFirst();
-                const receipt = await tx.receipt.create({ data: { paymentId: payment.id, receiptNumber: `R-${randomUUID()}`, issuedByUserId: actor.id,
+                await tx.receipt.create({ data: { paymentId: payment.id, receiptNumber: `R-${randomUUID()}`, issuedByUserId: actor.id,
                         receiptSnapshot: { schemaVersion: 1, bookingCode: row.bookingCode, paymentId: payment.id, type: "SERVICE_PAYMENT", amount: amount.toFixed(2), currency: "PHP", method: input.method,
                             externalReference: reference, paidAt: now.toISOString(), customerName: `${row.customer.firstName} ${row.customer.lastName}`,
                             salon: salon ? { name: salon.name, address: salon.address, phone: salon.phone } : null,
                             services: performed.map(s => ({ name: s.serviceNameSnapshot, amount: s.actualChargedAmount.toFixed(2) })) } } });
                 await tx.commissionRecord.createMany({ data: commissions.map(c => ({ ...c, appointmentId: row.id, sourcePaymentId: payment.id, finalizedByUserId: actor.id, finalizedAt: now })) });
-                await audit(tx, row, actor, "SERVICE_PAYMENT_SETTLED", { paymentId: payment.id, amount: amount.toFixed(2), receiptId: receipt.id });
-                await audit(tx, row, actor, "COMMISSIONS_FINALIZED", { paymentId: payment.id, eligibleAppointmentFee: fee.toFixed(2), services: commissions.map(c => ({ id: c.appointmentServiceId, allocation: c.allocatedAppointmentFee.toFixed(2), commission: c.commissionAmount.toFixed(2) })) });
                 await complete(tx, row, actor, "SERVICE_SETTLEMENT", now, payment.id);
-                return view(tx, await tx.appointment.findUniqueOrThrow({ where: { id: row.id }, include }), false);
+                return view(tx, await tx.appointment.findUniqueOrThrow({ where: { id: row.id }, include }), actor.role === "ADMIN");
             });
         },
         async close(actorId, raw) {
@@ -146,10 +141,11 @@ export function createSettlementService(prisma) {
 async function complete(tx, row, actor, completionType, now, paymentId) {
     await tx.appointmentService.updateMany({ where: { appointmentId: row.id, membershipStatus: "ACTIVE" }, data: { outcomeFinalizedAt: now, outcomeFinalizedByUserId: actor.id } });
     await tx.appointment.update({ where: { id: row.id }, data: { status: "COMPLETED", completionType, completedAt: now, completedByUserId: actor.id } });
-    await audit(tx, row, actor, completionType, { status: "COMPLETED", completionType }, { status: row.status });
     for (const eventType of paymentId ? ["PAYMENT_RECEIVED", "APPOINTMENT_COMPLETED"] : ["APPOINTMENT_COMPLETED"]) {
-        await tx.notificationQueue.create({ data: { appointmentId: row.id, customerId: row.customerId, eventType, channel: row.customer.email ? "EMAIL" : "SMS", recipient: row.customer.email ?? row.customer.phone,
-                status: "PENDING", scheduledAt: now, payload: { schemaVersion: 1, bookingCode: row.bookingCode, appointmentStatus: "COMPLETED", completionType, ...(paymentId ? { paymentId } : {}) } } });
+        for (const contact of notificationRecipients(row.customer)) {
+            await tx.notificationQueue.create({ data: { appointmentId: row.id, customerId: row.customerId, eventType, ...contact,
+                    status: "PENDING", scheduledAt: now, payload: { schemaVersion: 1, bookingCode: row.bookingCode, appointmentStatus: "COMPLETED", completionType, ...(paymentId ? { paymentId } : {}) } } });
+        }
     }
 }
 //# sourceMappingURL=settlement.service.js.map

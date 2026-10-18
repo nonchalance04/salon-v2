@@ -5,16 +5,6 @@ import { ApiError } from "../../shared/http.js";
 import { reportPeriod } from "./reports.schema.js";
 const amount = (n) => (n ?? new Prisma.Decimal(0)).toFixed(2);
 const booking = { select: { bookingCode: true } };
-// Audits may contain legacy snapshots. Never expose credentials or provider metadata.
-export function safeAudit(value) {
-    if (Array.isArray(value))
-        return value.map(safeAudit);
-    if (value && typeof value === "object")
-        return Object.fromEntries(Object.entries(value)
-            .filter(([key]) => !/password|token|secret|authorization|cookie|metadata/i.test(key))
-            .map(([key, item]) => [key, safeAudit(item)]));
-    return value;
-}
 // Match a booking code or every word in the customer's name, in any order.
 function customerSearch(search) {
     if (!search)
@@ -63,7 +53,7 @@ export function createReportsService(prisma, timeZone) {
                             successfulUnapplied: amount(sum(rows.filter(r => r.status === "SUCCEEDED" && !r.satisfiesObligation))),
                             reconciliationRequired: amount(sum(rows.filter(r => r.status === "SUCCEEDED" && r.reconciliationStatus === "REQUIRED"))) };
                     }),
-                    methodTotals: currencies.flatMap(currency => ["CASH", "GCASH", "OTHER"].map(method => {
+                    methodTotals: currencies.flatMap(currency => ["CASH", "GCASH", "OTHER", "QRPH"].map(method => {
                         const captured = captures.filter(r => r.currency === currency && r.method === method).reduce((n, r) => n.plus(r._sum.amount ?? 0), new Prisma.Decimal(0));
                         const refunded = refunds.filter(r => r.currency === currency && r.method === method).reduce((n, r) => n.plus(r._sum.amount ?? 0), new Prisma.Decimal(0));
                         return { currency, method, captured: amount(captured), refunded: amount(refunded), netCashMovement: amount(captured.minus(refunded)) };
@@ -230,16 +220,6 @@ export function createReportsService(prisma, timeZone) {
                                 id: true, appointment: booking, staffId: true, sourcePaymentId: true, appointmentService: { select: { serviceNameSnapshot: true } },
                                 serviceAmount: true, allocatedAppointmentFee: true, commissionBase: true, commissionRate: true, commissionAmount: true, finalizedAt: true,
                             } });
-                        break;
-                    }
-                    case "audit": {
-                        const where = { createdAt: period };
-                        dateBasis = "Audit event recorded";
-                        total = await tx.auditLog.count({ where });
-                        const events = await tx.auditLog.findMany({ where, ...paging, orderBy: [{ createdAt: "desc" }, { id: "desc" }], select: {
-                                id: true, action: true, actorType: true, actorUserId: true, actorCustomerId: true, entityType: true, entityId: true, createdAt: true, beforeData: true, afterData: true,
-                            } });
-                        rows = events.map(r => ({ ...r, beforeData: safeAudit(r.beforeData), afterData: safeAudit(r.afterData) }));
                         break;
                     }
                 }

@@ -3,7 +3,7 @@ import type { PrismaClient } from "../../../generated/prisma/client.js";
 import { ApiError } from "../../shared/http.js";
 
 export const publicUserSelect = {
-  id: true, email: true, firstName: true, lastName: true, role: true,
+  id: true, username: true, email: true, firstName: true, lastName: true, role: true,
   isActive: true, lastLoginAt: true, createdAt: true,
 } as const;
 
@@ -11,23 +11,15 @@ export function createAuthService(prisma: PrismaClient) {
   let dummyHash: Promise<string> | undefined;
   return {
     async login(username: string, password: string) {
-      // Existing accounts use the email local part as their workspace username.
-      // Escape LIKE metacharacters so usernames containing '_' or '%' stay literal.
       const normalized = username.trim().toLowerCase();
-      const prefix = normalized.replace(/[\\%_]/g, "\\$&");
-      const candidates = await prisma.user.findMany({
-        where: { email: { startsWith: `${prefix}@`, mode: "insensitive" } },
-        take: 2,
-      });
-      // Never choose an account by password when two email domains share a username.
-      const user = candidates.length === 1 ? candidates[0] : undefined;
+      const user = await prisma.user.findUnique({ where: { username: normalized } });
       const matches = await bcrypt.compare(password, user?.passwordHash ?? await (dummyHash ??= bcrypt.hash("unused-login-comparison-value", 12)));
       if (!user || !matches || !user.isActive) {
         throw new ApiError(401, "INVALID_CREDENTIALS", "Username or password is incorrect.");
       }
       // Recheck active status and password after hashing work, before issuing a token.
       const result = await prisma.user.updateMany({
-        where: { id: user.id, email: user.email, isActive: true, passwordHash: user.passwordHash },
+        where: { id: user.id, username: normalized, isActive: true, passwordHash: user.passwordHash },
         data: { lastLoginAt: new Date() },
       });
       if (result.count !== 1) throw new ApiError(401, "INVALID_CREDENTIALS", "Username or password is incorrect.");

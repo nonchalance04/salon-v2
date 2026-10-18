@@ -29,3 +29,13 @@ test("guest access preserves historical references and validates short reference
     assert.ok(!guestAccessSchema.safeParse({ bookingCode, token }).success);
   }
 });
+
+test("booking requires at least one valid contact and accepts either or both", () => {
+  const input = { date: "2026-10-10", startAt: "2026-10-10T09:00:00+08:00", services: [{ serviceId: "11111111-1111-4111-8111-111111111111", assignmentMode: "ANY_AVAILABLE" }] };
+  for (const contacts of [{ email: "guest@example.test" }, { phone: "+639171234567" }, { email: "guest@example.test", phone: "+639171234567" }]) {
+    assert.ok(bookingSchema.safeParse({ ...input, customer: { firstName: "Guest", lastName: "Name", ...contacts } }).success);
+  }
+  for (const contacts of [{}, { email: "", phone: " " }, { email: "bad" }, { phone: "bad" }, { email: "guest@example.test", phone: "bad" }]) {
+    assert.equal(bookingSchema.safeParse({ ...input, customer: { firstName: "Guest", lastName: "Name", ...contacts } }).success, false);
+  }
+});

@@ -37,7 +37,7 @@ let cashierId = "";
 let created = false;
 before(async () => {
   await adminPool.query(`CREATE DATABASE "${dbName}"`); created = true;
-  const env = { ...process.env, NODE_ENV: "test", DATABASE_URL: url.toString(), SEED_ADMIN_EMAIL: "admin@example.test", SEED_ADMIN_PASSWORD: "phase6-admin-password", SEED_CASHIER_EMAIL: "cashier@example.test", SEED_CASHIER_PASSWORD: "phase6-cashier-password" };
+  const env = { ...process.env, NODE_ENV: "test", DATABASE_URL: url.toString(), SEED_ADMIN_USERNAME: "admin", SEED_ADMIN_EMAIL: "admin@example.test", SEED_ADMIN_PASSWORD: "phase6-admin-password", SEED_CASHIER_USERNAME: "cashier", SEED_CASHIER_EMAIL: "cashier@example.test", SEED_CASHIER_PASSWORD: "phase6-cashier-password" };
   await run(process.execPath, ["node_modules/prisma/build/index.js", "migrate", "deploy", "--config", "prisma7.config.ts"], { env });
   await run(process.execPath, ["--import", "tsx", "prisma/seed.ts"], { env });
   adminId = (await prisma.user.findUniqueOrThrow({ where: { email: env.SEED_ADMIN_EMAIL } })).id;
@@ -135,7 +135,7 @@ test("manual capture atomically confirms once, issues receipts and queues notifi
   assert.equal(results[0].satisfiesObligation, true); assert.ok(results[0].receipt);
   assert.equal(await prisma.payment.count({ where: { appointmentId: f.row.id } }), 1);
   assert.equal(await prisma.receipt.count({ where: { paymentId: results[0].id } }), 1);
-  assert.equal(await prisma.notificationQueue.count({ where: { appointmentId: f.row.id } }), 2);
+  assert.equal(await prisma.notificationQueue.count({ where: { appointmentId: f.row.id } }), 4);
   assert.equal(await prisma.auditLog.count({ where: { entityId: f.row.id, action: "BOOKING_CONFIRMED" } }), 0);
   assert.equal(await prisma.commissionRecord.count({ where: { appointmentId: f.row.id } }), 0);
   assert.equal((await bookings.retrieve(f.row.bookingCode, f.guestToken)).appointment.payments[0]!.receipt!.receiptNumber, results[0].receipt!.receiptNumber);
@@ -148,8 +148,8 @@ test("distinct captures are preserved for reconciliation without a second confir
   const result = await Promise.all([payments.manual(adminId, manual(f.row.bookingCode)), payments.manual(cashierId, manual(f.row.bookingCode))]);
   assert.equal(result.filter(p => p.satisfiesObligation).length, 1);
   assert.equal(result.filter(p => p.reconciliationStatus === "REQUIRED").length, 1);
-  assert.equal(await prisma.notificationQueue.count({ where: { appointmentId: f.row.id, eventType: "BOOKING_CONFIRMED" } }), 1);
-  assert.equal(await prisma.notificationQueue.count({ where: { appointmentId: f.row.id, eventType: "PAYMENT_RECEIVED" } }), 2);
+  assert.equal(await prisma.notificationQueue.count({ where: { appointmentId: f.row.id, eventType: "BOOKING_CONFIRMED" } }), 2);
+  assert.equal(await prisma.notificationQueue.count({ where: { appointmentId: f.row.id, eventType: "PAYMENT_RECEIVED" } }), 4);
   assert.equal((await prisma.payment.aggregate({ where: { appointmentId: f.row.id, status: "SUCCEEDED" }, _sum: { amount: true } }))._sum.amount?.toFixed(2), "200.00");
 });
 
@@ -184,7 +184,7 @@ test("checkout retries reuse their key; signed success and retries issue one con
   assert.equal(receipts[0].receipt!.receiptNumber, receipts[1].receipt!.receiptNumber);
   await sendEvent(id, { status: "FAILED", paidAt: null });
   assert.equal((await prisma.payment.findUniqueOrThrow({ where: { id } })).status, "SUCCEEDED");
-  assert.equal(await prisma.notificationQueue.count({ where: { appointmentId: f.row.id } }), 2);
+  assert.equal(await prisma.notificationQueue.count({ where: { appointmentId: f.row.id } }), 4);
 });
 
 test("forged, mismatched and unowned payment events cannot confirm or write money", async () => {
@@ -421,7 +421,7 @@ test("PayMongo checkout is claimed once across processes/keys; capture identity 
   assert.equal((await gateway.service.issueReceipt(adminId, first.payment.id)).receipt!.receiptNumber, receipt.receiptNumber);
   const persisted = await prisma.payment.findUniqueOrThrow({ where: { id: first.payment.id } });
   assert.equal(persisted.externalReference, `pay_${gateway.reference.slice(3)}`); assert.equal(persisted.method, "GCASH");
-  assert.equal(await prisma.notificationQueue.count({ where: { appointmentId: f.row.id } }), 2);
+  assert.equal(await prisma.notificationQueue.count({ where: { appointmentId: f.row.id } }), 4);
   await assert.rejects(gateway.service.refresh(f.row.bookingCode, "x".repeat(43), first.payment.id));
 });
 test("customer receipt generation requires appointment access and an already verified PayMongo capture", async () => {
@@ -509,7 +509,7 @@ test("PayMongo HTTP webhook uses Paymongo-Signature without browser cookies and 
     assert.equal(await prisma.receipt.count({ where: { paymentId: checkout.payment.id } }), 1);
     assert.equal((await prisma.receipt.findUniqueOrThrow({ where: { paymentId: checkout.payment.id } })).issuedByUserId, null);
     assert.equal(await prisma.auditLog.count({ where: { entityId: f.row.id, action: "BOOKING_CONFIRMED", actorType: "SYSTEM" } }), 0);
-    assert.equal(await prisma.notificationQueue.count({ where: { appointmentId: f.row.id } }), 2);
+    assert.equal(await prisma.notificationQueue.count({ where: { appointmentId: f.row.id } }), 4);
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
 });
 
@@ -570,4 +570,39 @@ test("HTTP QR Ph checkout keeps the return session and confirmation URL on the c
     const persisted = await prisma.appointment.findUniqueOrThrow({ where: { id: f.row.id } });
     assert.equal(persisted.status, "CONFIRMED");
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
+});
+
+import { createNotificationsService } from "../../src/modules/notifications/notifications.service.js";
+import { createTestNotificationProvider, type NotificationMessage } from "../../src/modules/notifications/notification-provider.js";
+
+test("checkout and paid confirmation support email only, SMS only, and both independently", async () => {
+  for (const contacts of [
+    { email: "only@example.test", phone: null },
+    { email: null, phone: "+639171234567" },
+    { email: "both@example.test", phone: "+639171234567" },
+  ]) {
+    const f = await bookingFixture();
+    const booking = await bookings.book({ ...f.input, customer: { firstName: "Guest", lastName: "Contact", ...(contacts.email ? { email: contacts.email } : {}), ...(contacts.phone ? { phone: contacts.phone } : {}) } });
+    const row = await prisma.appointment.findUniqueOrThrow({ where: { bookingCode: booking.appointment.bookingCode }, include: { customer: true } });
+    assert.equal(row.customer.phone, contacts.phone);
+    const checkout = await payments.checkout(row.bookingCode, booking.guestToken, randomUUID());
+    await sendEvent(checkout.payment.id);
+    await sendEvent(checkout.payment.id);
+    const confirmations = await prisma.notificationQueue.findMany({ where: { appointmentId: row.id, eventType: "BOOKING_CONFIRMED" } });
+    assert.deepEqual(confirmations.map(q => q.channel).sort(), [...(contacts.email ? ["EMAIL"] : []), ...(contacts.phone ? ["SMS"] : [])]);
+    const sent: NotificationMessage[] = [];
+    const capture = createTestNotificationProvider(message => { if (confirmations.some(q => q.id === message.id)) sent.push(message); });
+    const worker = createNotificationsService(prisma, { providers: { EMAIL: capture, SMS: capture }, timeZone: "Asia/Manila", smsPolicy: "single", leaseMs: 1000, timeoutMs: 500, maxAttempts: 3, retryBaseMs: 1000, reminderHours: 0 });
+    while (await worker.processNext()) { /* drain using test providers only */ }
+    assert.deepEqual(sent.map(q => q.channel).sort(), confirmations.map(q => q.channel).sort());
+    assert.deepEqual(sent.map(q => q.recipient).sort(), [contacts.email, contacts.phone].filter(Boolean).sort());
+  }
+});
+
+test("checkout rejects customers without contacts before creating a payment or calling the provider", async () => {
+  const f = await heldBooking();
+  await prisma.customer.update({ where: { id: f.row.customerId }, data: { email: null, phone: null } });
+  const guarded = createPaymentsService(prisma, { name: provider.name, async createPayment() { assert.fail("provider must not be called"); }, verifyPayment: provider.verifyPayment.bind(provider), getPaymentStatus: provider.getPaymentStatus.bind(provider) });
+  await assert.rejects(guarded.checkout(f.row.bookingCode, f.guestToken, randomUUID()), { code: "CUSTOMER_CONTACT_REQUIRED" });
+  assert.equal(await prisma.payment.count({ where: { appointmentId: f.row.id } }), 0);
 });

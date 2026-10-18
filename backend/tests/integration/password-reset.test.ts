@@ -23,7 +23,7 @@ const codeFor = (id: string) => messages.get(id)!.text.match(/code is (\d{6})/)!
 const newPassword = "replacement-password-123";
 async function account(role: "ADMIN" | "CASHIER" = "CASHIER") {
   const username = `reset-${randomUUID()}`;
-  const user = await prisma.user.create({ data: { email: `${username}@example.test`, firstName: "Reset", lastName: "Test", role, passwordHash: await bcrypt.hash("original-password", 4) } });
+  const user = await prisma.user.create({ data: { username, email: `mail-${randomUUID()}@example.test`, firstName: "Reset", lastName: "Test", role, passwordHash: await bcrypt.hash("original-password", 4) } });
   return { ...user, username };
 }
 async function issue(username: string, ip = randomUUID()) {
@@ -47,8 +47,8 @@ const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 let created = false;
 const fixtureEnv = {
   ...process.env, DATABASE_URL: testUrl.toString(), NODE_ENV: "test",
-  SEED_ADMIN_EMAIL: "admin@example.test", SEED_ADMIN_PASSWORD: "test-admin-password",
-  SEED_CASHIER_EMAIL: "cashier@example.test", SEED_CASHIER_PASSWORD: "test-cashier-password",
+  SEED_ADMIN_USERNAME: "admin", SEED_ADMIN_EMAIL: "admin@example.test", SEED_ADMIN_PASSWORD: "test-admin-password",
+  SEED_CASHIER_USERNAME: "cashier", SEED_CASHIER_EMAIL: "cashier@example.test", SEED_CASHIER_PASSWORD: "test-cashier-password",
 };
 
 async function cli(args: string[], env = fixtureEnv) {
@@ -128,11 +128,12 @@ test("both workspace roles recover through HTTP and existing sessions are revoke
 });
 
 test("codes expire, lock after five failures, and cannot reset changed or inactive accounts", async () => {
-  for (const scenario of ["expired", "attempts", "deactivated", "password-change", "email-change"] as const) {
+  for (const scenario of ["expired", "attempts", "deactivated", "password-change", "email-change", "username-change"] as const) {
     const user = await account(); const challenge = await issue(user.username);
     if (scenario === "expired") await prisma.passwordResetChallenge.update({ where: { id: challenge.id }, data: { expiresAt: new Date(0) } });
     if (scenario === "deactivated") await prisma.user.update({ where: { id: user.id }, data: { isActive: false } });
     if (scenario === "password-change") await prisma.user.update({ where: { id: user.id }, data: { passwordHash: await bcrypt.hash("admin-replaced-password", 4) } });
+    if (scenario === "username-change") await prisma.user.update({ where: { id: user.id }, data: { username: `renamed-${randomUUID()}` } });
     if (scenario === "email-change") await prisma.user.update({ where: { id: user.id }, data: { email: `${randomUUID()}@example.test` } });
     if (scenario === "attempts") {
       const wrong = challenge.code === "000000" ? "111111" : "000000";
@@ -154,12 +155,10 @@ test("resends replace earlier codes, concurrency permits only one reset, and coo
   assert.equal((await prisma.user.findUniqueOrThrow({ where: { id: user.id } })).sessionVersion, 1);
 });
 
-test("unknown, inactive and ambiguous usernames receive no codes; provider failures invalidate codes", async () => {
+test("unknown and inactive usernames receive no codes; provider failures invalidate codes", async () => {
   const inactive = await account();
   await prisma.user.update({ where: { id: inactive.id }, data: { isActive: false } });
-  const duplicate = await account();
-  await prisma.user.create({ data: { email: `${duplicate.username}@other.test`, passwordHash: duplicate.passwordHash, role: "ADMIN", firstName: "Other", lastName: "Account" } });
-  for (const name of ["missing-account", inactive.username, duplicate.username]) {
+  for (const name of ["missing-account", inactive.username]) {
     const result = await recovery().request(name, randomUUID());
     assert.equal(result.delivery, null);
   }

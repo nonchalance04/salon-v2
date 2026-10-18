@@ -27,16 +27,14 @@ export function createPasswordResetService(prisma: PrismaClient, secret: string,
         const byName = await tx.passwordResetChallenge.count({ where: { identityKey, createdAt: { gt: since } } });
         const recent = await tx.passwordResetChallenge.findFirst({ where: { identityKey, createdAt: { gt: new Date(+now - 60_000) } } });
         if (byIp >= 10 || byName >= 3 || recent) return null;
-        const prefix = normalized.replace(/[\\%_]/g, "\\$&");
-        const candidates = await tx.user.findMany({ where: { email: { startsWith: `${prefix}@`, mode: "insensitive" } }, take: 2 });
-        const candidate = candidates.length === 1 ? candidates[0] : undefined;
+        const candidate = await tx.user.findUnique({ where: { username: normalized } });
         if (candidate) await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${candidate.id}::uuid FOR UPDATE`;
         const current = candidate ? await tx.user.findUnique({ where: { id: candidate.id } }) : null;
-        const user = current?.isActive && current.email === candidate?.email ? current : null;
+        const user = current?.isActive && current.email === candidate?.email && current.username === normalized ? current : null;
         await tx.passwordResetChallenge.updateMany({ where: { identityKey, consumedAt: null }, data: { consumedAt: now } });
         await tx.passwordResetChallenge.create({ data: {
           id, identityKey, ipKey, userId: user?.id,
-          codeHash: digest(id, code, user?.passwordHash ?? "", user?.email ?? ""),
+          codeHash: digest(id, code, user?.passwordHash ?? "", user?.email ?? "", user?.username ?? ""),
           expiresAt: new Date(+now + 10 * 60_000),
         } });
         // Bound ephemeral storage; these rows contain no transactional history.
@@ -78,7 +76,7 @@ export function createPasswordResetService(prisma: PrismaClient, secret: string,
         const now = new Date();
         if (!challenge || challenge.consumedAt || challenge.expiresAt <= now || challenge.attempts >= 5) return null;
         const user = challenge.userId ? await tx.user.findUnique({ where: { id: challenge.userId } }) : null;
-        const actual = Buffer.from(digest(challengeId, code, user?.passwordHash ?? "", user?.email ?? ""), "hex");
+        const actual = Buffer.from(digest(challengeId, code, user?.passwordHash ?? "", user?.email ?? "", user?.username ?? ""), "hex");
         const expected = Buffer.from(challenge.codeHash, "hex");
         const valid = expected.length === actual.length && timingSafeEqual(expected, actual) && user?.isActive;
         await tx.passwordResetChallenge.update({ where: { id: challengeId }, data: {

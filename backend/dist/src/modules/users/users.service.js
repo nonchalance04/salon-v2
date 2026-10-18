@@ -32,21 +32,18 @@ export function createUsersService(prisma) {
                     const user = id
                         ? await tx.user.update({ where: { id }, data, select: publicUserSelect })
                         : await tx.user.create({ data: data, select: publicUserSelect });
-                    const auditData = (value) => ({
-                        id: value.id, email: value.email, firstName: value.firstName, lastName: value.lastName,
-                        role: value.role, isActive: value.isActive,
-                    });
-                    await tx.auditLog.create({ data: {
-                            actorType: "ADMIN", actorUserId: actorId, action: id ? "USER_UPDATED" : "USER_CREATED",
-                            entityType: "User", entityId: user.id,
-                            ...(before ? { beforeData: auditData(before) } : {}),
-                            afterData: { ...auditData(user), passwordChanged: Boolean(passwordHash) },
-                        } });
                     return user;
                 });
             }
             catch (error) {
                 if (typeof error === "object" && error && "code" in error && error.code === "P2002") {
+                    // Prisma's PostgreSQL adapter may report the index instead of field names.
+                    const meta = "meta" in error ? error.meta : undefined;
+                    const constraint = meta?.driverAdapterError?.cause?.constraint;
+                    const target = meta?.target ?? constraint?.fields ?? constraint?.index;
+                    if ((Array.isArray(target) && target.includes("username")) || target === "User_username_key") {
+                        throw new ApiError(409, "USERNAME_IN_USE", "An account already uses this username.");
+                    }
                     throw new ApiError(409, "EMAIL_IN_USE", "An account already uses this email.");
                 }
                 throw error;

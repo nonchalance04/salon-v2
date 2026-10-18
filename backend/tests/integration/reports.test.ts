@@ -28,7 +28,7 @@ const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 let created = false;
 before(async () => {
   await adminPool.query(`CREATE DATABASE "${dbName}"`); created = true;
-  const env = { ...process.env, NODE_ENV: "test", DATABASE_URL: url.toString(), SEED_ADMIN_EMAIL: "admin@example.test", SEED_ADMIN_PASSWORD: "phase9-test-password", SEED_CASHIER_EMAIL: "cashier@example.test", SEED_CASHIER_PASSWORD: "phase9-test-password" };
+  const env = { ...process.env, NODE_ENV: "test", DATABASE_URL: url.toString(), SEED_ADMIN_USERNAME: "admin", SEED_ADMIN_EMAIL: "admin@example.test", SEED_ADMIN_PASSWORD: "phase9-test-password", SEED_CASHIER_USERNAME: "cashier", SEED_CASHIER_EMAIL: "cashier@example.test", SEED_CASHIER_PASSWORD: "phase9-test-password" };
   const run = promisify(execFile);
   await run(process.execPath, ["node_modules/prisma/build/index.js", "migrate", "deploy", "--config", "prisma7.config.ts"], { env });
   await run(process.execPath, ["--import", "tsx", "prisma/seed.ts"], { env });

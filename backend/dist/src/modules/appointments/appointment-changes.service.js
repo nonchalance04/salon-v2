@@ -1,3 +1,4 @@
+import { notificationRecipients } from "../notifications/notification-recipients.js";
 import { coversReservation, overlaps } from "../scheduling/coverage.js";
 import { noShowCorrectionSchema } from "./appointments.schema.js";
 import { ApiError } from "../../shared/http.js";
@@ -125,8 +126,8 @@ async function lockAppointment(tx, bookingCode, token) {
 /**
  * Creates an immutable, sanitized JSON snapshot of an appointment and its services.
  *
- * Used for storing `beforeSnapshot` and `afterSnapshot` in `AppointmentRescheduleHistory`
- * and system `AuditLog`. Uses an explicit allowlist so no customer PII, secret guest tokens,
+ * Used for storing `beforeSnapshot` and `afterSnapshot` in `AppointmentRescheduleHistory`.
+ * Uses an explicit allowlist so no customer PII, secret guest tokens,
  * or external payment provider credentials leak into historical logs.
  */
 function snapshot(row) {
@@ -164,27 +165,28 @@ function snapshot(row) {
 /**
  * Enqueues a notification event in the database outbox (`NotificationQueue`).
  *
- * Delivers by EMAIL if an email exists on the customer profile, otherwise falls back to SMS.
+ * Queues each provided email and phone contact independently.
  */
 async function notify(tx, row, eventType, now) {
-    await tx.notificationQueue.create({
-        data: {
-            appointmentId: row.id,
-            customerId: row.customerId,
-            eventType,
-            channel: row.customer.email ? "EMAIL" : "SMS",
-            recipient: row.customer.email ?? row.customer.phone,
-            status: "PENDING",
-            scheduledAt: now,
-            payload: {
-                schemaVersion: 1,
-                bookingCode: row.bookingCode,
-                appointmentStatus: row.status,
-                startAt: row.startAt.toISOString(),
-                recoveryOfAppointmentId: row.recoveryOfAppointmentId,
+    for (const contact of notificationRecipients(row.customer)) {
+        await tx.notificationQueue.create({
+            data: {
+                appointmentId: row.id,
+                customerId: row.customerId,
+                eventType,
+                ...contact,
+                status: "PENDING",
+                scheduledAt: now,
+                payload: {
+                    schemaVersion: 1,
+                    bookingCode: row.bookingCode,
+                    appointmentStatus: row.status,
+                    startAt: row.startAt.toISOString(),
+                    recoveryOfAppointmentId: row.recoveryOfAppointmentId,
+                },
             },
-        },
-    });
+        });
+    }
 }
 /**
  * Validates and prepares availability and service configuration for an appointment change.
@@ -303,7 +305,7 @@ export function createAppointmentChangesService(prisma, timeZone) {
          *    - Temporarily soft-removes active services to prevent unique sequence index collisions, then restores or inserts new line items.
          *
          * Both modes:
-         * - Record before and after snapshots in `AppointmentRescheduleHistory` and `AuditLog`.
+         * - Record before and after snapshots in `AppointmentRescheduleHistory`.
          * - Enqueue notification events (`BOOKING_RESCHEDULED`, `NO_SHOW_RECOVERY_CREATED`).
          * - Perform a final pre-commit double-check against current time to eliminate race conditions.
          */
@@ -424,7 +426,7 @@ export function createAppointmentChangesService(prisma, timeZone) {
                 const eventType = input.recovery
                     ? "NO_SHOW_RECOVERY_CREATED"
                     : "ORDINARY_RESCHEDULE";
-                // Record history and audit trail
+                // Record reschedule history
                 await tx.appointmentRescheduleHistory.create({
                     data: {
                         appointmentId: row.id,
@@ -436,17 +438,6 @@ export function createAppointmentChangesService(prisma, timeZone) {
                         beforeSnapshot,
                         afterSnapshot: snapshot(updated),
                         reason: input.reason,
-                    },
-                });
-                await tx.auditLog.create({
-                    data: {
-                        actorType: "CUSTOMER",
-                        actorCustomerId: row.customerId,
-                        action: eventType,
-                        entityType: "Appointment",
-                        entityId: row.id,
-                        beforeData: beforeSnapshot,
-                        afterData: snapshot(updated),
                     },
                 });
                 // Queue notifications
@@ -486,7 +477,7 @@ export function createAppointmentChangesService(prisma, timeZone) {
          * - Idempotent: If already `CANCELLED`, returns `{ cancelled: true }`.
          * - Policy cutoff: Must be before `startAt - policy.cancellationCutoffHours`.
          * - State integrity: Rejects if service outcomes have already begun recording (`pristine`).
-         * - Updates status to `CANCELLED`, writes audit log, and enqueues cancellation notification.
+         * - Updates status to `CANCELLED` and enqueues cancellation notification.
          */
         async cancel(bookingCode, token, reason) {
             return reservationTransaction(prisma, async (tx) => {
@@ -508,17 +499,6 @@ export function createAppointmentChangesService(prisma, timeZone) {
                     where: { id: row.id },
                     data: { status: "CANCELLED", cancelledAt: now },
                     include,
-                });
-                await tx.auditLog.create({
-                    data: {
-                        actorType: "CUSTOMER",
-                        actorCustomerId: row.customerId,
-                        action: "BOOKING_CANCELLED",
-                        entityType: "Appointment",
-                        entityId: row.id,
-                        beforeData: { status: row.status },
-                        afterData: { status: updated.status, reason: reason ?? null },
-                    },
                 });
                 await notify(tx, updated, "BOOKING_CANCELLED", now);
                 check(await freshTime(tx));
@@ -551,11 +531,6 @@ export function createAppointmentChangesService(prisma, timeZone) {
                             status: "NO_SHOW", noShowAt: now,
                             noShowGraceExpiresAt: new Date(+row.startAt + row.bookingPolicyVersion.noShowGraceHours * 3_600_000),
                         } });
-                    await tx.auditLog.create({ data: {
-                            actorType: "SYSTEM", action: "BOOKING_NO_SHOW", entityType: "Appointment", entityId: row.id,
-                            beforeData: { status: "CONFIRMED" },
-                            afterData: { status: "NO_SHOW", reason: "ARRIVAL_GRACE_EXPIRED" },
-                        } });
                     return 1;
                 });
             }
@@ -564,7 +539,7 @@ export function createAppointmentChangesService(prisma, timeZone) {
         async correctNoShow(actorId, raw) {
             const input = noShowCorrectionSchema.parse(raw);
             return reservationTransaction(prisma, async (tx) => {
-                const actor = await admin(tx, actorId, true);
+                await admin(tx, actorId, true);
                 const { row } = await lockAppointment(tx, input.bookingCode);
                 const now = await freshTime(tx);
                 if (row.status !== "NO_SHOW" || row.recoveryAppointment || row.completionType)
@@ -600,12 +575,6 @@ export function createAppointmentChangesService(prisma, timeZone) {
                         status: "CONFIRMED", checkedInAt, checkedInByUserId: actorId,
                         noShowAt: null, noShowGraceExpiresAt: null,
                     } });
-                await tx.auditLog.create({ data: {
-                        actorType: actor.role, actorUserId: actorId, action: "BOOKING_NO_SHOW_CORRECTED", entityType: "Appointment", entityId: row.id,
-                        beforeData: { status: "NO_SHOW", noShowAt: row.noShowAt?.toISOString() ?? null,
-                            noShowGraceExpiresAt: row.noShowGraceExpiresAt?.toISOString() ?? null, checkedInAt: null },
-                        afterData: { status: "CONFIRMED", checkedInAt: checkedInAt.toISOString(), checkedInByUserId: actorId, reason: input.reason },
-                    } });
                 return { corrected: true, checkedInAt };
             });
         },
@@ -629,10 +598,6 @@ export function createAppointmentChangesService(prisma, timeZone) {
                     throw conflict("Check-in is available only on the scheduled salon date.");
                 pristine(row);
                 await tx.appointment.update({ where: { id: row.id }, data: { checkedInAt: now, checkedInByUserId: actorId } });
-                await tx.auditLog.create({ data: {
-                        actorType: actor.role, actorUserId: actorId, action: "BOOKING_CHECKED_IN", entityType: "Appointment", entityId: row.id,
-                        beforeData: { checkedInAt: null }, afterData: { checkedInAt: now.toISOString(), checkedInByUserId: actorId },
-                    } });
                 return { checkedInAt: now, checkedInByUserId: actorId };
             });
         },
@@ -644,7 +609,6 @@ export function createAppointmentChangesService(prisma, timeZone) {
          * - Service outcomes must not have been recorded (`pristine`).
          * - Sets `noShowAt` and computes `noShowGraceExpiresAt` window for recovery bookings.
          * - Idempotent: If already `NO_SHOW`, returns `{ marked: true }`.
-         * - Writes an administrative audit log entry.
          */
         async markNoShow(actorId, bookingCode) {
             return reservationTransaction(prisma, async (tx) => {
@@ -664,17 +628,6 @@ export function createAppointmentChangesService(prisma, timeZone) {
                         noShowAt: now,
                         noShowGraceExpiresAt: new Date(+row.startAt +
                             row.bookingPolicyVersion.noShowGraceHours * 3_600_000),
-                    },
-                });
-                await tx.auditLog.create({
-                    data: {
-                        actorType: "ADMIN",
-                        actorUserId: actorId,
-                        action: "BOOKING_NO_SHOW",
-                        entityType: "Appointment",
-                        entityId: row.id,
-                        beforeData: { status: row.status },
-                        afterData: { status: "NO_SHOW" },
                     },
                 });
                 return { marked: true };

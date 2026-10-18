@@ -40,6 +40,7 @@ export const JsonNull = runtime.JsonNull;
 export const AnyNull = runtime.AnyNull;
 export const ModelName = {
     User: 'User',
+    PasswordResetChallenge: 'PasswordResetChallenge',
     Customer: 'Customer',
     Staff: 'Staff',
     Service: 'Service',
@@ -73,8 +74,10 @@ export const TransactionIsolationLevel = runtime.makeStrictEnum({
 });
 export const UserScalarFieldEnum = {
     id: 'id',
+    username: 'username',
     email: 'email',
     passwordHash: 'passwordHash',
+    sessionVersion: 'sessionVersion',
     role: 'role',
     firstName: 'firstName',
     lastName: 'lastName',
@@ -82,6 +85,17 @@ export const UserScalarFieldEnum = {
     lastLoginAt: 'lastLoginAt',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
+};
+export const PasswordResetChallengeScalarFieldEnum = {
+    id: 'id',
+    identityKey: 'identityKey',
+    ipKey: 'ipKey',
+    userId: 'userId',
+    codeHash: 'codeHash',
+    attempts: 'attempts',
+    createdAt: 'createdAt',
+    expiresAt: 'expiresAt',
+    consumedAt: 'consumedAt'
 };
 export const CustomerScalarFieldEnum = {
     id: 'id',
@@ -95,6 +109,7 @@ export const CustomerScalarFieldEnum = {
 export const StaffScalarFieldEnum = {
     publicProfile: 'publicProfile',
     id: 'id',
+    staffCode: 'staffCode',
     firstName: 'firstName',
     lastName: 'lastName',
     phone: 'phone',

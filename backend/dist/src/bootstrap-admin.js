@@ -2,6 +2,7 @@ import { prisma, disconnectDatabase } from "./database/prisma.js";
 import { bootstrapAdmin } from "./modules/users/bootstrap.service.js";
 try {
     await bootstrapAdmin(prisma, {
+        username: process.env.BOOTSTRAP_ADMIN_USERNAME,
         email: process.env.BOOTSTRAP_ADMIN_EMAIL,
         password: process.env.BOOTSTRAP_ADMIN_PASSWORD,
         firstName: process.env.BOOTSTRAP_ADMIN_FIRST_NAME,

@@ -1,3 +1,4 @@
+import { notificationRecipients } from "../notifications/notification-recipients.js";
 import { randomUUID } from "node:crypto";
 import {
   Prisma,
@@ -362,39 +363,40 @@ async function settle(
       ? (["PAYMENT_RECEIVED", "BOOKING_CONFIRMED"] as const)
       : (["PAYMENT_RECEIVED"] as const);
     for (const eventType of eventTypes) {
-      const combineEmail = confirm && !!row.customer.email;
-      const skipPaymentEmail = combineEmail && eventType === "PAYMENT_RECEIVED";
-      await tx.notificationQueue.create({
-        data: {
-          appointmentId: row.id,
-          customerId: row.customerId,
-          eventType,
-          channel: row.customer.email ? "EMAIL" : "SMS",
-          recipient: row.customer.email ?? row.customer.phone,
-          status: skipPaymentEmail ? "SKIPPED" : "PENDING",
-          lastError: skipPaymentEmail
-            ? "EMAIL_COMBINED_WITH_CONFIRMATION"
-            : null,
-          scheduledAt: decisionTime,
-          payload: {
-            appointmentFeePaid:
-              combineEmail && eventType === "BOOKING_CONFIRMED",
-            schemaVersion: 1,
-            bookingCode: row.bookingCode,
-            paymentId: payment.id,
-            amount: updated.amount.toFixed(2),
-            currency: updated.currency,
-            startAt: row.startAt.toISOString(),
-            appointmentStatus: confirm
-              ? "CONFIRMED"
-              : row.status === "PENDING_PAYMENT" &&
-                  row.holdExpiresAt! < decisionTime
-                ? "EXPIRED"
-                : row.status,
-            reconciliationRequired: !confirm,
+      for (const contact of notificationRecipients(row.customer)) {
+        const combineEmail = confirm && contact.channel === "EMAIL";
+        const skipPaymentEmail = combineEmail && eventType === "PAYMENT_RECEIVED";
+        await tx.notificationQueue.create({
+          data: {
+            appointmentId: row.id,
+            customerId: row.customerId,
+            eventType,
+            ...contact,
+            status: skipPaymentEmail ? "SKIPPED" : "PENDING",
+            lastError: skipPaymentEmail
+              ? "EMAIL_COMBINED_WITH_CONFIRMATION"
+              : null,
+            scheduledAt: decisionTime,
+            payload: {
+              appointmentFeePaid:
+                combineEmail && eventType === "BOOKING_CONFIRMED",
+              schemaVersion: 1,
+              bookingCode: row.bookingCode,
+              paymentId: payment.id,
+              amount: updated.amount.toFixed(2),
+              currency: updated.currency,
+              startAt: row.startAt.toISOString(),
+              appointmentStatus: confirm
+                ? "CONFIRMED"
+                : row.status === "PENDING_PAYMENT" &&
+                    row.holdExpiresAt! < decisionTime
+                  ? "EXPIRED"
+                  : row.status,
+              reconciliationRequired: !confirm,
+            },
           },
-        },
-      });
+        });
+      }
     }
   }
   const result = await view(tx, payment.id);
@@ -484,6 +486,8 @@ export function createPaymentsService(
       const pending = await transaction(prisma, async (tx) => {
         const appointment = await guest(tx, bookingCode, token);
         const row = await lockAppointment(tx, appointment.id);
+        if (!notificationRecipients(row.customer).length)
+          throw new ApiError(400, "CUSTOMER_CONTACT_REQUIRED", "Enter an email address or phone number before proceeding to payment.");
         const keyed = await tx.payment.findUnique({
           where: { idempotencyKey: `checkout:${key}` },
         });

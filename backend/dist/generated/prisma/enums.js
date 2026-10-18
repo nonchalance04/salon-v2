@@ -66,7 +66,8 @@ export const PaymentType = {
 export const PaymentMethod = {
     CASH: 'CASH',
     GCASH: 'GCASH',
-    OTHER: 'OTHER'
+    OTHER: 'OTHER',
+    QRPH: 'QRPH'
 };
 export const PaymentStatus = {
     PENDING: 'PENDING',

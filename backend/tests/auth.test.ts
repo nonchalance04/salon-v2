@@ -36,37 +36,33 @@ test("login accepts normalized usernames and rejects emails and empty credential
   ]) assert.equal(loginSchema.safeParse({ body }).success, false);
 });
 
-test("username login authenticates both roles and rejects missing, inactive, ambiguous or changed accounts", async () => {
+test("username login uses the independent identity and rejects wrong, missing, inactive or changed accounts", async () => {
   const passwordHash = await bcrypt.hash("test-password", 4);
-  let candidates: unknown[] = [];
+  let user: Record<string, unknown> | null = null;
   let updates = 1;
-  let expectedPrefix = "admin@";
   const prisma = { user: {
-    findMany: async (args: unknown) => {
-      assert.deepEqual(args, { where: { email: { startsWith: expectedPrefix, mode: "insensitive" } }, take: 2 });
-      return candidates;
+    findUnique: async (args: { where: { username?: string } }) => {
+      if (args.where.username) assert.equal(args.where.username, "salonowner");
+      return user;
     },
-    updateMany: async () => ({ count: updates }),
-    findUnique: async () => candidates[0],
+    updateMany: async (args: { where: { username: string } }) => {
+      assert.equal(args.where.username, "salonowner");
+      return { count: updates };
+    },
   } } as unknown as PrismaClient;
   const service = createAuthService(prisma);
   for (const role of ["ADMIN", "CASHIER"]) {
-    candidates = [{ id, email: "admin@example.test", role, passwordHash, isActive: true }];
-    assert.equal((await service.login(" Admin ", "test-password")).role, role);
-    await assert.rejects(service.login("admin", "wrong"), { status: 401 });
+    user = { id, username: "salonowner", email: "different@example.test", role, passwordHash, isActive: true };
+    assert.equal((await service.login(" SALONOWNER ", "test-password")).role, role);
+    await assert.rejects(service.login("salonowner", "wrong"), { status: 401 });
   }
-  candidates = [];
-  await assert.rejects(service.login("admin", "test-password"), { status: 401 });
-  candidates = [{ id, email: "admin@example.test", passwordHash, isActive: false }];
-  await assert.rejects(service.login("admin", "test-password"), { status: 401 });
-  candidates = [candidates[0], { email: "admin@another.test", passwordHash, isActive: true }];
-  await assert.rejects(service.login("admin", "test-password"), { status: 401 });
-  candidates = [{ id, email: "admin@example.test", passwordHash, isActive: true }];
+  user = null;
+  await assert.rejects(service.login("salonowner", "test-password"), { status: 401 });
+  user = { id, username: "salonowner", passwordHash, isActive: false };
+  await assert.rejects(service.login("salonowner", "test-password"), { status: 401 });
+  user.isActive = true;
   updates = 0;
-  await assert.rejects(service.login("admin", "test-password"), { status: 401 });
-  candidates = [];
-  expectedPrefix = "front\\_desk\\%@";
-  await assert.rejects(service.login("front_desk%", "test-password"), { status: 401 });
+  await assert.rejects(service.login("salonowner", "test-password"), { status: 401 });
 });
 test("JWT validates signature, expiration, and all required claims", async () => {
   const tokens = createTokenService(secret);
@@ -94,7 +90,10 @@ test("production cookies and origin configuration fail closed", () => {
   assert.equal(sessionCookie("salon_session=%broken"), undefined);
 });
 test("account validation limits roles and bcrypt byte length, and PATCH has no implicit activation", () => {
-  const body = { firstName: "Test", lastName: "Person", email: " TEST@EXAMPLE.COM ", password: "safe-test-password", role: "CASHIER" };
+  const body = { username: " SALONOWNER ", firstName: "Test", lastName: "Person", email: " TEST@EXAMPLE.COM ", password: "safe-test-password", role: "CASHIER" };
+  assert.equal(createAccountSchema.parse({ body }).body.username, "salonowner");
+  assert.equal(createAccountSchema.safeParse({ body: { ...body, username: undefined } }).success, false);
+  assert.equal(createAccountSchema.safeParse({ body: { ...body, username: "owner@example.test" } }).success, false);
   assert.equal(createAccountSchema.parse({ body }).body.email, "test@example.com");
   assert.equal(createAccountSchema.parse({ body }).body.isActive, true);
   assert.equal(createAccountSchema.safeParse({ body: { ...body, role: "STYLIST" } }).success, false);

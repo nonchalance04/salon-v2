@@ -8,6 +8,7 @@ export const verifiedEventSchema = z.object({
     paidAt: z.iso.datetime({ offset: true }).nullable(),
     checkoutReference: z.string().optional(),
     checkoutUrl: z.string().optional(),
+    providerMethod: z.enum(["gcash", "qrph"]).optional(),
 }).strict().refine(event => event.status !== "SUCCEEDED" || event.paidAt !== null);
 export class TestPaymentProvider {
     secret;

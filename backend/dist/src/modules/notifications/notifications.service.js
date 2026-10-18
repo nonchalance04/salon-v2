@@ -197,7 +197,7 @@ export function createNotificationsService(db, options) {
             // schedule revision. No new queue model or unique constraint is needed.
             const candidates = await tx.$queryRaw `
         SELECT a."id" FROM "Appointment" a WHERE a."status" = 'CONFIRMED'
-          AND EXISTS (SELECT 1 FROM "Customer" c WHERE c.id = a."customerId" AND c.email IS NULL)
+          AND EXISTS (SELECT 1 FROM "Customer" c WHERE c.id = a."customerId" AND c.phone IS NOT NULL AND btrim(c.phone) <> '')
           AND a."startAt" > clock_timestamp()
           AND a."startAt" <= clock_timestamp() + ${options.reminderHours} * interval '1 hour'
           AND NOT EXISTS (SELECT 1 FROM "NotificationQueue" q WHERE q."appointmentId" = a."id"
@@ -211,7 +211,7 @@ export function createNotificationsService(db, options) {
                     where: { id },
                     include: { customer: true },
                 });
-                if (row.customer.email)
+                if (!row.customer.phone?.trim())
                     continue;
                 const now = (await tx.$queryRaw `SELECT clock_timestamp() AS now`)[0].now;
                 if (row.status !== "CONFIRMED" || row.startAt <= now)
@@ -246,8 +246,8 @@ export function createNotificationsService(db, options) {
                         appointmentId: id,
                         customerId: row.customerId,
                         eventType: "APPOINTMENT_REMINDER",
-                        channel: row.customer.email ? "EMAIL" : "SMS",
-                        recipient: row.customer.email ?? row.customer.phone,
+                        channel: "SMS",
+                        recipient: row.customer.phone,
                         status: "PENDING",
                         scheduledAt: now,
                         payload,

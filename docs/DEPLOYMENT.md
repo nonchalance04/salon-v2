@@ -49,7 +49,7 @@ npm run db:status
 
 Never use `db push`, `migrate reset`, or the development seed on production.
 The first installation starts empty. Securely inject these one-time variables:
-`BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD`, `BOOTSTRAP_ADMIN_FIRST_NAME`,
+`BOOTSTRAP_ADMIN_USERNAME`, `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD`, `BOOTSTRAP_ADMIN_FIRST_NAME`,
 `BOOTSTRAP_ADMIN_LAST_NAME`, together with the normal production environment. Then:
 
 ```bash
@@ -185,8 +185,8 @@ Set `PASSWORD_RESET_EMAIL_PROVIDER=gmail`, `GMAIL_USER`, `GMAIL_APP_PASSWORD` an
 matching `NOTIFICATION_EMAIL_FROM` on the backend to enable recovery. Existing
 Gmail credentials can be reused; routine notification and appointment OTP switches
 remain independent. `disabled` returns a clear recovery-unavailable response.
-Configure account emails to reachable mailboxes and use distinct local parts for
-staff usernames. No frontend secrets or new worker are required. Code delivery
+Configure account emails to reachable mailboxes and assign independent unique
+staff usernames through Accounts. No frontend secrets or new worker are required. Code delivery
 starts after the generic HTTP response; a process crash can lose a send, and staff
 can request another code after sixty seconds. Failed provider sends invalidate
 the code and log a fixed event without message/contact details.

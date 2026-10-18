@@ -6,9 +6,12 @@ export const bookingSchema = availabilitySchema.extend({
   customer: z.object({
     firstName: z.string().trim().min(1).max(100),
     lastName: z.string().trim().min(1).max(100),
-    phone: z.string().trim().min(5).max(32).regex(/^\+?[0-9 ()-]+$/),
+    phone: z.string().trim().min(5).max(32).regex(/^\+?[0-9 ()-]+$/).optional(),
     email: z.email().max(254).transform(value => value.toLowerCase()).optional(),
-  }).strict(),
+  }).strict().refine(customer => Boolean(customer.email || customer.phone), {
+    message: "Enter an email address or phone number before proceeding to payment.",
+    path: ["email"],
+  }),
 }).strict();
 export const guestAccessSchema = z.object({
   bookingCode: z.string().regex(/^SL-(?:[A-Z0-9]{6}|[A-F0-9]{24})$/),

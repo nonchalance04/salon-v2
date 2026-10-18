@@ -32,9 +32,11 @@ export function createPaymentsRouter(prisma, config, provider = configuredPaymen
     router.post("/payments/recover-checkout", auth.authenticate, auth.adminOnly, validateRequest(z.object({ body: z.object({ paymentId: z.uuid(), checkoutReference: z.string().regex(/^cs_[A-Za-z0-9]+$/) }).strict() })), async (_req, res) => {
         res.json({ payment: await service.recoverCheckout(res.locals.user.id, res.locals.validated.body.paymentId, res.locals.validated.body.checkoutReference) });
     });
-    router.post("/payments/checkout", guestSessionCredentials(prisma), validateRequest(z.object({ body: checkoutSchema })), async (_req, res) => {
+    router.post("/payments/checkout", guestSessionCredentials(prisma), validateRequest(z.object({ body: checkoutSchema })), async (req, res) => {
         const { bookingCode, token, idempotencyKey } = res.locals.validated.body;
-        const checkout = await service.checkout(bookingCode, token, idempotencyKey);
+        // browserSecurity already requires an exact trusted Origin or Referer.
+        const returnOrigin = req.get("origin") ?? new URL(req.get("referer")).origin;
+        const checkout = await service.checkout(bookingCode, token, idempotencyKey, returnOrigin);
         // Establish access before leaving for checkout, without exposing the private
         // booking token to PayMongo, browser storage, or the return URL.
         if (provider?.name === "paymongo") {

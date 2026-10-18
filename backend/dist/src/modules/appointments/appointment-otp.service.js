@@ -53,7 +53,7 @@ export function createAppointmentOtpService(prisma, secret, provider, emailProvi
                 if (recent)
                     return { limited: true };
                 const appointment = await tx.appointment.findUnique({ where: { bookingCode }, include: { customer: true } });
-                const recorded = appointment ? (channel === "EMAIL" ? email(appointment.customer.email ?? "") : phone(appointment.customer.phone)) : null;
+                const recorded = appointment ? (channel === "EMAIL" ? email(appointment.customer.email ?? "") : phone(appointment.customer.phone ?? "")) : null;
                 const matches = normalized && appointment && recorded === normalized;
                 await tx.appointmentOtpChallenge.updateMany({ where: { identityKey, consumedAt: null }, data: { consumedAt: now } });
                 await tx.appointmentOtpChallenge.create({ data: { id, identityKey, appointmentId: matches ? appointment.id : null,

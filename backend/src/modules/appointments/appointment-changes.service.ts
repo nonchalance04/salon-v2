@@ -1,3 +1,4 @@
+import { notificationRecipients } from "../notifications/notification-recipients.js";
 import { coversReservation, overlaps } from "../scheduling/coverage.js";
 import { noShowCorrectionSchema, type NoShowCorrectionInput } from "./appointments.schema.js";
 import {
@@ -246,7 +247,7 @@ function snapshot(row: Row): Prisma.InputJsonValue {
 /**
  * Enqueues a notification event in the database outbox (`NotificationQueue`).
  *
- * Delivers by EMAIL if an email exists on the customer profile, otherwise falls back to SMS.
+ * Queues each provided email and phone contact independently.
  */
 async function notify(
   tx: Tx,
@@ -254,24 +255,25 @@ async function notify(
   eventType: NotificationEventType,
   now: Date,
 ) {
-  await tx.notificationQueue.create({
-    data: {
-      appointmentId: row.id,
-      customerId: row.customerId,
-      eventType,
-      channel: row.customer.email ? "EMAIL" : "SMS",
-      recipient: row.customer.email ?? row.customer.phone,
-      status: "PENDING",
-      scheduledAt: now,
-      payload: {
-        schemaVersion: 1,
-        bookingCode: row.bookingCode,
-        appointmentStatus: row.status,
-        startAt: row.startAt.toISOString(),
-        recoveryOfAppointmentId: row.recoveryOfAppointmentId,
+  for (const contact of notificationRecipients(row.customer)) {
+    await tx.notificationQueue.create({
+      data: {
+        appointmentId: row.id,
+        customerId: row.customerId,
+        eventType,
+        ...contact,
+        status: "PENDING",
+        scheduledAt: now,
+        payload: {
+          schemaVersion: 1,
+          bookingCode: row.bookingCode,
+          appointmentStatus: row.status,
+          startAt: row.startAt.toISOString(),
+          recoveryOfAppointmentId: row.recoveryOfAppointmentId,
+        },
       },
-    },
-  });
+    });
+  }
 }
 
 /**
