@@ -139,7 +139,7 @@ test("outcome recording, corrections, stale review, full amount and role boundar
   const input = { bookingCode: row.bookingCode, revision: row.revision, services: row.services.map(s => ({ id: s.id, outcome: "PERFORMED" as const })) };
   await assert.rejects(settlement.settle(cashierId, pay(row)), (e: ApiError) => e.code === "OUTCOMES_REQUIRED");
   const saved = await settlement.outcomes(adminId, input);
-  await assert.rejects(settlement.settle(adminId, pay(saved)), (e: ApiError) => e.status === 403);
+  await assert.rejects(settlement.settle(adminId, { ...pay(saved), amount: "100.00" }), (e: ApiError) => e.code === "AMOUNT_MISMATCH");
   await assert.rejects(settlement.settle(cashierId, { ...pay(saved), amount: "100.00" }), (e: ApiError) => e.code === "AMOUNT_MISMATCH");
   await assert.rejects(settlement.close(adminId, { bookingCode: saved.bookingCode, revision: saved.revision }));
   const change = { ...input, revision: saved.revision, services: input.services.map(s => ({ ...s, outcome: "NOT_PERFORMED" as const })) };
@@ -216,7 +216,12 @@ test("HTTP authentication, CSRF, role enforcement, and deactivated accounts prot
   try {
     assert.equal((await request("lookup", { bookingCode: f.saved.bookingCode })).status, 401);
     assert.equal((await request("lookup", { bookingCode: f.saved.bookingCode }, cashierToken, "https://evil.test")).status, 403);
-    assert.equal((await request("pay", pay(f.saved), adminToken)).status, 403);
+    const adminVisit = await recorded();
+    assert.equal((await request("pay", pay(adminVisit.saved))).status, 401);
+    assert.equal((await request("pay", pay(adminVisit.saved), adminToken, "https://evil.test")).status, 403);
+    const adminPayment = await request("pay", pay(adminVisit.saved), adminToken);
+    assert.equal(adminPayment.status, 200);
+    assert.equal((await adminPayment.json()).appointment.status, "COMPLETED");
     assert.equal((await request("lookup", { bookingCode: f.saved.bookingCode }, cashierToken)).status, 200);
     assert.equal((await request("pay", { ...pay(f.saved), amount: 120 }, cashierToken)).status, 400);
     const outcomeInput = { bookingCode: f.saved.bookingCode, revision: f.saved.revision, services: f.saved.services.map(s => ({ id: s.id, outcome: "PERFORMED" as const })) };
@@ -278,4 +283,26 @@ test("Cashier records and corrects outcomes without audit writes and cannot edit
   await settlement.settle(cashierId, pay(corrected));
   const completed = await settlement.lookup(cashierId, corrected.bookingCode);
   await assert.rejects(settlement.outcomes(cashierId, { ...input, revision: completed.revision }));
+});
+
+
+test("admins settle every manual method with receipts, commissions, attribution and safe retries", async () => {
+  for (const method of ["CASH", "GCASH", "OTHER"] as const) {
+    const f = await recorded();
+    const input = { ...pay(f.saved), method };
+    const results = await Promise.all([settlement.settle(adminId, input), settlement.settle(adminId, input)]);
+    assert.ok(results.every(row => row.status === "COMPLETED" && row.commissions?.length === 1));
+    const payment = await prisma.payment.findFirstOrThrow({ where: { appointmentId: f.booking.id, type: "SERVICE_PAYMENT" }, include: { receipt: true } });
+    assert.equal(payment.recordedByUserId, adminId);
+    assert.equal(payment.receipt!.issuedByUserId, adminId);
+    assert.equal(await prisma.payment.count({ where: { appointmentId: f.booking.id, type: "SERVICE_PAYMENT" } }), 1);
+    assert.equal(await prisma.commissionRecord.count({ where: { appointmentId: f.booking.id, finalizedByUserId: adminId } }), 1);
+    const appointment = await prisma.appointment.findUniqueOrThrow({ where: { id: f.booking.id } });
+    assert.equal(appointment.completedByUserId, adminId);
+    await assert.rejects(settlement.settle(adminId, { ...input, amount: "1.00" }), { code: "PAYMENT_IDENTITY_CONFLICT" });
+  }
+  const f = await recorded();
+  await prisma.user.update({ where: { id: adminId }, data: { isActive: false } });
+  try { await assert.rejects(settlement.settle(adminId, pay(f.saved)), (e: ApiError) => e.status === 401); }
+  finally { await prisma.user.update({ where: { id: adminId }, data: { isActive: true } }); }
 });

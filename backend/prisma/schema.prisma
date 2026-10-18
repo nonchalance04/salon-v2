@@ -374,6 +374,7 @@ enum PaymentMethod {
   CASH
   GCASH
   OTHER
+  QRPH
 }
 
 enum PaymentStatus {

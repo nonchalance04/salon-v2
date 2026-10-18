@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { Link } from "react-router";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { api } from "../../lib/api";
 import { chatbotHistory } from "./chatbot-history";
 import { readChatSession, saveChatSession, type ChatReply } from "./chatbot-session";
@@ -22,6 +22,7 @@ export function Chatbot({ embedded = false, compact = false, active = true }: { 
   const [pending, setPending] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [answerAnimation, setAnswerAnimation] = useState<{ reply: ChatReply; sequence: number } | null>(null);
   const submitting = useRef(false);
   const input = useRef<HTMLTextAreaElement>(null);
   const transcript = useRef<HTMLDivElement>(null);
@@ -51,6 +52,7 @@ export function Chatbot({ embedded = false, compact = false, active = true }: { 
     setBusy(true); setError(""); setPending(trimmed); setMessage("");
     try {
       const reply = await api<ChatReply>("/chatbot", { method: "POST", body: JSON.stringify({ message: trimmed, history: chatbotHistory(history) }) });
+      setAnswerAnimation(previous => ({ reply, sequence: (previous?.sequence ?? 0) + 1 }));
       setHistory(h => [...h.slice(-19), { question: trimmed, reply }]);
       setPending("");
     } catch (err) {
@@ -59,6 +61,7 @@ export function Chatbot({ embedded = false, compact = false, active = true }: { 
   }
   function submit(e: FormEvent) { e.preventDefault(); void ask(message); }
   function reset() {
+    setAnswerAnimation(null);
     setHistory([]); setPending(""); setMessage(""); setError(""); input.current?.focus();
   }
   return <section className={`salon-guide chat-page${compact ? " chat-page--compact" : embedded ? " container" : " workspace-main"}`} aria-label={compact ? "Salon recommendations" : undefined} aria-labelledby={compact ? undefined : "chat-title"}>
@@ -78,9 +81,14 @@ export function Chatbot({ embedded = false, compact = false, active = true }: { 
           {history.length === 0 && !pending && <div className="chat-starters">{["Help me choose a service", "How to book", "Booking policies"].map(q => <Button variant="outline" key={q} onClick={() => void ask(q)} disabled={busy}>{q} <span aria-hidden="true">↗</span></Button>)}</div>}
           {history.map((h, i) => <div className="chat-turn" key={i}>
             <div className="chat-user-message"><span className="chat-message-label">YOU</span><p>{h.question}</p></div>
-            <div className="chat-assistant-message"><span className="chat-message-label">{h.reply.mode === "gemini" ? "CLIQUE · AI-ASSISTED" : "CLIQUE · SALON GUIDE"}</span>
-              {h.reply.notice && <p className="chat-notice">{h.reply.notice}</p>}
-              <p className="chat-answer">{h.reply.answer}</p>
+            <div key={h.reply === answerAnimation?.reply ? answerAnimation.sequence : "saved"} className={`chat-assistant-message${h.reply === answerAnimation?.reply ? " chat-assistant-message--entering" : ""}`}><span className="chat-message-label">{h.reply.mode === "gemini" ? "CLIQUE · AI-ASSISTED" : "CLIQUE · SALON GUIDE"}</span>
+              <p className="chat-answer">{h.reply === answerAnimation?.reply ? <>
+                <span className="sr-only">{h.reply.answer}</span>
+                <span aria-hidden="true">{h.reply.answer.split(/(\s+)/).map((word, index, words) => <span
+                  key={index} className="chat-answer-word"
+                  style={{ "--word-delay": `${index * Math.min(28, 1600 / Math.max(1, words.length - 1))}ms` } as CSSProperties}
+                >{word}</span>)}</span>
+              </> : h.reply.answer}</p>
               {h.reply.recommendations?.map(service => <article className="chat-recommendation" key={service.id}><p className="chat-label">A LITTLE SOMETHING FOR YOU</p><h3>{service.name}</h3><p>{service.reason}</p>{service.description && <p className="chat-service-description">{service.description}</p>}<div className="chat-service-meta"><strong>{price(service.price)}</strong><span>~ {service.durationMinutes} min</span></div><Link to={service.href}>Book this service <span aria-hidden="true">↗</span></Link></article>)}
               {h.reply.links.length > 0 && <div className="chat-reply-links">{h.reply.links.map(l => <Link key={l.href} to={l.href}>{l.label} <span aria-hidden="true">↗</span></Link>)}</div>}
             </div>

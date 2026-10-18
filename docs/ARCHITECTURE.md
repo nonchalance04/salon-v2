@@ -1448,3 +1448,21 @@ exclusive salon transaction, checks reservation coverage including buffers befor
 mutation, retains unchanged records and deactivates removed
 periods instead of deleting them. The existing individual-period endpoints stay
 compatible. There are no new models or database migrations.
+
+### PayMongo QR Ph booking checkout
+
+Hosted Checkout V2 requests gcash and qrph. The provider adapter retrieves the
+merchant session and returns its verified capture source as providerMethod.
+PaymentService stores GCASH or QRPH atomically with settlement and automatic
+receipt issuance; pending checkout uses OTHER while the method is unknown.
+Collection method totals include QRPH. QR generation/display remains hosted by
+PayMongo. Existing manual payment inputs and Cashier settlement are unchanged.
+
+### PayMongo return origin
+
+The checkout route passes its browserSecurity-validated request origin through
+PaymentService to PaymentProvider. The PayMongo adapter requires an exact
+TRUSTED_ORIGINS match and builds /booking-confirmed on that origin, preserving the
+host-only guest-session cookie when several development/staging origins are in use.
+Missing request origin in internal calls falls back to PAYMONGO_RETURN_URL's origin.
+Neither browser JSON nor forwarding headers select a return destination.

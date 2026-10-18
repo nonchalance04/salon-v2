@@ -11,7 +11,7 @@ const createdSessionSchema = z.object({ data: z.object({
 }) });
 const paymentSchema = z.object({ id: id("pay"), type: z.literal("payment"), attributes: z.object({
   amount: z.number().int().positive().max(999999999999), currency: z.literal("PHP"), status: z.string(),
-  livemode: z.boolean(), paid_at: z.number().int().positive().nullable().optional(), source: z.object({ type: z.literal("gcash") }),
+  livemode: z.boolean(), paid_at: z.number().int().positive().nullable().optional(), source: z.object({ type: z.enum(["gcash", "qrph"]) }),
 }) });
 const sessionSchema = z.object({ id: id("cs"), type: z.literal("checkout_session"), attributes: z.object({
   livemode: z.boolean(), reference_number: z.uuid(), metadata: z.object({ appointmentId: z.uuid(), paymentId: z.uuid() }),
@@ -31,7 +31,7 @@ function pesos(amount: number) { return `${Math.floor(amount / 100)}.${String(am
 export class PayMongoProvider implements PaymentProvider {
   readonly name = "paymongo";
   readonly live: boolean;
-  constructor(private readonly config: { secretKey: string; webhookSecret: string; returnUrl: string },
+  constructor(private readonly config: { secretKey: string; webhookSecret: string; returnUrl: string; trustedOrigins?: string[] },
     private readonly request: typeof fetch = fetch) {
     this.live = config.secretKey.startsWith("sk_live_");
   }
@@ -55,14 +55,24 @@ export class PayMongoProvider implements PaymentProvider {
   }
   async createPayment(request: PaymentRequest) {
     const amount = centavos(request.amount);
+    // Keep the host-only appointment session on the browser's starting origin.
+    // Never derive redirects from Host/X-Forwarded-Host or browser-supplied URLs.
+    const returnOrigin = request.returnOrigin ?? new URL(this.config.returnUrl).origin;
+    const trustedOrigins = this.config.trustedOrigins ?? [new URL(this.config.returnUrl).origin];
+    if (!trustedOrigins.includes(returnOrigin)) throw new ApiError(403, "UNTRUSTED_ORIGIN", "This return origin is not allowed.");
+    const originUrl = new URL(returnOrigin);
+    if (originUrl.origin !== returnOrigin || !["http:", "https:"].includes(originUrl.protocol) ||
+      originUrl.username || originUrl.password || (this.live && originUrl.protocol !== "https:"))
+      throw new ApiError(403, "UNTRUSTED_ORIGIN", "This return origin is not allowed.");
+    const returnUrl = new URL("/booking-confirmed", originUrl).href;
     if (request.currency !== "PHP" || request.expiresAt.getTime() <= Date.now()) throw new ApiError(409, "HOLD_NOT_ACTIVE", "The booking hold has expired.");
     // No unverified idempotency header or unsupported expires_at field. The
     // service durably claims creation once and reuses the resulting session.
     const created = createdSessionSchema.safeParse(await this.api("/v2/checkout_sessions", { data: { attributes: {
       line_items: [{ name: "Salon appointment fee", amount, currency: "PHP", quantity: 1 }],
-      payment_method_types: ["gcash"], reference_number: request.paymentId,
+      payment_method_types: ["gcash", "qrph"], reference_number: request.paymentId,
       metadata: { paymentId: request.paymentId, appointmentId: request.appointmentId },
-      success_url: this.config.returnUrl, cancel_url: this.config.returnUrl,
+      success_url: returnUrl, cancel_url: returnUrl,
       send_email_receipt: false, show_description: true, show_line_items: true,
       description: "Appointment fee. Confirmation is subject to the salon booking hold deadline.",
     } } }));
@@ -90,7 +100,8 @@ export class PayMongoProvider implements PaymentProvider {
     return { paymentId: attr.metadata.paymentId, appointmentId: attr.metadata.appointmentId,
       checkoutReference: reference, checkoutUrl: attr.checkout_url, reference: capture?.id ?? reference, amount: pesos(capture?.attributes.amount ?? attr.line_items[0]!.amount), currency: "PHP",
       status: capture ? "SUCCEEDED" : attr.status === "expired" ? "EXPIRED" : "PENDING",
-      paidAt: capture ? new Date(capture.attributes.paid_at! * 1000).toISOString() : null };
+      paidAt: capture ? new Date(capture.attributes.paid_at! * 1000).toISOString() : null,
+      ...(capture ? { providerMethod: capture.attributes.source.type } : {}) };
   }
   async verifyPayment(raw: Buffer, header: string | undefined): Promise<VerifiedPayment | null> {
     const parts = new Map<string, string>();

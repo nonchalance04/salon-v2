@@ -5,7 +5,8 @@ import { SettlementWorkspace } from "../SettlementWorkspace";
 import { ConfirmedServices } from "../ConfirmedServices";
 
 type View = "services" | "payments";
-export function CashierDashboard({ mode, bookingCode, onNavigate, onNavigationStateChange }: {
+export function CashierDashboard({ admin = false, mode, bookingCode, onNavigate, onNavigationStateChange }: {
+  admin?: boolean;
   mode: View;
   bookingCode?: string;
   onNavigate: (view: View, code?: string) => void;
@@ -19,7 +20,7 @@ export function CashierDashboard({ mode, bookingCode, onNavigate, onNavigationSt
   const select = (code: string) => onNavigate(mode, code);
   return (
     <section aria-labelledby="cashier-title">
-      <p className="eyebrow">CASHIER DESK</p>
+      <p className="eyebrow">{admin ? "PAYMENT DESK" : "CASHIER DESK"}</p>
       <h2 id="cashier-title">{mode === "services" ? "Manage arrivals & services" : "Service payments & receipts"}</h2>
       <p className="muted">
         {mode === "services"
@@ -29,7 +30,7 @@ export function CashierDashboard({ mode, bookingCode, onNavigate, onNavigationSt
       {bookingCode ? (
         <SettlementWorkspace
           key={`${mode}-${bookingCode}`}
-          admin={false}
+          admin={admin}
           mode={mode}
           initialCode={bookingCode}
           onNavigationStateChange={onNavigationStateChange}
@@ -39,8 +40,8 @@ export function CashierDashboard({ mode, bookingCode, onNavigate, onNavigationSt
         />
       ) : (
         <>
-          {mode === "services" && <ConfirmedServices admin={false} arrivalOnly onSelect={select} />}
-          <ConfirmedServices key={mode} admin={false} manageOutcomes={mode === "services"} onSelect={select} />
+          {mode === "services" && <ConfirmedServices admin={admin} arrivalOnly onSelect={select} />}
+          <ConfirmedServices key={mode} admin={admin && mode !== "payments"} manageOutcomes={mode === "services"} onSelect={select} />
           <details>
             <summary>{mode === "services" ? "Find an appointment or correct a no-show by booking code" : "Find a payment or receipt by booking code"}</summary>
             <form className="account-form cashier-search" onSubmit={search}>

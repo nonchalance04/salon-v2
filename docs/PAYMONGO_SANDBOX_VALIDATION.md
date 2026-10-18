@@ -1,15 +1,15 @@
 # PayMongo payment setup: step-by-step guide
 
 Checked against the application code and official PayMongo documentation on
-October 6, 2026. Follow Steps 1–12 for local sandbox setup and validation, then
+October 18, 2026. Follow Steps 1–12 for local sandbox setup and validation, then
 Step 14 when preparing a production deployment. This document does not itself
 configure an account, enable live charging, or prove merchant acceptance.
 
-The system already implements **GCash through PayMongo Hosted Checkout for the
+The system already implements **GCash and QR Ph through PayMongo Hosted Checkout for the
 appointment fee in PHP**. Service settlement remains the separate Cashier workflow.
-Enabling additional payment methods would require an implementation change.
-No PayMongo npm package, frontend public key, database model, or new migration is
-required just to enable the existing integration.
+QR Ph requires the included PaymentMethod enum migration. Apply it before
+starting the updated backend; no new database models or PayMongo npm package
+are needed. Hosted checkout does not require a frontend public key.
 
 ## Understand the three payment modes
 
@@ -74,7 +74,7 @@ not require a frontend PayMongo public key.
 Run on the computer where the browser and development servers will run:
 
 ```bash
-cd /home/nonchalance/salon_project
+cd /home/nonchalance/salon-v2
 nvm use
 cd backend
 npm ci
@@ -92,7 +92,7 @@ Initially keep `PAYMENT_PROVIDER=disabled` while acquiring webhook configuration
 Start the backend:
 
 ```bash
-cd /home/nonchalance/salon_project/backend
+cd /home/nonchalance/salon-v2/backend
 npm run dev
 ```
 
@@ -108,12 +108,12 @@ to verify your staff credentials before testing payments.
 2. Select the test environment where the dashboard offers a mode selector.
 3. Open Settings → Developers / API Keys and copy the Secret Test key beginning
    `sk_test_`. Dashboard wording may differ.
-4. Confirm the account can use GCash in test Hosted Checkout. Follow any account
+4. Confirm the account can use GCash and QR Ph in test Hosted Checkout. Follow any account
    activation/access requirements displayed by PayMongo.
 5. Copy the **Secret Test** key, not a `pk_test_...` public key. Keep it ready for
    Step 5. If GCash is unavailable, resolve the account's method eligibility with
    PayMongo; enabling unrelated methods in the dashboard will not change this
-   application's GCash-only request.
+   application's accepted checkout methods.
 
 Official references:
 [Hosted Checkout quick start](https://docs.paymongo.com/docs/payment-channels-hosted-checkout-quick-start),
@@ -221,17 +221,17 @@ refers to that browser's computer; use an appropriately served HTTPS frontend.
 Stop the old API/worker with Ctrl+C. Run these in separate terminals:
 
 ```bash
-cd /home/nonchalance/salon_project/backend
+cd /home/nonchalance/salon-v2/backend
 npm run dev
 ```
 
 ```bash
-cd /home/nonchalance/salon_project/backend
+cd /home/nonchalance/salon-v2/backend
 npm run worker:holds
 ```
 
 ```bash
-cd /home/nonchalance/salon_project/frontend
+cd /home/nonchalance/salon-v2/frontend
 npm run dev
 ```
 
@@ -379,7 +379,7 @@ disable its obsolete test endpoint in the merchant dashboard.
 From the initialized development checkout:
 
 ```bash
-cd /home/nonchalance/salon_project/backend
+cd /home/nonchalance/salon-v2/backend
 npm run check
 ```
 
@@ -401,7 +401,7 @@ unset TEST_DATABASE_ADMIN_URL
 Then build the frontend:
 
 ```bash
-cd /home/nonchalance/salon_project/frontend
+cd /home/nonchalance/salon-v2/frontend
 npm run build
 ```
 
@@ -497,3 +497,50 @@ all match.
 Record date, environment, booking code, merchant references, expected/actual result,
 and any retest. Use PASS, FAIL, BLOCKED, or NOT RUN. Do not put API keys, signing
 secrets, raw callback payloads, or private guest links in shared evidence.
+
+## QR Ph sandbox testing (2026-10-18)
+
+1. Apply the additive enum migration and regenerate Prisma before starting the API:
+
+   ```bash
+   cd /home/nonchalance/salon-v2/backend
+   npm run db:migrate
+   npm run db:generate
+   ```
+
+2. Use PAYMENT_PROVIDER=paymongo with sk_test_ credentials and the registered test
+   webhook for checkout_session.payment.paid, following the setup above. Keep
+   secrets in backend/.env. Restart API and hold worker after updating the code.
+3. Create a new booking and choose Pay booking fee / Continue to PayMongo, then
+   select QR Ph on hosted checkout. Existing checkout sessions may retain their
+   original method list; use a fresh booking/session.
+4. Do not scan/pay the QR with a real banking or wallet app. PayMongo's official
+   testing guide warns that test QR codes can process real transactions. Use the
+   provider's test controls or returned test_url. Hosted Checkout test-control
+   placement must be verified in the merchant sandbox; this app does not create
+   or expose a test_url itself. If none is available, stop and inspect the
+   provider's sandbox workflow rather than paying a QR or fabricating a webhook.
+5. Verify one successful QRPH payment, one automatic receipt showing QR Ph, and
+   confirmation only while the booking remains eligible. Repeat callback/status
+   recovery and verify no duplicate receipt. Check collection totals include QRPH.
+6. Leave another booking unpaid through its hold deadline: it must expire and
+   release its slot without a receipt. A verified late capture must be recorded
+   for reconciliation without reviving the booking.
+
+References: [Hosted Checkout](https://docs.paymongo.com/docs/payment-channels-hosted-checkout),
+[QR Ph testing](https://docs.paymongo.com/docs/payment-acceptance-testing).
+Automated adapter/database tests use mocked PayMongo transport and do not prove
+merchant sandbox acceptance or QR generation on the hosted page.
+
+## Return to the booking confirmation page
+
+New checkout sessions return to /booking-confirmed on the same trusted origin
+where checkout was started. This preserves the host-only appointment session
+cookie even when localhost, a development tunnel and ngrok are all configured.
+The backend uses the validated Origin/Referer; PAYMONGO_RETURN_URL supplies the
+fallback origin for internal calls. Start and finish the booking in the same
+browser. A different hostname has different cookies, even if it serves the same
+app. Existing PayMongo sessions keep their previously created redirect URLs.
+After restarting the API with this change, use a fresh booking/session. Pending
+payments still show verification; only a backend-confirmed booking displays the
+booking confirmation layout.

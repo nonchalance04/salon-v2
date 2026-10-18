@@ -15,13 +15,13 @@ function signed(type = "checkout_session.payment.paid", timestamp = Math.floor(D
   const signature = createHmac("sha256", config.webhookSecret).update(`${timestamp}.`).update(raw).digest("hex");
   return { raw, header: `t=${timestamp},te=${signature},li=` };
 }
-test("PayMongo creates GCash-only V2 checkout with exact centavos, private-free metadata and trusted return URL", async () => {
+test("PayMongo creates GCash and QR Ph V2 checkout with exact centavos, private-free metadata and trusted return URL", async () => {
   let calls = 0;
   const provider = new PayMongoProvider(config, (async (url, init) => {
     calls++; assert.equal(url, "https://api.paymongo.com/v2/checkout_sessions"); assert.equal(init?.method, "POST");
     assert.equal((init?.headers as Record<string,string>).Authorization, `Basic ${Buffer.from(`${config.secretKey}:`).toString("base64")}`);
     const attr = JSON.parse(init!.body as string).data.attributes;
-    assert.deepEqual(attr.payment_method_types, ["gcash"]); assert.equal(attr.line_items[0].amount, 10000);
+    assert.deepEqual(attr.payment_method_types, ["gcash", "qrph"]); assert.equal(attr.line_items[0].amount, 10000);
     assert.equal(attr.reference_number, paymentId); assert.deepEqual(attr.metadata, { paymentId, appointmentId });
     assert.equal(attr.success_url, config.returnUrl); assert.equal(attr.cancel_url, config.returnUrl);
     assert.equal(attr.pass_on_fees, undefined); assert.equal(attr.expires_at, undefined);
@@ -92,4 +92,52 @@ test("PayMongo expiry uses the documented session endpoint and unpaid sessions n
     const data = session(); data.data.attributes.status = "expired"; return Response.json(data);
   }) as typeof fetch);
   await provider.expirePayment("cs_test123"); assert.equal((await provider.getPaymentStatus("cs_test123")).status, "EXPIRED");
+});
+
+for (const method of ["gcash", "qrph"]) {
+  test(`PayMongo verifies ${method} captures through signed callbacks and status recovery`, async () => {
+    const data = session(true);
+    data.data.attributes.payments[0]!.attributes.source.type = method;
+    const provider = new PayMongoProvider(config, (async () => Response.json(data)) as typeof fetch);
+    const event = signed();
+    for (const result of [await provider.verifyPayment(event.raw, event.header), await provider.getPaymentStatus("cs_test123")]) {
+      assert.equal(result?.status, "SUCCEEDED");
+      assert.equal(result?.reference, "pay_test123");
+      assert.equal(result?.amount, "100.00");
+      assert.equal(result?.providerMethod, method);
+      assert.equal(result?.paymentId, paymentId);
+      assert.equal(result?.appointmentId, appointmentId);
+    }
+    data.data.attributes.payments[0]!.attributes.amount = 1;
+    await assert.rejects(provider.verifyPayment(event.raw, event.header));
+  });
+}
+
+test("checkout returns to the same trusted booking origin on the confirmation route", async () => {
+  const origins = ["http://localhost:5173", "https://salon.test", "https://preview.test"];
+  for (const returnOrigin of origins) {
+    let calls = 0;
+    const provider = new PayMongoProvider({ ...config, returnUrl: "https://salon.test/appointment", trustedOrigins: origins }, (async (_url, init) => {
+      calls++;
+      const attr = JSON.parse(init!.body as string).data.attributes;
+      assert.equal(attr.success_url, `${returnOrigin}/booking-confirmed`);
+      assert.equal(attr.cancel_url, `${returnOrigin}/booking-confirmed`);
+      return Response.json({ data: { id: "cs_test123", type: "checkout_session", attributes: { livemode: false, checkout_url: "https://checkout.paymongo.com/test123" } } });
+    }) as typeof fetch);
+    await provider.createPayment({ paymentId, appointmentId, amount: "100.00", currency: "PHP", expiresAt: new Date(Date.now()+60_000), returnOrigin });
+    assert.equal(calls, 1);
+    for (const invalidOrigin of ["https://evil.test", "https://salon.test.evil.test", "https://salon.test/appointment", "https://user@salon.test", "https://salon.test#token"]) {
+      await assert.rejects(provider.createPayment({ paymentId, appointmentId, amount: "100.00", currency: "PHP", expiresAt: new Date(Date.now()+60_000), returnOrigin: invalidOrigin }), { code: "UNTRUSTED_ORIGIN" });
+    }
+    assert.equal(calls, 1);
+  }
+});
+
+test("legacy configured appointment return URLs use the canonical confirmation route", async () => {
+  const provider = new PayMongoProvider({ ...config, returnUrl: "https://salon.test/appointment" }, (async (_url, init) => {
+    const attr = JSON.parse(init!.body as string).data.attributes;
+    assert.equal(attr.success_url, "https://salon.test/booking-confirmed");
+    return Response.json({ data: { id: "cs_test123", type: "checkout_session", attributes: { livemode: false, checkout_url: "https://checkout.paymongo.com/test123" } } });
+  }) as typeof fetch);
+  await provider.createPayment({ paymentId, appointmentId, amount: "100.00", currency: "PHP", expiresAt: new Date(Date.now()+60_000) });
 });

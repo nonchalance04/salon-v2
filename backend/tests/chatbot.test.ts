@@ -22,3 +22,19 @@ test("chat cannot invent availability, confirm bookings or obey injected instruc
 test("chat boundary limits input and accepts no private access or action fields", () => {
   for (const input of [{ message: " " }, { message: "a".repeat(1001) }, { message: "book", guestToken: "secret" }, { message: "book", action: "confirm" }]) assert.equal(chatbotSchema.safeParse(input).success, false);
 });
+
+test("routing distinguishes opening questions and appearance changes from appointment changes", async () => {
+  const bot = createChatbotService(source);
+  assert.equal((await bot.answer("Are you open tomorrow?")).topic, "salon");
+  assert.equal((await bot.answer("I want to change my hair color")).topic, "services");
+  assert.equal((await bot.answer("Move my appointment to Friday")).topic, "reschedule");
+  assert.equal((await bot.answer("How much is a manicure?")).topic, "services");
+});
+
+test("specific service lookup excludes unrelated catalog entries", async () => {
+  const bot = createChatbotService({ ...source, publicServices: async () => [
+    ...(await source.publicServices()), { ...(await source.publicServices())[0]!, id: "2", name: "Pedicure" },
+  ] });
+  assert.doesNotMatch((await bot.answer("How much is Current cut?")).answer, /Pedicure/);
+  assert.match((await bot.answer("services")).answer, /Pedicure/);
+});

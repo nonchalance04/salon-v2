@@ -101,3 +101,17 @@
 @media(prefers-reduced-motion:reduce) { .chat-thinking i { animation:none; } }
 @media(max-width:900px) { .chat-layout { grid-template-columns:230px minmax(0,1fr); }.chat-sidebar { padding:24px 18px; }.chat-topics small { display:none; }.chat-panel-heading { padding:18px; }.chat-transcript { padding:20px; }.chat-composer-area { padding:14px 16px; } }
 @media(max-width:639px) { .salon-guide.chat-page { padding-top:26px; padding-bottom:24px; }.chat-page-heading { margin-bottom:22px; align-items:flex-start; }.chat-page-heading h1 { font-size:31px; }.chat-page-heading p:last-child { font-size:12px; }.chat-book-link { display:none; }.chat-layout { display:flex; flex-direction:column; border-radius:18px; }.chat-sidebar { padding:12px; }.chat-sidebar-intro,.chat-sidebar > .chat-label,.chat-visit { display:none; }.chat-topics { grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }.chat-topics button { padding:9px 5px; justify-content:center; gap:4px; }.chat-topics button > span:nth-child(2) { flex:initial; }.chat-topics button > span:last-child { display:none; }.chat-topics strong { font-size:10px; margin:0; }.chat-topic-icon { font-size:17px; width:17px; }.chat-panel { height:590px; height:clamp(460px,72dvh,640px); }.chat-panel-heading { padding:14px; }.chat-transcript { padding:16px; }.chat-welcome { margin-top:12px; }.chat-welcome h2 { font-size:21px; }.chat-welcome > p:last-child { font-size:12px; }.chat-welcome-icon { margin-bottom:14px; }.chat-welcome .chat-label { font-size:8px; }.chat-composer-hint { font-size:8px; }.chat-page .chat-composer textarea { font-size:16px; }.chat-assistant-message { max-width:100%; }.chat-reset { font-size:10px; } }
+
+/* Reserve the complete reply layout while words fade in, avoiding scroll jumps. */
+.chat-assistant-message--entering { animation:chat-answer-enter 260ms ease-out both; }
+.chat-answer-word { animation:chat-word-reveal 220ms ease-out both; animation-delay:var(--word-delay, 0ms); }
+.chat-assistant-message--entering .chat-recommendation,
+.chat-assistant-message--entering .chat-reply-links { animation:chat-answer-enter 380ms ease-out 350ms both; }
+@keyframes chat-word-reveal { from { opacity:0; } to { opacity:1; } }
+@keyframes chat-answer-enter { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+@media(prefers-reduced-motion:reduce) {
+  .chat-assistant-message--entering,
+  .chat-answer-word,
+  .chat-assistant-message--entering .chat-recommendation,
+  .chat-assistant-message--entering .chat-reply-links { animation:none; }
+}

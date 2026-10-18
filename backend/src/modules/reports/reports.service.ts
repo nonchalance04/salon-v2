@@ -54,7 +54,7 @@ export function createReportsService(prisma: PrismaClient, timeZone: string) {
               successfulUnapplied: amount(sum(rows.filter(r => r.status === "SUCCEEDED" && !r.satisfiesObligation))),
               reconciliationRequired: amount(sum(rows.filter(r => r.status === "SUCCEEDED" && r.reconciliationStatus === "REQUIRED"))) };
           }),
-          methodTotals: currencies.flatMap(currency => ["CASH", "GCASH", "OTHER"].map(method => {
+          methodTotals: currencies.flatMap(currency => ["CASH", "GCASH", "OTHER", "QRPH"].map(method => {
             const captured = captures.filter(r => r.currency === currency && r.method === method).reduce((n, r) => n.plus(r._sum.amount ?? 0), new Prisma.Decimal(0));
             const refunded = refunds.filter(r => r.currency === currency && r.method === method).reduce((n, r) => n.plus(r._sum.amount ?? 0), new Prisma.Decimal(0));
             return { currency, method, captured: amount(captured), refunded: amount(refunded), netCashMovement: amount(captured.minus(refunded)) };

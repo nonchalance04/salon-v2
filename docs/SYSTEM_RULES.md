@@ -87,6 +87,9 @@ An Admin may:
 - Record customer arrival.
 - Finalize eligible zero-charge no-service closures.
 - Manage booking policies.
+- Record the final service payment when a positive service amount is due.
+- Select the payment method used.
+- Generate and print receipts for successful financial payments.
 - View payments.
 - View receipts.
 - View commission records.
@@ -1462,3 +1465,18 @@ editing must retain the existing rejection of conflicts with blocking service
 reservations, including preparation buffers and live payment holds. Existing
 custom-hours and multi-day closure records retain their original intervals and
 remain editable; they must not be silently converted to single-day closures.
+
+### PayMongo QR Ph appointment-fee payments
+
+Online appointment-fee checkout supports GCash and QR Ph. A verified QR Ph capture
+uses payment method QRPH, including in receipts and collections. Pending online
+checkout uses OTHER until the provider confirms the customer's chosen method.
+The same hold deadline, exact amount/currency, verified provider identity,
+duplicate-capture, automatic receipt and late-capture reconciliation rules apply
+to both methods. Existing historical transactions and issued receipts remain
+unchanged. This does not enable new staff manual or service-settlement methods.
+
+
+## Admin payment processing (updated 2026-10-18)
+
+Admins may collect service payments through Payments or the service settlement workspace. Admin and Cashier payments use the same settlement prerequisites, full-amount validation, idempotency, receipt issuance, commission finalization, and audit attribution. No-service closure remains Admin-only.

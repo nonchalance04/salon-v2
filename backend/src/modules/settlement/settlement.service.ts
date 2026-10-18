@@ -79,13 +79,13 @@ export function createSettlementService(prisma: PrismaClient) {
       // Reuse the same salon reference when a payment request is retried.
       const reference = input.externalReference ?? `SALON-SERVICE-${input.idempotencyKey}`;
       return transact(async tx => {
-        const row = await locked(tx, input.bookingCode); const actor = await authorize(tx, actorId, "CASHIER");
+        const row = await locked(tx, input.bookingCode); const actor = await authorize(tx, actorId);
         const key = `settlement:${input.idempotencyKey}`;
         const matches = await tx.payment.findMany({ where: { OR: [{ idempotencyKey: key }, { provider: "manual", externalReference: reference }] } });
         if (matches.length) {
           const p = matches[0]!;
           if (matches.length !== 1 || p.appointmentId !== row.id || p.type !== "SERVICE_PAYMENT" || p.status !== "SUCCEEDED" || p.method !== input.method || p.currency !== input.currency || !p.amount.equals(input.amount) || p.externalReference !== reference || row.completionType !== "SERVICE_SETTLEMENT") throw fail("PAYMENT_IDENTITY_CONFLICT", "This payment identity is associated with different details.");
-          return view(tx, row, false);
+          return view(tx, row, actor.role === "ADMIN");
         }
         editable(row, input.revision);
         if (row.appointmentServices.some(s => s.outcome === "SCHEDULED")) throw fail("OUTCOMES_REQUIRED", "Record all service outcomes before settlement.");
@@ -106,7 +106,7 @@ export function createSettlementService(prisma: PrismaClient) {
         await tx.commissionRecord.createMany({ data: commissions.map(c => ({ ...c, appointmentId: row.id, sourcePaymentId: payment.id, finalizedByUserId: actor.id, finalizedAt: now })) });
 
         await complete(tx, row, actor, "SERVICE_SETTLEMENT", now, payment.id);
-        return view(tx, await tx.appointment.findUniqueOrThrow({ where: { id: row.id }, include }), false);
+        return view(tx, await tx.appointment.findUniqueOrThrow({ where: { id: row.id }, include }), actor.role === "ADMIN");
       });
     },
     async close(actorId: string, raw: { bookingCode: string; revision: string }) {

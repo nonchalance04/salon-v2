@@ -4,7 +4,7 @@ import type { Receipt } from "../../types/receipt";
 
 const value = (input: unknown) => typeof input === "string" ? input : "";
 const object = (input: unknown): Record<string, unknown> => input && typeof input === "object" && !Array.isArray(input) ? input as Record<string, unknown> : {};
-const methodName = (method: string) => ({ CASH: "Cash", GCASH: "GCash", OTHER: "Other" })[method] || method.replaceAll("_", " ");
+const methodName = (method: string) => ({ CASH: "Cash", GCASH: "GCash", QRPH: "QR Ph", OTHER: "Other" })[method] || method.replaceAll("_", " ");
 
 export function ReceiptContent({ receipt }: { receipt: Receipt }) {
   const r = receipt.receiptSnapshot;

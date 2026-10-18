@@ -1256,6 +1256,7 @@ A Payment must never be created only to simulate a non-financial lifecycle event
 - CASH
 - GCASH
 - OTHER
+- QRPH
 
 ## PaymentStatus
 

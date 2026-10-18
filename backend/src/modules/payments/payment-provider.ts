@@ -3,13 +3,14 @@ import { z } from "zod";
 import { ApiError } from "../../shared/http.js";
 import { money } from "./payments.schema.js";
 
-export type PaymentRequest = { paymentId: string; appointmentId: string; amount: string; currency: string; expiresAt: Date };
+export type PaymentRequest = { paymentId: string; appointmentId: string; amount: string; currency: string; expiresAt: Date; returnOrigin?: string };
 export const verifiedEventSchema = z.object({
   paymentId: z.uuid(), appointmentId: z.uuid(), reference: z.string().min(1).max(200),
   amount: money, currency: z.literal("PHP"), status: z.enum(["PENDING", "SUCCEEDED", "FAILED", "EXPIRED"]),
   paidAt: z.iso.datetime({ offset: true }).nullable(),
   checkoutReference: z.string().optional(),
   checkoutUrl: z.string().optional(),
+  providerMethod: z.enum(["gcash", "qrph"]).optional(),
 }).strict().refine(event => event.status !== "SUCCEEDED" || event.paidAt !== null);
 export type VerifiedPayment = z.infer<typeof verifiedEventSchema>;
 // Adapters authenticate events or query their provider server. No browser success

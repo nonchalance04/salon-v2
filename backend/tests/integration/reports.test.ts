@@ -163,7 +163,7 @@ test("cashier method totals subtract refunds by refund date and original method"
   const result = await reports.collections(cashier.id, reportQuery.parse({ from: "2026-10-08", to: "2026-10-08" }));
   assert.equal(result.totals[0]!.refunded, "30.15"); assert.equal(result.totals[0]!.netCashMovement, "270.15");
   assert.deepEqual(result.methodTotals.map(t => [t.method, t.captured, t.refunded, t.netCashMovement]), [
-    ["CASH", "100.10", "10.05", "90.05"], ["GCASH", "200.20", "20.10", "180.10"], ["OTHER", "0.00", "0.00", "0.00"],
+    ["CASH", "100.10", "10.05", "90.05"], ["GCASH", "200.20", "20.10", "180.10"], ["OTHER", "0.00", "0.00", "0.00"], ["QRPH", "0.00", "0.00", "0.00"],
   ]);
   assert.deepEqual(result.typeTotals.map(t => [t.type, t.captured, t.count]), [["APPOINTMENT_FEE", "100.10", 1], ["SERVICE_PAYMENT", "200.20", 1]]);
 });
@@ -348,4 +348,13 @@ test("cashier arrival list uses today's salon date, active outcomes and bounded 
   assert.equal(page2.rows[0]!.bookingCode, arrived.a.bookingCode);
   assert.equal(page2.rows[0]!.checkedInByUser!.firstName, cashier.firstName);
   assert.equal((await reports.confirmedServices(cashier.id, { ...query, paymentReady: "true" })).total, 0);
+});
+
+test("QR Ph collections include captures and refunds under their actual method", async () => {
+  const cashier = await actor("CASHIER"); const a = await appointment();
+  await payment(a.id, "100.00", { paidAt: new Date("2026-10-09T00:00Z"), method: "QRPH", satisfiesObligation: true });
+  await payment(a.id, "25.00", { paidAt: new Date("2026-10-08T00:00Z"), method: "QRPH", status: "REFUNDED", refundedAt: new Date("2026-10-09T00:00Z") });
+  const result = await reports.collections(cashier.id, reportQuery.parse({ from: "2026-10-09", to: "2026-10-09" }));
+  const qrph = result.methodTotals.find(row => row.method === "QRPH")!;
+  assert.equal(qrph.captured, "100.00"); assert.equal(qrph.refunded, "25.00"); assert.equal(qrph.netCashMovement, "75.00");
 });

@@ -238,12 +238,14 @@ const adminNav: { page: Page; label: string; icon: IconName }[] = [
   { page: "settings", label: "Settings", icon: "settings" },
   { page: "reports", label: "Reports", icon: "chart" },
   { page: "overview", label: "Appointments", icon: "calendar" },
+  { page: "payments", label: "Payments", icon: "receipt" },
 ];
 const cashierNav: typeof adminNav = [
   { page: "dashboard", label: "Services", icon: "data" },
   { page: "payments", label: "Payments", icon: "receipt" },
 ];
 const headings: Partial<Record<Page, [string, string]>> = {
+  payments: ["Payments", "Collect service payments and review receipts"],
   master: ["Salon Management", "Core configurations and salon data"],
   settings: ["Settings", "Configure settings and manage system controls"],
   reports: ["Reports", "Collections and transaction history"],
@@ -268,7 +270,7 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
   const routerNavigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const allowedPages: Page[] = admin
-    ? ["dashboard", "master", "settings", "reports", "overview", "appointments", "settlement", "accounts", "configuration", "report-detail"]
+    ? ["dashboard", "payments", "master", "settings", "reports", "overview", "appointments", "settlement", "accounts", "configuration", "report-detail"]
     : ["dashboard", "payments"];
   const validPage = allowedPages.includes(routePage as Page);
   const page = (validPage ? routePage : "dashboard") as Page;
@@ -281,7 +283,7 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
     ["from", "to", "status", "staffId", "search", "attention"].flatMap(key => params.has(key) ? [[key, params.get(key)!]] : []),
   );
   const [cashierNavigation, setCashierNavigation] = useState({ busy: false, dirty: false });
-  const blocker = useBlocker(({ currentLocation, nextLocation }) => !admin &&
+  const blocker = useBlocker(({ currentLocation, nextLocation }) =>
     (cashierNavigation.busy || cashierNavigation.dirty) &&
     (currentLocation.pathname !== nextLocation.pathname || currentLocation.search !== nextLocation.search));
   useEffect(() => {
@@ -364,11 +366,6 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
         "CLIQUE SALON AND SPA",
         "Where everything you need meets you at the best time.",
       ]);
-  if (admin && routePage === "payments") {
-    const search = new URLSearchParams();
-    if (bookingCode) search.set("search", bookingCode);
-    return <Navigate to={{ pathname: "/staff/appointments", search: search.toString() }} replace />;
-  }
   if (!validPage) return <Navigate to="/staff/dashboard" replace />;
   if (admin && page === "configuration" && requestedSection === "qualifications") {
     const updatedParams = new URLSearchParams(params);
@@ -417,7 +414,7 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
             <button
               key={item.page}
               aria-current={active === item.page ? "page" : undefined}
-              disabled={!admin && cashierNavigation.busy}
+              disabled={cashierNavigation.busy}
               onClick={() => navigate(item.page)}
             >
               <Icon name={item.icon} />
@@ -565,11 +562,12 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
                 <AdminDashboard
                   onSettlement={(code) => navigate("settlement", code)}
                 />
-              ) : !admin ? (
+              ) : !admin || page === "payments" ? (
                 <CashierDashboard
+                  admin={admin}
                   mode={page === "payments" ? "payments" : "services"}
                   bookingCode={bookingCode}
-                  onNavigate={(view, code) => navigate(view === "payments" ? "payments" : "dashboard", code)}
+                  onNavigate={(view, code) => navigate(view === "payments" ? "payments" : admin ? "settlement" : "dashboard", code)}
                   onNavigationStateChange={setCashierNavigation}
                 />
               ) : page === "configuration" && admin ? (
@@ -595,6 +593,7 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
                   key={bookingCode ?? "settlement"}
                   admin={admin}
                   initialCode={bookingCode}
+                  onNavigationStateChange={setCashierNavigation}
                   onBack={
                     bookingCode ? () => setParams(previous => { previous.delete("code"); return previous; }) : undefined
                   }

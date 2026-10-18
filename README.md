@@ -389,19 +389,19 @@ writes rolls the transaction back and retries as a reconciliation case. Separate
 captures are preserved, while the same provider transaction/manual reference
 cannot duplicate collection totals. No models or migrations were added.
 
-## PayMongo GCash setup
+## PayMongo GCash and QR Ph setup
 
 Follow the [detailed PayMongo setup and testing guide](docs/PAYMONGO_SANDBOX_VALIDATION.md)
 for exact files to edit, HTTPS tunnel setup, webhook verification, and pass criteria.
 
 The integration follows PayMongo's [Hosted Checkout V2](https://docs.paymongo.com/reference/create_checkout_sessions_2)
 and [webhook signature verification](https://docs.paymongo.com/docs/developer-tools-webhook-setup-management).
-It sends GCash as the only payment method, the fixed fee in integer centavos, and
+It offers GCash and QR Ph, sending the fixed fee in integer centavos and
 internal payment/appointment IDs. Guest tokens and contact details are not sent in
 checkout metadata or return URLs. The salon does not pass gateway fees on to the
 customer or change the snapshotted appointment fee.
 
-1. Enable GCash on the PayMongo merchant account and obtain its **test secret key**.
+1. Confirm GCash and QR Ph availability on the PayMongo merchant account and obtain its **test secret key**. Apply migrations with `npm run db:migrate` and regenerate with `npm run db:generate` from `backend/` before running the updated code.
 2. Register an HTTPS webhook endpoint at
    `https://YOUR_API_HOST/api/payments/provider/events` for
    `checkout_session.payment.paid`. Obtain that endpoint's signing secret.
@@ -418,11 +418,11 @@ customer or change the snapshotted appointment fee.
    `/booking-confirmed` path without query parameters or fragments (legacy `/appointment` is also accepted). Development
    permits local HTTP; production requires HTTPS and `sk_live_...`. Development
    rejects live keys, and production rejects test keys/providers.
-4. Restart the API and hold worker. Create a booking, choose **Pay with GCash**,
-   then **Continue to GCash on PayMongo**. Checkout opens in the current tab.
+4. Restart the API and hold worker. Create a booking, choose **Pay booking fee**,
+   then **Continue to PayMongo**. Checkout opens in the current tab.
    The existing HttpOnly appointment session restores booking access on return;
    the private guest token is never sent to PayMongo. Confirmation requires verified payment.
-5. Complete PayMongo's sandbox flow, return to the salon, and check
+5. Use PayMongo's sandbox controls or returned `test_url` to simulate QR Ph; do not scan/pay a QR using a real banking or wallet app. Complete the sandbox flow, return to the salon, and check
    payment status. Confirm the webhook receives HTTP 200, one capture is stored,
    and the booking confirms once. Repeat the callback, try cancellation/failure,
    and test success after the hold expires before enabling live payments.
@@ -430,7 +430,7 @@ customer or change the snapshotted appointment fee.
 The handler verifies the exact raw body with `Paymongo-Signature` and the configured
 mode's `te`/`li` HMAC, with a five-minute request timestamp tolerance. It then retrieves
 the checkout session from the merchant API and validates its session, internal IDs,
-capture ID, GCash source, amount, currency, mode, and paid status. Responses contain
+capture ID, GCash/QR Ph source, amount, currency, mode, and paid status. Responses contain
 only an acknowledgement. A failed API retrieval returns a retryable server error;
 no unverified payment is committed. Keep the host clock synchronized.
 

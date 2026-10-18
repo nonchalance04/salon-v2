@@ -122,6 +122,8 @@ export function BookingConfirmation({
               <dd>
                 {payment?.method === "GCASH"
                   ? "GCash"
+                  : payment?.method === "QRPH"
+                    ? "QR Ph"
                   : payment?.method?.replaceAll("_", " ") ||
                     (appointment.carriedAppointmentFeePaymentId
                       ? "Carried appointment-fee credit"

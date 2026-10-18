@@ -368,11 +368,11 @@ test("confirmation rechecks stored reservation coverage without repricing servic
 });
 
 import { PayMongoProvider } from "../../src/modules/payments/paymongo-provider.js";
-function paymongoFixture() {
+function paymongoFixture(method: "gcash" | "qrph" = "gcash") {
   const namespace = randomUUID().replaceAll("-", "");
-  const sessions = new Map<string, { request: { reference_number: string; metadata: { paymentId: string; appointmentId: string }; line_items: { amount: number; currency: string; quantity: number }[] }; paid: boolean; expired: boolean }>();
+  const sessions = new Map<string, { request: { success_url: string; cancel_url: string; reference_number: string; metadata: { paymentId: string; appointmentId: string }; line_items: { amount: number; currency: string; quantity: number }[] }; paid: boolean; expired: boolean }>();
   let creates = 0, loseResponse = false;
-  const config = { secretKey: "sk_test_fixture", webhookSecret: "whsk_fixture_secret_123456", returnUrl: "https://salon.test/appointment" };
+  const config = { secretKey: "sk_test_fixture", webhookSecret: "whsk_fixture_secret_123456", returnUrl: "https://salon.test/appointment", trustedOrigins: ["https://salon.test", "http://localhost:5173", "http://127.0.0.1:5173"] };
   const provider = new PayMongoProvider(config, (async (url, init) => {
     const path = new URL(String(url)).pathname;
     let sessionId: string;
@@ -385,7 +385,7 @@ function paymongoFixture() {
     if (path.endsWith("/expire")) row.expired = true;
     return Response.json({ data: { id: sessionId, type: "checkout_session", attributes: {
       ...row.request, livemode: false, status: row.expired ? "expired" : "active", checkout_url: `https://checkout.paymongo.com/${sessionId}`,
-      payments: row.paid ? [{ id: `pay_${sessionId.slice(3)}`, type: "payment", attributes: { amount: row.request.line_items[0]!.amount, currency: "PHP", status: "paid", source: { type: "gcash" }, livemode: false, paid_at: Math.floor(Date.now()/1000) } }] : [],
+      payments: row.paid ? [{ id: `pay_${sessionId.slice(3)}`, type: "payment", attributes: { amount: row.request.line_items[0]!.amount, currency: "PHP", status: "paid", source: { type: method }, livemode: false, paid_at: Math.floor(Date.now()/1000) } }] : [],
     } } });
   }) as typeof fetch);
   const service = createPaymentsService(prisma, provider);
@@ -510,5 +510,64 @@ test("PayMongo HTTP webhook uses Paymongo-Signature without browser cookies and 
     assert.equal((await prisma.receipt.findUniqueOrThrow({ where: { paymentId: checkout.payment.id } })).issuedByUserId, null);
     assert.equal(await prisma.auditLog.count({ where: { entityId: f.row.id, action: "BOOKING_CONFIRMED", actorType: "SYSTEM" } }), 0);
     assert.equal(await prisma.notificationQueue.count({ where: { appointmentId: f.row.id } }), 2);
+  } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
+});
+
+test("QR Ph pending checkout, verified capture, receipts and duplicate recovery preserve the actual method", async () => {
+  const f = await heldBooking(); const gateway = paymongoFixture("qrph");
+  const checkout = await gateway.service.checkout(f.row.bookingCode, f.guestToken, randomUUID());
+  assert.equal(checkout.payment.method, "OTHER");
+  assert.equal((await gateway.service.refresh(f.row.bookingCode, f.guestToken, checkout.payment.id)).status, "PENDING");
+  assert.equal(await prisma.receipt.count({ where: { paymentId: checkout.payment.id } }), 0);
+  const results = await Promise.all([gateway.capture(gateway.reference), gateway.capture(gateway.reference)]);
+  for (const result of results) {
+    assert.equal(result!.method, "QRPH");
+    assert.equal(result!.appointment.status, "CONFIRMED");
+    assert.equal((result!.receipt!.receiptSnapshot as { method: string }).method, "QRPH");
+  }
+  const receipt = await prisma.receipt.findUniqueOrThrow({ where: { paymentId: checkout.payment.id } });
+  assert.equal(receipt.issuedByUserId, null);
+  assert.equal(await prisma.receipt.count({ where: { paymentId: checkout.payment.id } }), 1);
+  const refreshed = await gateway.service.refresh(f.row.bookingCode, f.guestToken, checkout.payment.id);
+  assert.equal(refreshed.method, "QRPH");
+  assert.equal(refreshed.receipt!.receiptNumber, receipt.receiptNumber);
+  assert.equal((await prisma.payment.findUniqueOrThrow({ where: { id: checkout.payment.id } })).externalReference, `pay_${gateway.reference.slice(3)}`);
+});
+
+test("QR Ph expired holds release slots and late captures require reconciliation", async () => {
+  const f = await heldBooking(); const gateway = paymongoFixture("qrph");
+  const checkout = await gateway.service.checkout(f.row.bookingCode, f.guestToken, randomUUID());
+  await prisma.appointment.update({ where: { id: f.row.id }, data: { holdExpiresAt: new Date(Date.now()-1000) } });
+  await bookings.expireHolds(); await gateway.service.synchronizeExpired();
+  assert.equal(gateway.sessions.get(gateway.reference)!.expired, true);
+  assert.equal((await prisma.payment.findUniqueOrThrow({ where: { id: checkout.payment.id } })).status, "EXPIRED");
+  assert.equal(await prisma.receipt.count({ where: { paymentId: checkout.payment.id } }), 0);
+  const late = await gateway.capture(gateway.reference);
+  assert.equal(late!.status, "SUCCEEDED"); assert.equal(late!.method, "QRPH");
+  assert.equal(late!.reconciliationStatus, "REQUIRED"); assert.equal(late!.appointment.status, "EXPIRED");
+  assert.equal((late!.receipt!.receiptSnapshot as { method: string }).method, "QRPH");
+});
+
+test("HTTP QR Ph checkout keeps the return session and confirmation URL on the customer's trusted origin", async () => {
+  const gateway = paymongoFixture("qrph"); const f = await heldBooking();
+  const config = parseEnv({ NODE_ENV: "test", DATABASE_URL: url.toString(), JWT_SECRET: "p".repeat(32) });
+  const server = createApp(createPaymentsRouter(prisma, config, gateway.provider)).listen(0, "127.0.0.1");
+  await once(server, "listening"); const address = server.address(); assert.ok(address && typeof address !== "string");
+  try {
+    const endpoint = `http://127.0.0.1:${address.port}/api/payments/checkout`;
+    const body = JSON.stringify({ bookingCode: f.row.bookingCode, token: f.guestToken, idempotencyKey: randomUUID() });
+    const rejected = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json", Origin: "https://evil.test" }, body });
+    assert.equal(rejected.status, 403); assert.equal(gateway.creates, 0);
+    const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json", Referer: "http://localhost:5173/appointment" }, body });
+    assert.equal(response.status, 200);
+    const cookie = response.headers.get("set-cookie")!;
+    assert.match(cookie, /salon_appointment_session=/); assert.match(cookie, /HttpOnly/i);
+    assert.doesNotMatch(cookie, /Domain=/i);
+    const request = gateway.sessions.get(gateway.reference)!.request;
+    assert.equal(request.success_url, "http://localhost:5173/booking-confirmed");
+    assert.equal(request.cancel_url, "http://localhost:5173/booking-confirmed");
+    await gateway.capture(gateway.reference);
+    const persisted = await prisma.appointment.findUniqueOrThrow({ where: { id: f.row.id } });
+    assert.equal(persisted.status, "CONFIRMED");
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
 });

@@ -622,3 +622,31 @@ and previous no-show timestamps are no longer saved in an audit event. Check-in,
 receipt, completion, and finalization actor fields remain on their domain records.
 Earlier phase verification reports describe the implementation at that time;
 the MVP scope update supersedes their audit requirements.
+
+## 2026-10-18 — Add PayMongo QR Ph booking payments
+
+At the user's request, Hosted Checkout offers GCash and QR Ph. PayMongo generates
+and displays QR codes; the salon's existing GCash QR is not imported. The adapter
+accepts only gcash/qrph capture sources and carries the verified source to
+PaymentService. New pending checkouts use OTHER until the customer chooses a
+method; verified capture records GCASH or QRPH before receipt issuance in the
+same transaction. QRPH extends the existing PaymentMethod enum, and collection
+reports include its captures/refunds. Historical payments and receipts are not
+rewritten. Staff manual/service-payment method choices remain unchanged.
+Booking holds, amount checks, webhook authentication, idempotency, reconciliation,
+and automatic receipt rules remain in force. Sandbox UI directs testers to
+PayMongo test controls rather than scanning QR codes with real banking apps.
+
+## 2026-10-18 — Preserve the booking origin on PayMongo return
+
+The user reported landing on Your appointment after QR Ph checkout rather than
+the booking confirmation layout. Local configuration used different origins for
+PUBLIC_SITE_URL and PAYMONGO_RETURN_URL, so a return could lose the host-only guest
+session. Checkout now uses the browserSecurity-validated Origin (or Referer origin)
+and the fixed /booking-confirmed path. The PayMongo adapter checks the origin
+against TRUSTED_ORIGINS again; live checkout requires HTTPS. It never accepts a
+client-provided return URL or derives one from forwarding headers. Direct internal
+calls fall back to the configured return origin with the same canonical path.
+The existing session restoration, payment verification and confirmed-only rendering
+remain authoritative. Existing PayMongo sessions keep their original URLs; create
+a fresh booking/session to verify the change.

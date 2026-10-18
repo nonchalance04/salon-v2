@@ -81,7 +81,8 @@ test("errors, blocked, truncated and malformed provider outputs use guided fallb
   for (const fetch of providers) {
     const result = await createGeminiChatbotService(source, config, { ...deps, fetch }).answer("services");
     assert.equal(result.mode, "guided"); assert.match(result.answer, /1500.00/);
-    assert.doesNotMatch(JSON.stringify(result), /secret provider error|private error/);
+    assert.equal("notice" in result, false);
+    assert.doesNotMatch(JSON.stringify(result), /secret provider error|private error|temporarily unavailable/);
   }
 });
 
@@ -138,4 +139,15 @@ test("chat limiter bounds each client and resets after the window", () => {
   assert.equal((error as ApiError).status, 429);
   time = 60001;
   limiter(req, res, value => { error = value; }); assert.equal(error, undefined);
+});
+
+test("specific service questions render selected current facts instead of generated claims", async () => {
+  const bot = createGeminiChatbotService({ ...source, publicServices: async () => [service, { ...service, id: "other", name: "Pedicure" }] }, config, {
+    ...deps, fetch: async () => fakeResponse({ intent: "services", answer: "It is free and takes one minute.",
+      recommendations: [{ serviceId: service.id, reason: "The service you asked about." }] }),
+  });
+  const result = await bot.answer("How much is that treatment?");
+  assert.equal(result.mode, "gemini");
+  assert.match(result.answer, /Hair Treatment: PHP 1500.00, 60 minutes/);
+  assert.doesNotMatch(result.answer, /Pedicure|free|one minute/);
 });

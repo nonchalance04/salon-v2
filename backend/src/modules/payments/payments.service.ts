@@ -474,7 +474,7 @@ export function createPaymentsService(
         return session.token;
       });
     },
-    async checkout(bookingCode: string, token: string, key: string) {
+    async checkout(bookingCode: string, token: string, key: string, returnOrigin?: string) {
       if (!provider)
         throw new ApiError(
           503,
@@ -541,7 +541,8 @@ export function createPaymentsService(
             appointmentId: row.id,
             type: "APPOINTMENT_FEE",
             provider: provider.name,
-            method: provider.name === "test" ? "OTHER" : "GCASH",
+            // The customer chooses the method on hosted checkout.
+            method: "OTHER",
             status: "PENDING",
             amount: row.appointmentFeeAmount,
             currency: "PHP",
@@ -584,7 +585,7 @@ export function createPaymentsService(
         };
       }
       const checkout = await provider.createPayment(
-        requestFor(pending.payment, pending.appointment),
+        { ...requestFor(pending.payment, pending.appointment), ...(returnOrigin ? { returnOrigin } : {}) },
       );
       const result = await transaction(prisma, async (tx) => {
         const appointment = await lockAppointment(tx, pending.appointment.id);
@@ -913,9 +914,17 @@ export function createPaymentsService(
           event.status === "SUCCEEDED"
         )
           throw conflict();
+        const capturedMethod = event.providerMethod === "qrph" ? "QRPH" : "GCASH";
+        if (event.status === "SUCCEEDED") {
+          if (!event.providerMethod) throw conflict();
+          // Never rewrite the method of a historical settled transaction.
+          if ((payment.status === "SUCCEEDED" || payment.status === "REFUNDED") && payment.method !== capturedMethod)
+            throw conflict();
+        }
         payment = await tx.payment.update({
           where: { id: payment.id },
           data: {
+            ...(event.status === "SUCCEEDED" ? { method: capturedMethod } : {}),
             metadata: {
               ...details,
               checkoutState: "CREATED",
