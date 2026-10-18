@@ -22,9 +22,9 @@ to booking; the availability screen remains authoritative for available times.
 
 ## Cashier
 
-- **Appointment fees:** find the booking code, verify money actually received, and
-  record its original transaction/cash collection reference. After an uncertain
-  response, refresh or retry the same reference; do not invent a new collection.
+- **Appointment fees:** successful PayMongo checkout payments are recorded
+  automatically. Verify the booking status; do not record the same online capture
+  as a separate collection. Service charges remain the separate settlement flow.
 - **Service settlement:** find the booking and mark each service performed/not
   performed. Review the full performed-service charge; the fee is separate.
   Verify collection and finalize once. Partial/split settlement is unavailable.
@@ -50,9 +50,13 @@ Development seed skills are configured in `backend/prisma/seed.ts` under `staffF
   Do not use no-show as a general cancellation override.
 - Review/correct saved outcomes before finalization. Cashiers perform settlement.
 - Inspect finalized commissions, historical receipts, payment reconciliation and
-  authorized reports/audits. Carried credit is not a second payment.
+  authorized reports. Carried credit is not a second payment.
 - Reconcile actual merchant captures with the source transaction identity. Never
   manually record an already captured online payment as a new collection.
+- PayMongo appointment-fee payments register automatically after verification,
+  with a receipt and booking confirmation while the hold is valid. Admin does
+  not record these through a payment screen; review history and reconciliation
+  through Reports. Late payments remain recorded for reconciliation.
 
 ## Failures and daily close
 
@@ -79,6 +83,6 @@ Automatic no-show marking runs in the hold worker (`npm run start:holds`, or `np
 
 Customer check-in: after applying database migrations and restarting the backend, Cashier/Admin can use Confirmed services → Check in customer → Confirm arrival. Admin can also check in from Appointments → View details. Verify the customer name and booking code and confirm physical arrival. Check-in is available only on the scheduled salon date; arrival time and recording staff are shown after saving. It records arrival separately from service outcomes and leaves the appointment confirmed. Repeated confirmation does not change the original time/staff. Checked-in visits cannot be manually marked no-show or changed through customer workflows. Record arrival promptly: missing check-in can still lead to automatic no-show marking. Use the dedicated checked-in waiting queue to review unresolved arrivals. If automatic marking has already committed, ordinary check-in cannot restore the appointment; an Admin can use the correction action described below when eligible.
 
-Admin no-show correction: open Appointments → select a NO_SHOW booking → Correct no-show / late arrival. Enter the reason, confirm the customer is physically present, and select Restore and check in. The system checks original staff availability including buffers before restoring and checking in the visit. It rejects ended visits, visits on another date, existing replacement bookings, recorded service activity, and unavailable staff time. Restoration keeps original prices, staff, times, fee history and policy. Review the BOOKING_NO_SHOW_CORRECTED audit record for the previous no-show timestamps, reason and correcting account. If rejected, arrange a new available booking; restoration never extends the original slot.
+Admin no-show correction: open Appointments → select a NO_SHOW booking → Correct no-show / late arrival. Enter the reason, confirm the customer is physically present, and select Restore and check in. The system checks original staff availability including buffers before restoring and checking in the visit. It rejects ended visits, visits on another date, existing replacement bookings, recorded service activity, and unavailable staff time. Restoration keeps original prices, staff, times, fee history and policy. The correcting account and arrival time remain on the appointment; this MVP does not retain a separate correction audit event. If rejected, arrange a new available booking; restoration never extends the original slot.
 
 Checked-in waiting queue: available on the Cashier dashboard/appointments screen and Admin dashboard/appointments screen. Oldest check-ins appear first across all dates. Search by customer or booking code; use Review services to open the existing workspace. The queue displays arrival, recording staff, assigned services/stylists, and elapsed minutes since check-in using server time. Refreshes every 30 seconds while visible and when the screen regains focus; manual refresh and retry are available. Check-ins/corrections on the same screen refresh it immediately. Visits past scheduled end are flagged Needs review and remain visible until resolved. Service start is not tracked separately: confirm with the stylist before assuming the customer is still waiting. Recording an active service outcome removes the appointment from this queue; settlement remains available through Confirmed services.

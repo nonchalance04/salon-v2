@@ -57,8 +57,7 @@ npm run admin:bootstrap
 ```
 
 The command validates the existing account rules (12+ characters, at most 72 UTF-8
-password bytes), hashes the password, and atomically creates one Admin and a SYSTEM
-audit event. It requires an entirely empty User table and serializes concurrent
+password bytes), hashes the password, and atomically creates one Admin. It requires an entirely empty User table and serializes concurrent
 runs. It cannot reset passwords, create a second user, or populate salon fixtures.
 Remove those four bootstrap variables immediately afterward. Initial Admin login
 then configures profile, real services, staff, qualifications/commission rates,

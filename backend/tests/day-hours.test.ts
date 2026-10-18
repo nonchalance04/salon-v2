@@ -66,18 +66,18 @@ test("closing a weekday deactivates every active period atomically without delet
   assert.equal(state.rows.length, 4);
   assert.ok(state.rows.filter(row => row.dayOfWeek === "MONDAY").every(row => !row.isActive));
   assert.equal(state.rows.find(row => row.id === id(3))!.isActive, true);
-  assert.equal(state.audits.length, 2);
+  assert.equal(state.audits.length, 0);
   assert.deepEqual(state.events, ["exclusive", "actor-lock", "clock"]);
 });
 
-test("saving split hours preserves unchanged records and audits added/removed time ranges", async () => {
+test("saving split hours preserves unchanged records and does not write audits", async () => {
   const { service, state } = fixture();
   await service.saveDayHours("admin", "MONDAY", { isOpen: true, periods: [{ id: id(1), openTime: "08:00", closeTime: "12:00" }, { openTime: "14:00", closeTime: "17:00" }] });
   const active = state.rows.filter(row => row.dayOfWeek === "MONDAY" && row.isActive);
   assert.equal(active.length, 2);
   assert.equal(active[0]!.id, id(1));
   assert.equal(state.rows.find(row => row.id === id(2))!.isActive, false);
-  assert.equal(state.audits.length, 2);
+  assert.equal(state.audits.length, 0);
   assert.equal(state.created, 1);
 });
 

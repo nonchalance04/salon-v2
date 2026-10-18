@@ -32,16 +32,7 @@ export function createUsersService(prisma: PrismaClient) {
           const user = id
             ? await tx.user.update({ where: { id }, data, select: publicUserSelect })
             : await tx.user.create({ data: data as Prisma.UserCreateInput, select: publicUserSelect });
-          const auditData = (value: typeof user) => ({
-            id: value.id, email: value.email, firstName: value.firstName, lastName: value.lastName,
-            role: value.role, isActive: value.isActive,
-          });
-          await tx.auditLog.create({ data: {
-            actorType: "ADMIN", actorUserId: actorId, action: id ? "USER_UPDATED" : "USER_CREATED",
-            entityType: "User", entityId: user.id,
-            ...(before ? { beforeData: auditData(before) } : {}),
-            afterData: { ...auditData(user), passwordChanged: Boolean(passwordHash) },
-          } });
+
           return user;
         });
       } catch (error) {

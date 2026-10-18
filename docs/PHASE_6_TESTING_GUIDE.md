@@ -133,17 +133,15 @@ Expected: booking is `CONFIRMED`, the countdown is no longer an unpaid-hold
 countdown, and exactly one payment is `SUCCEEDED` for the displayed fee.
 
 5. Open the saved private link in another tab. Expect the same confirmed booking.
-6. In a separate tab, open `http://127.0.0.1:5173/` and sign in as Admin or Cashier.
-7. Admin: choose **Appointment fees**. Cashier: the payment workspace is displayed.
-8. Enter the booking code and click **Find booking**.
-9. Click **Issue receipt for PHP …** for the successful payment.
-10. Refresh the guest booking using **Refresh status** or reopen its private link.
-11. Expand **Receipt …** and check booking, customer, amount, currency, method,
-    and paid time.
+6. In a separate tab, sign in as Admin and open Appointments. Find the booking
+   by code and verify its status is CONFIRMED.
+7. Use Reports to verify exactly one successful payment. No Admin manual payment
+   recording or receipt-issuance action is required for PayMongo captures.
 
-Expected: one receipt appears. Provider callbacks do not create a staff identity;
-provider receipts require an authorized staff issuer. The test adapter's method
-can show Other, while PayMongo captures use GCash.
+The local test adapter verifies payment/confirmation behavior; it does not issue
+an automatic PayMongo receipt. For receipt acceptance, use the
+[PayMongo sandbox validation guide](PAYMONGO_SANDBOX_VALIDATION.md): a verified
+successful PayMongo capture creates its receipt automatically with no staff issuer.
 
 ## 5. Simulator failure and retry
 
@@ -160,32 +158,16 @@ Expected: one failed attempt and one successful attempt remain in history. Only
 the successful attempt confirms the appointment. Refresh/private-link retrieval
 must show the same result.
 
-## 6. Manual collection and duplicate reference
+## 6. Automatic collection and duplicate callbacks
 
-Use development records only: this form records receipt of money; it does not
-transfer cash or call GCash.
+The Admin manual appointment-fee screen has been removed. Complete a fresh
+PayMongo sandbox checkout before the hold expires, then verify the payment,
+receipt, and confirmed booking without any staff recording action. Repeat the
+signed callback for the same capture in the integration tests; it must not create
+a second payment, receipt, or booking confirmation.
 
-1. Create a fresh unpaid booking and copy its booking code.
-2. Sign in as Admin or Cashier and find that booking.
-3. Select **Cash** as the payment method.
-4. Enter a unique reference, such as `PH6-MANUAL-001`.
-5. Tick **I have verified receipt of PHP …**.
-6. Click **Record received appointment fee** before hold expiration.
-7. Check staff history and the guest private link.
-
-Expected: `CONFIRMED`, one successful payment, and one receipt created together.
-
-8. Find the same booking again.
-9. Submit the same method and original reference `PH6-MANUAL-001` again.
-10. Inspect history and the Admin list with **Show only payments requiring
-    reconciliation** unchecked.
-
-Expected: the original payment/receipt is returned; no second collection or
-receipt is created. Use the same reference when retrying an uncertain submission.
-
-11. Optional: repeat on another fresh booking using **GCash** and a distinct
-    development reference. This exercises manual GCash recording; it does not
-    test the PayMongo API.
+Backend coverage for automatic receipts, duplicate callbacks, and historical
+manual-payment identity is in `backend/tests/integration/payments.test.ts`.
 
 ## 7. Expiration and late collection
 

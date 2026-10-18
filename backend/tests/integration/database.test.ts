@@ -274,7 +274,7 @@ test("authentication and account management enforce browser and database permiss
       assert.equal(denied.status, 403);
       assert.equal(denied.headers.get("access-control-allow-origin"), null);
     });
-    await context.test("Cashier cannot list or mutate user accounts; Admin creates and edits with safe audit", async () => {
+    await context.test("Cashier cannot list or mutate user accounts; Admin creates and edits without audit writes", async () => {
       const input = { email: "new@example.test", password: "new-account-password", firstName: "New", lastName: "Account", role: "CASHIER" };
       assert.equal((await request("/users", "GET", undefined, cashierCookie)).status, 403);
       assert.equal((await request("/users", "POST", input, cashierCookie)).status, 403);
@@ -287,10 +287,7 @@ test("authentication and account management enforce browser and database permiss
       assert.equal((await request(`/users/${newId}`, "PATCH", { firstName: "Updated", password: "replacement-password" }, adminCookie)).status, 200);
       const record = await prisma.user.findUniqueOrThrow({ where: { id: newId } });
       assert.ok(await bcrypt.compare("replacement-password", record.passwordHash));
-      const audits = await prisma.auditLog.findMany({ where: { entityId: newId } });
-      assert.equal(audits.length, 2);
-      assert.ok(!JSON.stringify(audits).includes(record.passwordHash));
-      assert.ok(!JSON.stringify(audits).includes("replacement-password"));
+      assert.equal(await prisma.auditLog.count({ where: { entityId: newId } }), 0);
       assert.equal((await request(`/users/${newId}`, "DELETE", undefined, adminCookie)).status, 404);
     });
     await context.test("stale JWT role and deactivated accounts cannot retain access", async () => {

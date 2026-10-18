@@ -62,17 +62,17 @@ function fixture(conflict: boolean) {
   return { state, service: createConfigurationService(prisma as unknown as PrismaClient, "Asia/Manila") };
 }
 
-test("all-day closure writes retain exclusive coordination, full-day conflict filtering, and audit snapshots", async () => {
+test("all-day closure writes retain coordination and conflict filtering without audit writes", async () => {
   const { state, service } = fixture(false);
   await service.saveClosure("admin", input("2026-10-18", "Holiday"));
   assert.equal(state.mode, "exclusive");
   assert.equal((state.row!.startsAt as Date).toISOString(), "2026-10-17T16:00:00.000Z");
   assert.equal(state.where.AND[0].scheduledStartAt.lt.toISOString(), "2026-10-18T16:00:00.000Z");
   assert.equal(state.where.AND[0].reservedUntilAt.gt.toISOString(), "2026-10-17T16:00:00.000Z");
-  assert.equal(state.audits.length, 1);
+  assert.equal(state.audits.length, 0);
   await service.saveClosure("admin", input("2026-10-19"), "closure-id");
   assert.equal((state.row!.startsAt as Date).toISOString(), "2026-10-18T16:00:00.000Z");
-  assert.equal(state.audits.length, 2);
+  assert.equal(state.audits.length, 0);
 });
 
 test("conflicting all-day closures are rejected and their transaction is rolled back", async () => {

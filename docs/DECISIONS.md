@@ -607,3 +607,18 @@ inserts cannot collide and deletion cannot cause reuse. Codes are read-only in
 the admin workflow. Preserve existing codes and assign missing codes during
 migration. Gaps are allowed. Retain UUID primary keys and existing appointment,
 qualification, schedule, and commission relationships.
+
+## 2026-10-18 — Remove audit functionality from the MVP
+
+At the user's request, remove all runtime AuditLog writes and the audit report
+API/UI to simplify this MVP. This supersedes earlier decisions requiring audit
+entries, redaction/viewing, or rollback on audit persistence failure. Preserve
+existing audit data and its legacy Prisma model/migrations without exposing it.
+No database migration is needed. Keep business transactions, authorization,
+validation, scheduling locks, notification outbox, payment/receipt/commission
+history, policy versions, reschedule history, and operational error logging.
+No-show correction still requires a reason and physical presence, but the reason
+and previous no-show timestamps are no longer saved in an audit event. Check-in,
+receipt, completion, and finalization actor fields remain on their domain records.
+Earlier phase verification reports describe the implementation at that time;
+the MVP scope update supersedes their audit requirements.

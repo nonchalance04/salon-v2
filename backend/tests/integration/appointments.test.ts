@@ -118,9 +118,7 @@ test("booking atomically snapshots sequential services, fixed fee, hold, and has
   assert.equal(+second!.scheduledStartAt, +first!.reservedUntilAt);
   assert.equal(+row.endAt, +second!.scheduledEndAt);
   assert.equal(+second!.reservedUntilAt - +row.endAt, 15 * 60_000);
-  const audit = await prisma.auditLog.findMany({ where: { entityId: row.id } });
-  assert.equal(audit.length, 1); assert.equal(audit[0]!.action, "BOOKING_CREATED");
-  assert.ok(!JSON.stringify(audit).includes(result.guestToken));
+  assert.equal(await prisma.auditLog.count({ where: { entityId: row.id } }), 0);
   assert.equal(await prisma.notificationQueue.count({ where: { appointmentId: row.id } }), 0);
   const safe = JSON.stringify(result.appointment);
   assert.ok(!safe.includes("guestAccessTokenHash")); assert.ok(!safe.includes("commissionRate"));
@@ -245,18 +243,18 @@ test("new staff discovered after lock wait triggers rollback and a complete orde
     assert.equal(result.appointment.status, "PENDING_PAYMENT");
     // The new candidate can be locked by a later transaction (no abandoned locks).
     await prisma.$transaction(async tx => { await tx.$executeRaw`SET LOCAL lock_timeout = '1s'`; await tx.$queryRaw`SELECT id FROM "Staff" WHERE id=${newStaff.id}::uuid FOR UPDATE`; });
-    assert.equal(await prisma.auditLog.count({ where: { action: "BOOKING_CREATED", entityId: (await prisma.appointment.findUniqueOrThrow({ where: { bookingCode: result.appointment.bookingCode } })).id } }), 1);
+    assert.equal(await prisma.auditLog.count({ where: { action: "BOOKING_CREATED", entityId: (await prisma.appointment.findUniqueOrThrow({ where: { bookingCode: result.appointment.bookingCode } })).id } }), 0);
   } finally { await blocker.query("ROLLBACK"); blocker.release(); if (pending) await pending; }
 });
 
-test("expired guest status is immediate and competing cleanup workers audit once without removing history", async () => {
+test("expired guest status is immediate and competing cleanup workers preserve history without audits", async () => {
   const f = await bookingFixture(); const result = await bookings.book(f.input);
   const row = await prisma.appointment.update({ where: { bookingCode: result.appointment.bookingCode }, data: { holdExpiresAt: new Date(Date.now() - 1000) } });
   assert.equal((await bookings.retrieve(row.bookingCode, result.guestToken)).appointment.status, "EXPIRED");
   assert.equal((await prisma.appointment.findUniqueOrThrow({ where: { id: row.id } })).status, "PENDING_PAYMENT");
   await Promise.all([bookings.expireHolds(), bookings.expireHolds()]);
   assert.equal((await prisma.appointment.findUniqueOrThrow({ where: { id: row.id } })).status, "EXPIRED");
-  assert.equal(await prisma.auditLog.count({ where: { entityId: row.id, action: "BOOKING_HOLD_EXPIRED" } }), 1);
+  assert.equal(await prisma.auditLog.count({ where: { entityId: row.id, action: "BOOKING_HOLD_EXPIRED" } }), 0);
   assert.equal(await prisma.appointmentService.count({ where: { appointmentId: row.id, membershipStatus: "ACTIVE" } }), 1);
   assert.equal((await bookings.book(f.input)).appointment.status, "PENDING_PAYMENT");
 });
@@ -313,7 +311,7 @@ test("policy activation during insertion rolls back snapshots and restarts the f
     assert.equal(row.bookingPolicyVersionId, policy.id); assert.equal(row.appointmentFeeAmount.toFixed(2), "175.25");
     assert.equal(row.appointmentServices[0]!.bufferMinutesSnapshot, 5);
     assert.equal(await prisma.customer.count(), before + 1);
-    assert.equal(await prisma.auditLog.count({ where: { entityId: row.id, action: "BOOKING_CREATED" } }), 1);
+    assert.equal(await prisma.auditLog.count({ where: { entityId: row.id, action: "BOOKING_CREATED" } }), 0);
   } finally {
     await observer.query('DROP TRIGGER phase5_delay_booking ON "Appointment"');
     await observer.query('DROP FUNCTION phase5_delay_booking()');
@@ -551,13 +549,11 @@ test("check-in records one server arrival and actor across concurrent Admin/Cash
   const row = await prisma.appointment.findUniqueOrThrow({ where: { id: f.booking.id } });
   assert.equal(row.status, "CONFIRMED"); assert.equal(row.completedAt, null);
   assert.ok(row.checkedInAt); assert.ok([adminId, cashierId].includes(row.checkedInByUserId!));
-  const audit = await prisma.auditLog.findFirstOrThrow({ where: { entityId: row.id, action: "BOOKING_CHECKED_IN" } });
-  assert.equal(audit.actorUserId, row.checkedInByUserId);
-  assert.equal(audit.actorType, row.checkedInByUserId === cashierId ? "CASHIER" : "ADMIN");
+  assert.equal(await prisma.auditLog.count({ where: { entityId: row.id } }), 0);
   const service = await prisma.appointmentService.findUniqueOrThrow({ where: { id: f.booking.appointmentServices[0]!.id } });
   assert.equal(service.outcome, "SCHEDULED"); assert.equal(service.outcomeFinalizedAt, null);
   assert.equal(await prisma.payment.count({ where: { appointmentId: row.id } }), 0);
-  assert.equal(await prisma.auditLog.count({ where: { entityId: row.id, action: "BOOKING_CHECKED_IN" } }), 1);
+  assert.equal(await prisma.auditLog.count({ where: { entityId: row.id, action: "BOOKING_CHECKED_IN" } }), 0);
   await assert.rejects(changes.markNoShow(adminId, row.bookingCode));
   const reports = (await import("../../src/modules/reports/reports.service.js")).createReportsService(prisma, "Asia/Manila");
   const list = await reports.confirmedServices(cashierId, { page: 1, pageSize: 25, search: row.bookingCode });
@@ -613,7 +609,7 @@ test("check-in HTTP rejects guest access, forged arrival fields and untrusted or
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
 });
 
-test("automatic no-show marks only overdue absent visits and competing workers audit once", async () => {
+test("automatic no-show marks only overdue absent visits without audit writes", async () => {
   const overdue = await fixture(); const withinGrace = await fixture();
   const arrived = await fixture(); const performed = await fixture();
   const finalized = await fixture(); const pending = await fixture("PENDING_PAYMENT");
@@ -632,8 +628,7 @@ test("automatic no-show marks only overdue absent visits and competing workers a
   const row = await prisma.appointment.findUniqueOrThrow({ where: { id: overdue.booking.id } });
   assert.equal(row.status, "NO_SHOW"); assert.ok(row.noShowAt);
   assert.equal(+row.noShowGraceExpiresAt!, +row.startAt + overdue.policy.noShowGraceHours * 3_600_000);
-  const audits = await prisma.auditLog.findMany({ where: { entityId: row.id, action: "BOOKING_NO_SHOW" } });
-  assert.equal(audits.length, 1); assert.equal(audits[0]!.actorType, "SYSTEM");
+  assert.equal(await prisma.auditLog.count({ where: { entityId: row.id } }), 0);
   for (const f of [withinGrace, arrived, performed, finalized]) {
     assert.equal((await prisma.appointment.findUniqueOrThrow({ where: { id: f.booking.id } })).status, "CONFIRMED");
   }
@@ -677,15 +672,15 @@ test("check-in and automatic marking are mutually exclusive, including a late ar
   }
 });
 
-test("automatic no-show and its audit roll back together on audit failure", async () => {
+test("automatic no-show succeeds even when legacy audit inserts are blocked", async () => {
   const f = await fixture();
   await prisma.appointment.update({ where: { id: f.booking.id }, data: { startAt: new Date(Date.now() - 16 * 60_000) } });
   await observer.query(`CREATE FUNCTION fail_auto_no_show_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action = 'BOOKING_NO_SHOW' THEN RAISE EXCEPTION 'audit unavailable'; END IF; RETURN NEW; END $$`);
   await observer.query('CREATE TRIGGER fail_auto_no_show_audit BEFORE INSERT ON "AuditLog" FOR EACH ROW EXECUTE FUNCTION fail_auto_no_show_audit()');
   try {
-    await assert.rejects(changes.markOverdueNoShows());
+    assert.equal(await changes.markOverdueNoShows(), 1);
     const row = await prisma.appointment.findUniqueOrThrow({ where: { id: f.booking.id } });
-    assert.equal(row.status, "CONFIRMED"); assert.equal(row.noShowAt, null);
+    assert.equal(row.status, "NO_SHOW"); assert.ok(row.noShowAt);
   } finally {
     await observer.query('DROP TRIGGER fail_auto_no_show_audit ON "AuditLog"');
     await observer.query('DROP FUNCTION fail_auto_no_show_audit()');
@@ -710,7 +705,7 @@ async function correctionFixture(t: import("node:test").TestContext) {
   return { ...f, startAt, endAt, reservedUntilAt, correction: { bookingCode: f.booking.bookingCode, reason: "Customer arrived; original no-show recorded in error", customerPresent: true as const } };
 }
 
-test("Admin correction restores and checks in without changing snapshots or finances; duplicate requests audit once", async t => {
+test("Admin correction restores and checks in without changing snapshots or finances; duplicate requests preserve the first arrival", async t => {
   const f = await correctionFixture(t); if (!f) return;
   const before = await prisma.appointment.findUniqueOrThrow({ where: { id: f.booking.id } });
   const outcomes = await Promise.allSettled([changes.correctNoShow(adminId, f.correction), changes.correctNoShow(adminId, f.correction)]);
@@ -723,10 +718,7 @@ test("Admin correction restores and checks in without changing snapshots or fina
   assert.equal(row.appointmentFeeAmount.toString(), before.appointmentFeeAmount.toString());
   assert.equal(await prisma.payment.count({ where: { appointmentId: row.id } }), 0);
   assert.equal((await prisma.appointmentService.findUniqueOrThrow({ where: { id: f.booking.appointmentServices[0]!.id } })).outcome, "SCHEDULED");
-  const audits = await prisma.auditLog.findMany({ where: { entityId: row.id, action: "BOOKING_NO_SHOW_CORRECTED" } });
-  assert.equal(audits.length, 1); assert.equal(audits[0]!.actorUserId, adminId);
-  assert.ok(JSON.stringify(audits[0]!.beforeData).includes(before.noShowAt!.toISOString()));
-  assert.ok(JSON.stringify(audits[0]!.afterData).includes(f.correction.reason));
+  assert.equal(await prisma.auditLog.count({ where: { entityId: row.id } }), 0);
   assert.equal(await changes.markOverdueNoShows(), 0);
 });
 
@@ -783,14 +775,14 @@ test("correction refuses new occupancy committed while it waits for locks", asyn
   } finally { await blocker.query("ROLLBACK"); blocker.release(); await correction?.catch(() => {}); }
 });
 
-test("correction restores nothing when its audit insert fails", async t => {
+test("correction succeeds even when legacy audit inserts are blocked", async t => {
   const f = await correctionFixture(t); if (!f) return;
   await observer.query(`CREATE FUNCTION fail_correction_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action = 'BOOKING_NO_SHOW_CORRECTED' THEN RAISE EXCEPTION 'audit unavailable'; END IF; RETURN NEW; END $$`);
   await observer.query('CREATE TRIGGER fail_correction_audit BEFORE INSERT ON "AuditLog" FOR EACH ROW EXECUTE FUNCTION fail_correction_audit()');
   try {
-    await assert.rejects(changes.correctNoShow(adminId, f.correction));
+    assert.equal((await changes.correctNoShow(adminId, f.correction)).corrected, true);
     const row = await prisma.appointment.findUniqueOrThrow({ where: { id: f.booking.id } });
-    assert.equal(row.status, "NO_SHOW"); assert.equal(row.checkedInAt, null); assert.ok(row.noShowAt);
+    assert.equal(row.status, "CONFIRMED"); assert.ok(row.checkedInAt); assert.equal(row.noShowAt, null);
   } finally {
     await observer.query('DROP TRIGGER fail_correction_audit ON "AuditLog"'); await observer.query('DROP FUNCTION fail_correction_audit()');
   }
@@ -815,8 +807,7 @@ test("correction HTTP allows Cashier/Admin and requires authentication, trusted 
     assert.equal((await post(path, { ...f.correction, customerPresent: false }, cookie)).status, 400);
     assert.equal((await post(path, { ...f.correction, checkedInAt: new Date().toISOString() }, cookie)).status, 400);
     assert.equal((await post(path, f.correction, cashierCookie)).status, 200);
-    const audit = await prisma.auditLog.findFirstOrThrow({ where: { entityId: f.booking.id, action: "BOOKING_NO_SHOW_CORRECTED" } });
-    assert.equal(audit.actorType, "CASHIER"); assert.equal(audit.actorUserId, cashierId);
+    assert.equal(await prisma.auditLog.count({ where: { entityId: f.booking.id } }), 0);
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
 });
 
@@ -844,8 +835,5 @@ test("concurrent Cashier and Admin no-show corrections restore once and retain t
   assert.equal(results.filter(r => r.status === "fulfilled").length, 1);
   const row = await prisma.appointment.findUniqueOrThrow({ where: { id: f.booking.id } });
   assert.equal(row.status, "CONFIRMED"); assert.ok(row.checkedInAt);
-  const audits = await prisma.auditLog.findMany({ where: { entityId: row.id, action: "BOOKING_NO_SHOW_CORRECTED" } });
-  assert.equal(audits.length, 1);
-  assert.equal(audits[0]!.actorUserId, row.checkedInByUserId);
-  assert.equal(audits[0]!.actorType, row.checkedInByUserId === cashierId ? "CASHIER" : "ADMIN");
+  assert.equal(await prisma.auditLog.count({ where: { entityId: row.id } }), 0);
 });

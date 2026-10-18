@@ -137,12 +137,15 @@ async function writerBlocked() {
 test("profile stays singular and configuration changes keep historical snapshots", async () => {
   const f = await fixture();
   const old = await prisma.salonProfile.findFirstOrThrow();
+  const legacyAudit = await prisma.auditLog.create({ data: { actorType: "ADMIN", actorUserId: adminId, action: "LEGACY_CONFIGURATION_UPDATED", entityType: "SalonProfile", entityId: old.id, afterData: { name: old.name } } });
   await Promise.all([
     service.saveProfile(adminId, { name: "Salon A", address: "Address", phone: null, email: null }),
     service.saveProfile(adminId, { name: "Salon B", address: "Address", phone: null, email: null }),
   ]);
   assert.equal(await prisma.salonProfile.count(), 1);
   assert.equal((await prisma.salonProfile.findFirstOrThrow()).id, old.id);
+  assert.deepEqual(await prisma.auditLog.findUniqueOrThrow({ where: { id: legacyAudit.id } }), legacyAudit);
+  assert.equal(await prisma.auditLog.count({ where: { entityId: old.id } }), 1);
   await service.saveService(adminId, { name: "New name", description: null, price: "200.00", durationMinutes: 60, bufferMinutes: 0, isActive: true }, f.item.id);
   await service.saveQualification(adminId, { staffId: f.staff.id, serviceId: f.item.id, commissionRate: "0.5000", isActive: true }, f.qualification.id);
   const historical = await prisma.appointmentService.findUniqueOrThrow({ where: { id: f.booking.appointmentServices[0]!.id } });
@@ -150,10 +153,10 @@ test("profile stays singular and configuration changes keep historical snapshots
   assert.equal(historical.bufferMinutesSnapshot, 15); assert.equal(historical.durationMinutesSnapshot, 30);
   assert.equal(historical.commissionRateSnapshot.toFixed(4), "0.4000");
   assert.equal(historical.serviceNameSnapshot, "Fixture service");
-  assert.ok(await prisma.auditLog.count({ where: { entityId: f.item.id } }));
+  assert.equal(await prisma.auditLog.count({ where: { entityId: f.item.id } }), 0);
 });
 
-test("deleting staff preserves historical records, is audited, and can be repeated", async () => {
+test("deleting staff preserves historical records without audit writes and can be repeated", async () => {
   const f = await fixture();
   const historical = await prisma.appointmentService.findUniqueOrThrow({ where: { id: f.booking.appointmentServices[0]!.id } });
   await expectConflict(service.removeStaff(adminId, f.staff.id), f.booking.id);
@@ -167,7 +170,7 @@ test("deleting staff preserves historical records, is audited, and can be repeat
   assert.ok(await prisma.staffSchedule.findUnique({ where: { id: f.schedule.id } }));
   assert.ok(!(await createAvailabilityService(prisma, "Asia/Manila").catalog()).staff.some(row => row.id === f.staff.id));
   await service.removeStaff(adminId, f.staff.id);
-  assert.equal(await prisma.auditLog.count({ where: { entityType: "Staff", entityId: f.staff.id } }), 1);
+  assert.equal(await prisma.auditLog.count({ where: { entityType: "Staff", entityId: f.staff.id } }), 0);
   await assert.rejects(service.removeStaff(adminId, randomUUID()), { code: "NOT_FOUND" });
 });
 
@@ -240,7 +243,7 @@ test("hours and schedules cover the full reservation including buffer, dates, an
   await expectConflict(service.saveSchedule(adminId, { ...input, effectiveFrom: "9999-01-01" }, f.schedule.id), f.booking.id);
 });
 
-test("closures/time off reject buffer overlaps but permit adjacent periods; removal preserves audit history", async () => {
+test("closures/time off reject buffer overlaps but permit adjacent periods without audit writes", async () => {
   const f = await fixture();
   const input = { startsAt: new Date(f.endAt.getTime() + 60_000), endsAt: new Date(f.reservedUntilAt.getTime() + 60_000), reason: "Test closure" };
   await expectConflict(service.saveClosure(adminId, input), f.booking.id);
@@ -248,10 +251,10 @@ test("closures/time off reject buffer overlaps but permit adjacent periods; remo
   const row = await service.saveClosure(adminId, { ...input, startsAt: f.reservedUntilAt });
   await service.removeClosure(adminId, row.id);
   assert.equal(await prisma.salonClosure.findUnique({ where: { id: row.id } }), null);
-  assert.equal(await prisma.auditLog.count({ where: { entityId: row.id } }), 2);
+  assert.equal(await prisma.auditLog.count({ where: { entityId: row.id } }), 0);
   const absence = await service.saveUnavailability(adminId, { ...input, startsAt: f.reservedUntilAt, staffId: f.staff.id });
   await service.removeUnavailability(adminId, absence.id);
-  assert.equal(await prisma.auditLog.count({ where: { entityId: absence.id } }), 2);
+  assert.equal(await prisma.auditLog.count({ where: { entityId: absence.id } }), 0);
 });
 
 test("expired holds and terminal/removed reservations do not prevent prospective configuration", async () => {
@@ -468,13 +471,13 @@ test("public availability HTTP validates plans, returns no-store results, and ha
   } finally { await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())); }
 });
 
-test("staff profiles persist, are audited, and expose only public details with performed-visit counts", async () => {
+test("staff profiles persist without audit writes and expose only public details with performed-visit counts", async () => {
   const f = await fixture();
   const profile = { title: "Senior stylist", bio: "Precision cuts", photoUrl: "https://example.com/stylist.jpg", languages: ["English", "Tagalog"], portfolio: [{ title: "Bob", imageUrl: "https://example.com/bob.jpg", caption: "Soft finish" }], reviews: [{ author: "Client A", rating: 5, text: "Lovely service" }] };
   await assert.rejects(service.saveStaffPublicProfile(cashierId, f.staff.id, profile), (error: unknown) => error instanceof ApiError && error.status === 403);
   await service.saveStaffPublicProfile(adminId, f.staff.id, profile);
   assert.deepEqual((await prisma.staff.findUniqueOrThrow({ where: { id: f.staff.id } })).publicProfile, profile);
-  assert.equal(await prisma.auditLog.count({ where: { entityType: "StaffPublicProfile", entityId: f.staff.id } }), 1);
+  assert.equal(await prisma.auditLog.count({ where: { entityType: "StaffPublicProfile", entityId: f.staff.id } }), 0);
   const catalog = createAvailabilityService(prisma, "Asia/Manila");
   const publicStaff = () => catalog.catalog().then(result => result.staff.find(row => row.id === f.staff.id)!);
   assert.deepEqual((await publicStaff()).statistics, { appointmentsCompleted: 0, clientsServed: 0 });

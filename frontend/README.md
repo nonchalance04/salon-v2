@@ -52,8 +52,7 @@ activation time. Existing scheduled changes are retained and explicitly called
 out in the editor. Cancel discards the draft; failed saves retain it for retry.
 
 The UI continues to POST complete settings to `/configuration/policies` and
-uses the returned record to refresh its view. Policy versions, audit records,
-and existing appointments' original rules remain authoritative. No schema or
+uses the returned record to refresh its view. Policy versions and existing appointments' original rules remain authoritative. No schema or
 booking-rule change is required.
 
 ## Run and validate
@@ -111,3 +110,14 @@ against our local adaptations rather than overwriting existing primitives.
 
 Component source is adapted from the official shadcn/ui registry (New York /
 Radix), under the MIT license in `src/components/ui/LICENSE.md`.
+
+## Customer appointment management
+
+Manage appointment opens a modal over the booking view. The modal contains the
+booking reference, current visit, original policy limits, rescheduling/recovery
+options and cancellation confirmation. Service/professional selection, date and
+available-time search, and the updated visit preview share one scrollable body.
+The header and close control remain visible on narrow screens. Keyboard focus
+stays within the modal and returns to its entry button when closed. Pending
+requests disable dismissal; successful changes update the booking and close the
+modal. Existing eligibility checks and backend endpoints remain authoritative.

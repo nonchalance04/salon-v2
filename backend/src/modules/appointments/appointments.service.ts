@@ -95,9 +95,7 @@ export function createAppointmentsService(prisma: PrismaClient, timeZone: string
               scheduledStartAt: new Date(part.startAt), scheduledEndAt: new Date(part.endAt), reservedUntilAt: new Date(part.reservedUntilAt) };
           }) },
         } });
-        await tx.auditLog.create({ data: { actorType: "CUSTOMER", actorCustomerId: appointment.customerId,
-          action: "BOOKING_CREATED", entityType: "Appointment", entityId: appointment.id,
-          afterData: { status: appointment.status, bookingPolicyVersionId: policy.id, holdExpiresAt: holdExpiresAt.toISOString() } } });
+
         // No approved outbox event represents an unpaid hold or its expiration.
         // BOOKING_CONFIRMED and PAYMENT_RECEIVED belong to Phase 6's transaction.
         const row = await tx.appointment.findUniqueOrThrow({ where: { id: appointment.id }, select: guestSelect });
@@ -144,8 +142,7 @@ export function createAppointmentsService(prisma: PrismaClient, timeZone: string
           const row = await tx.appointment.findUniqueOrThrow({ where: { id: candidate.id } });
           if (row.status !== "PENDING_PAYMENT" || !row.holdExpiresAt || row.holdExpiresAt >= now) return 0;
           await tx.appointment.update({ where: { id: row.id }, data: { status: "EXPIRED" } });
-          await tx.auditLog.create({ data: { actorType: "SYSTEM", action: "BOOKING_HOLD_EXPIRED", entityType: "Appointment", entityId: row.id,
-            beforeData: { status: "PENDING_PAYMENT" }, afterData: { status: "EXPIRED" } } });
+
           return 1;
         });
       }

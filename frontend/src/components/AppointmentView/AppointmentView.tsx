@@ -1,3 +1,6 @@
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/Dialog";
+import { CalendarDays, X } from "lucide-react";
+import "./AppointmentView.css";
 import { Button } from "@/components/ui/Button";
 import { Link } from "react-router";
 import { useEffect, useRef, useState } from "react";
@@ -26,6 +29,13 @@ export function AppointmentView({
   const [error, setError] = useState("");
   const [remaining, setRemaining] = useState(0);
   const [managing, setManaging] = useState(false);
+  const [managementBusy, setManagementBusy] = useState(false);
+  const manageTrigger = useRef<HTMLElement | null>(null);
+  const managementEntry = useRef<HTMLButtonElement>(null);
+  function openManagement() {
+    manageTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setManaging(true);
+  }
   // Monotonic elapsed time avoids relying on the customer's wall clock.
   const clock = useRef({
     received: performance.now(),
@@ -113,17 +123,45 @@ export function AppointmentView({
       (sum, service) => sum + Math.round(Number(service.priceSnapshot) * 100),
       0,
     ) / 100;
-  if (appointment.status === "CONFIRMED" && !managing)
-    return (
-      <BookingConfirmation
-        key={appointment.bookingCode}
-        appointment={appointment}
-        salon={salon}
-        token={token}
-        onManage={() => setManaging(true)}
-      />
-    );
+  const managementDialog = (
+    <Dialog open={managing} onOpenChange={open => { if (!managementBusy) setManaging(open); }}>
+      <DialogContent className="appointment-management-dialog" showCloseButton={false}
+        onInteractOutside={event => event.preventDefault()}
+        onEscapeKeyDown={event => { if (managementBusy) event.preventDefault(); }}
+        onCloseAutoFocus={event => { event.preventDefault(); (manageTrigger.current?.isConnected ? manageTrigger.current : managementEntry.current)?.focus(); }}>
+        <DialogHeader className="appointment-management-header">
+          <span className="appointment-management-icon" aria-hidden="true"><CalendarDays size={23} /></span>
+          <div>
+            <p className="appointment-management-eyebrow">YOUR APPOINTMENT</p>
+            <DialogTitle>Manage your visit</DialogTitle>
+            <DialogDescription>Review your booking, choose a new time, or cancel your appointment.</DialogDescription>
+          </div>
+          <Button variant="ghost" size="icon" type="button" aria-label="Close appointment management" disabled={managementBusy} onClick={() => setManaging(false)}><X size={20} /></Button>
+        </DialogHeader>
+        <div className="appointment-management-body">
+          <div className="appointment-management-summary">
+            <div><span>BOOKING REFERENCE</span><strong>{appointment.bookingCode}</strong></div>
+            <div><span>CURRENT VISIT · {appointment.timeZone}</span><strong>{date(appointment.startAt)}</strong><p>{time(appointment.startAt)} – {time(appointment.endAt)}</p></div>
+          </div>
+          {managing && <AppointmentManagement key={appointment.bookingCode} appointment={appointment} token={token}
+            onBusyChange={setManagementBusy}
+            onChange={(updated, newToken) => {
+              clock.current = { received: performance.now(), server: Date.parse(updated.serverTime) };
+              setAppointment(updated);
+              if (newToken) setToken(newToken);
+              setManaging(false);
+            }} />}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+  if (appointment.status === "CONFIRMED")
+    return <>
+      <BookingConfirmation key={appointment.bookingCode} appointment={appointment} salon={salon} token={token} onManage={openManagement} />
+      {managementDialog}
+    </>;
   return (
+    <>
     <section className="visit-summary reservation" aria-label="Your booking">
       <header className="reservation-header">
         <div>
@@ -191,19 +229,9 @@ export function AppointmentView({
             </p>
           </section>
           <div className="reservation-card reservation-management">
-            <AppointmentManagement
-              key={appointment.bookingCode}
-              appointment={appointment}
-              token={token}
-              onChange={(updated, newToken) => {
-                clock.current = {
-                  received: performance.now(),
-                  server: Date.parse(updated.serverTime),
-                };
-                setAppointment(updated);
-                if (newToken) setToken(newToken);
-              }}
-            />
+            <h3>Manage your appointment</h3>
+            <p>Review available changes and the policy for this booking.</p>
+            <Button ref={managementEntry} variant="outline" type="button" onClick={openManagement}>Manage appointment</Button>
           </div>
         </div>
         <aside
@@ -266,5 +294,7 @@ export function AppointmentView({
         </p>
       )}
     </section>
+    {managementDialog}
+    </>
   );
 }

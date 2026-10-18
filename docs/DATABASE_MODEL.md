@@ -1,5 +1,16 @@
 # Salon Booking and Appointment System
 
+## MVP scope update — 2026-10-18
+
+Audit logging and audit-log viewing are removed from this MVP. Runtime workflows
+must not write `AuditLog`, and the audit report is unavailable. Existing audit
+rows, the legacy schema and migrations are retained solely to preserve history;
+no data cleanup or destructive migration is part of this change. Payments,
+receipts, commissions, appointment reschedule history, policy versions and
+operational error logging remain. Check-in and completion actor fields remain.
+No-show correction still validates the reason and physical presence; its reason
+and previous no-show timestamps are no longer retained in a separate audit event.
+
 ## Database Model v1.0
 
 This document defines the authoritative database entities, relationships, constraints, historical-data requirements, concurrency requirements, and indexing strategy for the Salon Booking and Appointment System.
@@ -263,7 +274,7 @@ Represents salon personnel who perform services.
   - Nullable JSONB; existing staff start without a published profile.
   - Validated object containing `title`, `bio`, `photoUrl`, `languages`, `portfolio`, and `reviews`.
   - Images use HTTPS URLs. Portfolio entries contain title, image URL, and caption; testimonials contain display name, rating, and text.
-  - Profile changes are admin-only and audited. Staff names, qualifications, and activity remain separately managed.
+  - Profile changes are admin-only. Staff names, qualifications, and activity remain separately managed.
   - Completed-appointment and unique-client counts are derived from completed appointments with active, performed services; they are not editable profile fields.
 
 - `isActive`
@@ -1444,9 +1455,9 @@ Formula:
 
 ---
 
-# 21. AuditLog
+# 21. AuditLog (legacy, inactive)
 
-Represents append-oriented system audit history.
+Represents previously recorded system audit history. This entity is retained for compatibility and historical preservation only; current MVP workflows neither write nor expose it. The fields and event descriptions below document the legacy format.
 
 ## Fields
 
@@ -1499,7 +1510,7 @@ Represents append-oriented system audit history.
 - CUSTOMER
 - SYSTEM
 
-Important events include:
+Previously recorded events included:
 
 - Appointment creation.
 - Rescheduling.
@@ -2159,7 +2170,6 @@ Transaction includes:
 10. Exact duration/buffer derivation.
 11. Carried-payment linkage.
 12. History creation.
-13. Audit entry.
 
 ## No-Show Recovery Without Credit
 
@@ -2188,7 +2198,6 @@ Transaction includes:
 2. Verification all ACTIVE services are NOT_PERFORMED.
 3. Appointment COMPLETED transition.
 4. Outcome immutability.
-5. Audit entry.
 
 No fake Payment, Receipt, or CommissionRecord is created.
 

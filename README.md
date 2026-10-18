@@ -18,7 +18,7 @@ changes/no-show recovery. The user reported Phase 6 testing complete and authori
 Phase 7; future payment diagnostics remain separately scoped. Phase 8 service
 outcomes, settlement, receipts, and commissions are implemented. Phase 9 adds an
 independent notification worker, reminders, and optional Gmail/PhilSMS adapters.
-Phase 10 adds authorized reports, dashboards, audit viewing, Cashier collection
+Phase 10 adds authorized reports, dashboards, Cashier collection
 summaries and a guided salon assistant.
 
 See [the roadmap](docs/ROADMAP.md) for phases and
@@ -145,8 +145,8 @@ lowercase. No delete route or public registration is provided.
 State-changing requests require an exact trusted `Origin`, or a trusted `Referer`
 when Origin is absent. This includes login and logout. Protected requests verify
 the JWT and load the database account, so role changes and deactivation affect
-existing tokens. Account mutations and redacted audit records commit atomically.
-Passwords and hashes never appear in API responses or audit payloads.
+existing tokens. Account mutations use transactions.
+Passwords and hashes never appear in API responses.
 
 Logout clears the browser cookie. This bounded stateless JWT design does not
 revoke copies of an already issued token or invalidate them upon password change;
@@ -174,7 +174,7 @@ buffer inherits the booking policy; zero explicitly means no buffer.
 | `POST /api/configuration/{section}` | Admin + trusted origin | Create configuration record |
 | `PUT /api/configuration/{section}/:id` | Admin + trusted origin | Replace editable configuration fields |
 | `POST /api/configuration/policies` | Admin + trusted origin | Publish a new immutable policy version |
-| `DELETE /api/configuration/{closures,unavailability}/:id` | Admin + trusted origin | Remove an unreferenced period with an audit record |
+| `DELETE /api/configuration/{closures,unavailability}/:id` | Admin + trusted origin | Remove an unreferenced period |
 
 Editable sections are `services`, `staff`, `qualifications`, `hours`, `schedules`,
 `closures`, and `unavailability`. POST/PUT bodies must supply all schema fields;
@@ -186,7 +186,7 @@ use `HH:mm[:ss]`, effective dates use `YYYY-MM-DD`, and timestamps require an
 explicit UTC offset. Policy `effectiveFrom: null` means the fresh database time;
 explicit activation times must be in the future. Existing versions cannot be edited.
 
-Configuration writes and audit records commit atomically. Changes that invalidate
+Configuration writes commit transactionally. Changes that invalidate
 protected reservations return HTTP 409 `RESERVATION_CONFLICT`, with affected
 booking codes and intervals in `error.details.appointments`. The UI displays them.
 Referenced entities use deactivation; past booking snapshots remain unchanged.
@@ -258,7 +258,7 @@ confirms it. Unpaid holds expire normally. See Phase 6 payment setup below.
 
 | Endpoint | Access | Behavior |
 | --- | --- | --- |
-| `POST /api/appointments` | Public + trusted browser origin | Transactionally creates customer, appointment, service reservations, and audit; returns 201 |
+| `POST /api/appointments` | Public + trusted browser origin | Transactionally creates customer, appointment, and service reservations; returns 201 |
 | `POST /api/appointments/access` | Private guest token + trusted browser origin | Returns safe appointment/contact details and effective hold status |
 
 Booking uses the availability body with **required** `startAt`, plus `customer`:
@@ -290,7 +290,7 @@ removes that fragment from its current history entry and retains credentials onl
 in component memory. Reloading the page requires reopening the saved private link
 or re-entering the code and token. Tokens are 256-bit random values; only SHA-256
 hashes are persisted. Guest responses are uncached; raw tokens and hashes are
-excluded from audit records and operational logging. The app does not send a
+excluded from operational logging. The app does not send a
 confirmation notification for an unpaid hold.
 
 Run the hold cleanup worker in a separate backend terminal:
@@ -303,7 +303,7 @@ After building, production uses `npm run start:holds` alongside `npm start`.
 Both use the same backend environment configuration. The worker checks up to 100
 expired holds every five seconds, locks salon/Staff/Appointment in the common
 order, reloads status and fresh database time, and atomically records `EXPIRED`
-plus an audit entry. Multiple instances are safe. Historical service rows remain.
+without audit recording. Multiple instances are safe. Historical service rows remain.
 Availability and guest reads recognize expired holds even if the worker is down.
 SIGTERM/SIGINT stops polling and drains current work before database shutdown,
 with a bounded shutdown deadline.
@@ -316,7 +316,7 @@ fresh time rechecks policy activation, lead time, and hold deadline. Monetary
 snapshots use database Decimals. The countdown uses server time and elapsed browser
 time, refreshes status every 15 seconds, and never authorizes a reservation itself.
 
-No new model or migration was added. Audit transitions are transactional. The
+No new model or migration was added. Business transitions are transactional. The
 approved notification events have no hold-created/hold-expired event; confirmation
 and payment outbox entries are created with the Phase 6 payment transactions.
 
@@ -384,7 +384,7 @@ format as an assumed contract for a real GCash gateway.
 Payment transactions take shared salon coordination, ordered Staff locks, then
 Appointment/Payment locks; authorization and fresh time are checked after waits.
 Required reservations must still be owned. Confirmation, receipts where applicable,
-audit, and notification writes commit together. A deadline crossed during later
+and notification writes commit together. A deadline crossed during later
 writes rolls the transaction back and retries as a reconciliation case. Separate
 captures are preserved, while the same provider transaction/manual reference
 cannot duplicate collection totals. No models or migrations were added.
@@ -441,7 +441,7 @@ network failure is not retried as another create request. In **Appointment fees*
 an Admin can find the pending payment attempt ID, locate its matching
 `reference_number` in PayMongo, and use **Recover an uncertain PayMongo checkout**
 with the `cs_...` session ID. Recovery queries the merchant API, validates the
-association, and audits the action. A verified callback also recovers a session
+association. A verified callback also recovers a session
 whose create response was lost. Never manually record that same online capture as
 another cash/GCash collection.
 
@@ -466,8 +466,7 @@ Use `validateRequest(schema)` with a Zod object containing the relevant `body`,
 safe public status/code/message and optional structured details. Central error handling returns
 `{ "error": { "code": "...", "message": "..." } }` without internal traces.
 Operational failure logs include a generated request ID and omit request bodies,
-credentials, URLs, and raw errors. Business audit records for account and configuration changes are transactional
-and separate from operational logging.
+credentials, URLs, and raw errors. Audit recording is outside this MVP; existing audit data is retained without an API or UI.
 
 ## Governing documents
 
@@ -622,8 +621,8 @@ live-delivery acceptance.
 
 ## Phase 10 reports and salon guidance
 
-- Admin: open **Reports & audit** for date-filtered collections, dashboard counts,
-  appointments, payment attempts, historical receipts, finalized commissions and audits.
+- Admin: open **Reports** for date-filtered collections, dashboard counts,
+  appointments, payment attempts, historical receipts, finalized commissions.
 - Cashier: open **Collections** for aggregate payment summaries. Admin report endpoints
   remain forbidden to Cashiers even if a browser or stale token claims Admin access.
 - Guest: open `/help` (also linked from booking and guest appointment screens) for
@@ -633,7 +632,7 @@ live-delivery acceptance.
   follow-ups and recommend bookable services. It does not perform bookings or
   persist chat history. See [Gemini setup](docs/GEMINI_CHATBOT_SETUP.md).
 - APIs: `GET /api/reports/collections`, Admin `GET /api/reports/dashboard` and
-  `/api/reports/{appointments,payments,receipts,commissions,audit}`. Supply `from` and
+  `/api/reports/{appointments,payments,receipts,commissions}`. Supply `from` and
   `to` as inclusive salon-local `YYYY-MM-DD` dates (at most 366 days), plus optional
   `page` and `pageSize` (maximum 100). `POST /api/chatbot` accepts `{ "message": "Opening hours" }`
   and optional bounded `history` pairs with `role` (`user`/`model`) and `text`.

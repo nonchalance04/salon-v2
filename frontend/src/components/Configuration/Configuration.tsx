@@ -8,6 +8,14 @@ import { AppointmentSettings } from "../AppointmentSettings";
 import type { PolicyRecord } from "../AppointmentSettings/policy-settings";
 import { StaffProfileEditor } from "../StaffProfileEditor";
 import { StaffSkillsEditor } from "../StaffSkillsEditor";
+import { ServiceEditor } from "./ServiceEditor";
+import { StaffEditor } from "./StaffEditor";
+import { ScheduleEditor } from "./ScheduleEditor";
+import { ScheduleList } from "./ScheduleList";
+import { Clock3, Pencil, Scissors } from "lucide-react";
+import "./Services.css";
+import "./Staff.css";
+import "./Schedules.css";
 import type { StaffPublicProfile } from "../../utils/staff-profile";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { configurationBody, fieldEditValue } from "./configuration-values";
@@ -15,7 +23,7 @@ import { api, ApiError } from "../../lib/api";
 import { definitions, days, closureIntervalFields, type Section, type Field } from "./Configuration.fields";
 
 type Row = { id: string; [key: string]: unknown };
-type Snapshot = { timeZone: string; profile: Row | null; policies: PolicyRecord[] } & Record<
+type Snapshot = { timeZone: string; profile: Row | null; policies: PolicyRecord[]; qualifications: Row[] } & Record<
   Exclude<Section, "profile" | "policies">,
   Row[]
 >;
@@ -50,6 +58,8 @@ export function Configuration({
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
   const form = useRef<HTMLFormElement>(null);
   const errorPanel = useRef<HTMLDivElement>(null);
+  const editorTrigger = useRef<HTMLElement | null>(null);
+  const saving = useRef(false);
   useEffect(() => {
     if (edit) form.current?.focus();
   }, [edit?.id, Boolean(edit)]);
@@ -96,6 +106,7 @@ export function Configuration({
     return String(value);
   }
   function open(row?: Row) {
+    editorTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setProfileStaff(null);
     setSkillsStaff(null);
     const source = row;
@@ -126,7 +137,8 @@ export function Configuration({
   }
   async function save(event: FormEvent) {
     event.preventDefault();
-    if (!edit || !data) return;
+    if (!edit || !data || saving.current) return;
+    saving.current = true;
     setBusy(true);
     setError("");
     setNotice("");
@@ -144,6 +156,7 @@ export function Configuration({
     } catch (err) {
       fail(err);
     } finally {
+      saving.current = false;
       setBusy(false);
     }
   }
@@ -163,7 +176,7 @@ export function Configuration({
       setNotice(
         section === "staff"
           ? "Staff member deleted (marked inactive). Appointment and commission history has been preserved."
-          : "Period removed. Its previous values remain in the audit history.",
+          : "Period removed.",
       );
       await load();
     } catch (err) {
@@ -191,7 +204,7 @@ export function Configuration({
       : data[section]
     : [];
   return (
-    <section aria-label="Salon configuration" className="configuration">
+    <section aria-label="Salon configuration" className={`configuration${section === "services" ? " services-configuration" : section === "staff" ? " staff-configuration" : section === "schedules" ? " schedules-configuration" : ""}`}>
       {/* <nav className="config-tabs" aria-label="Configuration sections">
         {(Object.keys(definitions) as Section[]).map((key) => (
           <button
@@ -234,12 +247,12 @@ export function Configuration({
           </Button>
         )}
       </div>
-      {data && (
+      {data && !["services", "staff", "schedules"].includes(section) && (
         <p className="timezone-note">
           All dates and times use {data.timeZone}.
         </p>
       )}
-      {error && (
+      {error && !skillsStaff && !(["services", "staff", "schedules"].includes(section) && edit) && (
         <div ref={errorPanel} role="alert" className="error">
           <p>{error}</p>
           {conflicts.length > 0 && (
@@ -286,6 +299,13 @@ export function Configuration({
           name={staffName(skillsStaff.id)}
           busy={busy}
           onBusy={setBusy}
+          error={error}
+          onStart={() => { setError(""); setConflicts([]); }}
+          onRestoreFocus={() => editorTrigger.current?.focus()}
+          errorDetails={conflicts.length > 0 && <ul>{conflicts.map(conflict => <li key={conflict.appointmentServiceId}>
+            <strong>{conflict.bookingCode}</strong> · {dateTime(conflict.startAt)} – {dateTime(conflict.reservedUntilAt)}
+            {onReviewBooking && <Button type="button" variant="outline" onClick={() => onReviewBooking(conflict.bookingCode)}>Review booking</Button>}
+          </li>)}</ul>}
           services={data.services.map((row) => ({
             id: row.id,
             name: String(row.name),
@@ -324,6 +344,7 @@ export function Configuration({
           initial={profileStaff.publicProfile as StaffPublicProfile | null}
           busy={busy}
           onBusy={setBusy}
+          onRestoreFocus={() => editorTrigger.current?.focus()}
           onClose={() => setProfileStaff(null)}
           onSaved={(profile) => {
             setData((current) =>
@@ -345,7 +366,49 @@ export function Configuration({
           }}
         />
       )}
-      {edit && (
+      {edit && section === "services" && <ServiceEditor
+        editing={Boolean(edit.id)}
+        values={edit.values}
+        categories={[...new Set(data?.services.map(row => String(row.category ?? "Other")))]}
+        busy={busy}
+        error={error}
+        onChange={(key, value) => setEdit(current => current ? { ...current, values: { ...current.values, [key]: value } } : current)}
+        onSubmit={save}
+        onClose={() => { setEdit(null); setError(""); }}
+        onRestoreFocus={() => editorTrigger.current?.focus()}
+      />}
+      {edit && section === "staff" && <StaffEditor
+        editing={Boolean(edit.id)}
+        staffCode={edit.id ? String(data?.staff.find(row => row.id === edit.id)?.staffCode ?? "—") : undefined}
+        values={edit.values}
+        busy={busy}
+        error={error}
+        onChange={(key, value) => setEdit(current => current ? { ...current, values: { ...current.values, [key]: value } } : current)}
+        onSubmit={save}
+        onClose={() => { setEdit(null); setError(""); setConflicts([]); }}
+        onRestoreFocus={() => editorTrigger.current?.focus()}
+        errorDetails={conflicts.length > 0 && <ul>{conflicts.map(conflict => <li key={conflict.appointmentServiceId}>
+          <strong>{conflict.bookingCode}</strong> · {dateTime(conflict.startAt)} – {dateTime(conflict.reservedUntilAt)}
+          {onReviewBooking && <Button type="button" variant="outline" onClick={() => onReviewBooking(conflict.bookingCode)}>Review booking</Button>}
+        </li>)}</ul>}
+      />}
+      {edit && section === "schedules" && data && <ScheduleEditor
+        editing={Boolean(edit.id)}
+        values={edit.values}
+        staff={data.staff.map(row => ({ id: row.id, name: staffName(row.id), isActive: Boolean(row.isActive) }))}
+        timeZone={data.timeZone}
+        busy={busy}
+        error={error}
+        errorDetails={conflicts.length > 0 && <ul>{conflicts.map(conflict => <li key={conflict.appointmentServiceId}>
+          <strong>{conflict.bookingCode}</strong> · {dateTime(conflict.startAt)} – {dateTime(conflict.reservedUntilAt)}
+          {onReviewBooking && <Button type="button" variant="outline" onClick={() => onReviewBooking(conflict.bookingCode)}>Review booking</Button>}
+        </li>)}</ul>}
+        onChange={(key, value) => setEdit(current => current ? { ...current, values: { ...current.values, [key]: value } } : current)}
+        onSubmit={save}
+        onClose={() => { setEdit(null); setError(""); setConflicts([]); }}
+        onRestoreFocus={() => editorTrigger.current?.focus()}
+      />}
+      {edit && section !== "services" && section !== "staff" && section !== "schedules" && (
         <form ref={form} tabIndex={-1} className="account-form" onSubmit={save}>
           <h3>
             {edit.id ? "Edit" : "New"} {definition.singular}
@@ -354,11 +417,6 @@ export function Configuration({
             {edit.customHours
               ? "This existing closure uses custom hours. Its time range is preserved."
               : `The salon will be closed all day on the selected date (${data!.timeZone}).`}
-          </p>}
-          {section === "staff" && <p className="muted">
-            Staff ID: {edit.id
-              ? String(data?.staff.find(row => row.id === edit.id)?.staffCode ?? "—")
-              : "Generated automatically when saved (e.g. STF-1)."}
           </p>}
           <div className="form-grid">
             {fields.map((field) => {
@@ -421,7 +479,7 @@ export function Configuration({
                 <label key={field.key}>
                   {field.label}
                   <Input
-                    required={!field.optional && !locked && !(edit.id && section === "staff" && field.key === "lastName")}
+                    required={!field.optional && !locked}
                     disabled={locked}
                     value={String(value)}
                     type={
@@ -460,22 +518,47 @@ export function Configuration({
           </div>
         </form>
       )}
-      {data && section !== "hours" &&
+      {data && section === "schedules" && <ScheduleList
+        schedules={data.schedules.map(row => ({ id: row.id, staffId: String(row.staffId), dayOfWeek: String(row.dayOfWeek), startTime: String(row.startTime), endTime: String(row.endTime), effectiveFrom: row.effectiveFrom ? String(row.effectiveFrom) : null, effectiveTo: row.effectiveTo ? String(row.effectiveTo) : null, isActive: Boolean(row.isActive) }))}
+        staff={data.staff.map(row => ({ id: row.id, name: staffName(row.id), isActive: Boolean(row.isActive) }))}
+        timeZone={data.timeZone}
+        busy={busy}
+        onEdit={id => open(data.schedules.find(row => row.id === id))}
+      />}
+      {data && !["hours", "schedules"].includes(section) &&
         (rows.length === 0 ? (
           <p className="empty-state">
             No {definition.title.toLowerCase()} configured yet.
           </p>
         ) : (
           <div className="config-records">
-            {rows.map((row) => (
-              <Card asChild key={row.id} className="block"><article className="config-record">
+            {rows.map((row) => section === "services" ? (
+              <article key={row.id} className="service-menu-card">
+                <div className="service-menu-heading">
+                  <span className="service-menu-icon"><Scissors size={20} aria-hidden="true" /></span>
+                  <span className={`service-menu-status${row.isActive ? " is-active" : ""}`}>{row.isActive ? "Active" : "Inactive"}</span>
+                </div>
+                <div className="service-menu-copy">
+                  <p className="service-menu-category">{String(row.category ?? "Other")}</p>
+                  <h3>{String(row.name)}</h3>
+                  <p className="service-menu-description">{String(row.description || "No description added.")}</p>
+                </div>
+                <div className="service-menu-metrics">
+                  <strong>{display({ key: "price", label: "Price", type: "money" }, row.price)}</strong>
+                  <span><Clock3 size={14} aria-hidden="true" />{String(row.durationMinutes)} min</span>
+                </div>
+                <div className="service-menu-footer">
+                  <span>{row.bufferMinutes == null ? "Default buffer" : `${row.bufferMinutes} min buffer`}</span>
+                  <Button variant="outline" disabled={busy} aria-label={`Edit ${row.name}`} onClick={() => open(row)}><Pencil size={14} aria-hidden="true" />Edit service</Button>
+                </div>
+              </article>
+            ) : (
+              <Card asChild key={row.id} className="block"><article className={`config-record${section === "staff" ? " staff-member-card" : ""}`}>
                 <div className="record-heading">
                   <h3>
                     {section === "staff"
-                        ? `${row.firstName} ${row.lastName}`
-                        : section === "qualifications"
-                          ? `${staffName(row.staffId)} · ${serviceName(row.serviceId)}`
-                          : section === "schedules" ||
+                        ? <><span className="staff-member-avatar" aria-hidden="true">{`${String(row.firstName).charAt(0)}${String(row.lastName ?? "").charAt(0)}`}</span><span className="staff-member-identity"><span>{staffName(row.id)}</span><small>{String(row.staffCode ?? "—")}</small></span><span className={`staff-member-status${row.isActive ? " is-active" : ""}`}>{row.isActive ? "Active" : "Inactive"}</span></>
+                        : section === "schedules" ||
                               section === "unavailability"
                             ? staffName(row.staffId)
                             : String(
@@ -486,14 +569,15 @@ export function Configuration({
                               )}
                   </h3>
                     <div className="actions">
-                      <Button variant="outline" disabled={busy} onClick={() => open(row)}>
-                        Edit
+                      <Button variant="outline" disabled={busy} aria-label={section === "staff" ? `Edit ${staffName(row.id)}` : undefined} onClick={() => open(row)}>
+                        {section === "staff" ? "Edit details" : "Edit"}
                       </Button>
                       {section === "staff" && (
                         <>
                           <Button variant="outline"
                             disabled={busy}
                             onClick={() => {
+                              editorTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
                               setEdit(null);
                               setProfileStaff(null);
                               setNotice("");
@@ -507,6 +591,7 @@ export function Configuration({
                           <Button variant="outline"
                             disabled={busy}
                             onClick={() => {
+                              editorTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
                               setEdit(null);
                               setSkillsStaff(null);
                               setNotice("");
@@ -539,11 +624,7 @@ export function Configuration({
                     </div>
                 </div>
                 <dl>
-                  {section === "staff" && <div>
-                    <dt>Staff ID</dt>
-                    <dd>{String(row.staffCode ?? "—")}</dd>
-                  </div>}
-                  {recordFields(row).map((field) => (
+                  {recordFields(row).filter(field => section !== "staff" || field.key === "phone").map((field) => (
                     <div key={field.key}>
                       <dt>{field.label}</dt>
                       <dd>{display(field, section === "closures" && field.key === "date" ? closureDate(row) : row[field.key])}{section === "closures" && field.key === "date" && " · Closed all day"}</dd>
@@ -553,7 +634,7 @@ export function Configuration({
                 {section === "staff" && (
                   <div className="staff-skill-summary">
                     <strong>Qualified services</strong>
-                    <p>
+                    <div className="staff-member-skills">
                       {data.qualifications
                         .filter(
                           (q) =>
@@ -567,11 +648,11 @@ export function Configuration({
                           const service = data.services.find(
                             (s) => s.id === q.serviceId,
                           )!;
-                          return `${service.name} (${service.category ?? "Other"})`;
+                          return <span className="staff-member-skill" key={q.id} title={String(service.category ?? "Other")}>{String(service.name)}</span>;
                         })
-                        .join(", ") ||
-                        "No active services assigned. Use Manage skills to enable booking."}
-                    </p>
+                        }
+                      {!data.qualifications.some(q => q.staffId === row.id && q.isActive && data.services.some(s => s.id === q.serviceId && s.isActive)) && <p>No active services assigned. Use Manage skills to enable booking.</p>}
+                    </div>
                   </div>
                 )}
               </article></Card>

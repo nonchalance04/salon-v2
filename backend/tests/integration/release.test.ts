@@ -48,9 +48,7 @@ test('first Admin bootstrap validates inputs, serializes concurrent runs and ref
   const first = await prisma.user.findFirstOrThrow();
   assert.equal(first.email, 'first@example.test'); assert.equal(first.role, 'ADMIN');
   assert.ok(await bcrypt.compare(input.password, first.passwordHash));
-  const audit = await prisma.auditLog.findFirstOrThrow();
-  assert.equal(audit.action, 'ADMIN_BOOTSTRAPPED');
-  assert.doesNotMatch(JSON.stringify(audit), /password|\$2b\$/);
+  assert.equal(await prisma.auditLog.count(), 0);
   await assert.rejects(bootstrapAdmin(prisma, { ...input, email: 'second@example.test' }));
   // Only this suite's disposable bootstrap records, before normal development seeding.
   await prisma.auditLog.deleteMany(); await prisma.user.deleteMany();

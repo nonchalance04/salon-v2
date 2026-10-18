@@ -260,8 +260,9 @@ if occupied, Vite fails rather than silently choosing another port.
    fees**. Admin-only accounts/configuration/reports must not be accessible.
 4. Use a separate browser profile for Admin and Cashier when testing both at once;
    ordinary tabs share the login cookie.
-5. As Admin, inspect **Salon management**: profile, services, staff, qualifications,
-   hours, schedules, and policies. Confirm the intended test services have active
+5. As Admin, inspect **Salon management** and **Settings**: profile, services, staff,
+   hours, schedules, and policies. Use **Staff / Stylists → Manage skills** to edit
+   service assignments and commission rates. Confirm the intended test services have active
    qualified staff whose schedules cover the chosen time.
 6. Optionally create a disposable Cashier account, sign in with it in another
    profile, then deactivate it as Admin. Its next protected request should fail.
@@ -284,14 +285,14 @@ settlement scenarios. Keep a private record of each booking's purpose and code.
 6. Complete the displayed local test-payment success flow before the deadline.
    Expect one successful appointment-fee capture and `CONFIRMED`.
 7. Refresh repeatedly. Expect the same booking and capture without duplicates.
-8. As Admin/Cashier, open **Appointment fees**, find the booking, and issue a receipt
-   if none exists. Refresh the guest view and verify fee, currency, and receipt.
-9. Create another fresh booking and record a simulated manual collection through
-   **Appointment fees**, using a unique test collection reference. Expect one
-   receipt and confirmation. Keep the original reference for any uncertain retry.
+8. As Admin, use **Reports** to verify the successful fee payment and
+   **Appointments** to verify the confirmed booking. There is no Admin manual
+   appointment-fee recording screen.
+9. When testing with PayMongo sandbox, verify that the signed success webhook
+   automatically creates the receipt. Refresh the guest view and verify fee,
+   currency, and receipt without an Admin recording or receipt-issuance action.
 
-The manual collection UI records a staff assertion; it does not charge GCash.
-Do not record the online capture again as a manual collection. Detailed simulator,
+Do not record an online capture again as a manual collection. Detailed simulator,
 duplicate, failure, and late-payment scenarios are in the
 [payment testing guide](PHASE_6_TESTING_GUIDE.md).
 
@@ -366,8 +367,8 @@ settlement/closure. See [Phase 8 verification](PHASE_8_VERIFICATION.md).
 2. Follow that guide for worker restart, reminders, cancellation/reschedule
    suppression, and retry checks. Test-provider `SENT` means simulated acceptance,
    not delivery to an inbox or phone. An unpaid hold should not send confirmation.
-3. As Admin, open **Reports & audit**. Choose a period containing your test activity
-   and compare receipts, payments, appointments, and audit entries with recorded
+3. As Admin, open **Reports**. Choose a period containing your test activity
+   and compare receipts, payments, and appointments with recorded
    booking codes. Check empty periods and pagination as well.
 4. As Cashier, open **Collections** and verify permitted collection information.
    Admin private reports and commissions must remain restricted.

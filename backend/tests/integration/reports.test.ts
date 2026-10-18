@@ -168,12 +168,9 @@ test("cashier method totals subtract refunds by refund date and original method"
   assert.deepEqual(result.typeTotals.map(t => [t.type, t.captured, t.count]), [["APPOINTMENT_FEE", "100.10", 1], ["SERVICE_PAYMENT", "200.20", 1]]);
 });
 
-test("Admin audit view redacts legacy secrets and report services reject Cashier/private access", async () => {
-  const admin = await actor(); const cashier = await actor("CASHIER");
-  await prisma.auditLog.create({ data: { actorType: "ADMIN", actorUserId: admin.id, action: "TEST", entityType: "Appointment", entityId: randomUUID(), createdAt: day, beforeData: { guestAccessTokenHash: "secret", nested: { passwordHash: "secret", amount: "1.00" } } } });
-  const audit = await reports.list(admin.id, "audit", q);
-  assert.doesNotMatch(JSON.stringify(audit), /secret|passwordHash|guestAccessToken/);
-  for (const kind of ["appointments", "payments", "receipts", "commissions", "audit"] as const) await assert.rejects(reports.list(cashier.id, kind, q), { code: "FORBIDDEN" });
+test("report services reject Cashier/private access", async () => {
+  const cashier = await actor("CASHIER");
+  for (const kind of ["appointments", "payments", "receipts", "commissions"] as const) await assert.rejects(reports.list(cashier.id, kind, q), { code: "FORBIDDEN" });
   await assert.rejects(reports.dashboard(cashier.id, q), { code: "FORBIDDEN" });
   await prisma.user.update({ where: { id: cashier.id }, data: { isActive: false } });
   try { await assert.rejects(reports.collections(cashier.id, q), { code: "UNAUTHORIZED" }); } finally { await prisma.user.update({ where: { id: cashier.id }, data: { isActive: true } }); }
@@ -204,6 +201,8 @@ test("report HTTP authorization, cache controls, validation and public chatbot b
     assert.equal((await fetch(`${base}/reports/waiting-queue?pageSize=101`, { headers: { Cookie: cashierCookie } })).status, 400);
     assert.equal((await fetch(`${base}/reports/waiting-queue?unknown=true`, { headers: { Cookie: cashierCookie } })).status, 400);
     for (const kind of ["dashboard", "appointments", "payments", "receipts", "commissions", "audit"]) assert.equal((await fetch(`${base}/reports/${kind}${query}`, { headers: { Cookie: cashierCookie } })).status, 403);
+    const removedAudit = await fetch(`${base}/reports/audit${query}`, { headers: { Cookie: adminCookie } });
+    assert.equal(removedAudit.status, 400);
     const summary = await fetch(`${base}/reports/collections${query}`, { headers: { Cookie: cashierCookie } }); assert.equal(summary.status, 200); assert.equal(summary.headers.get("cache-control"), "no-store");
     const queue = await fetch(`${base}/reports/cashier-queue${query}`, { headers: { Cookie: cashierCookie } }); assert.equal(queue.status, 200); assert.equal(queue.headers.get("cache-control"), "no-store");
     assert.equal((await fetch(`${base}/reports/cashier-queue?from=bad`, { headers: { Cookie: cashierCookie } })).status, 400);

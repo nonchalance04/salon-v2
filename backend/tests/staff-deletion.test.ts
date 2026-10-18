@@ -25,21 +25,17 @@ function fixture({ active = true, missing = false, role = "ADMIN", authorized = 
   return { service: createConfigurationService(prisma, "Asia/Manila"), staff, audits, updates: () => updates };
 }
 
-test("staff deletion deactivates the record without changing staff details and audits the change", async () => {
+test("staff deletion preserves staff details and deactivates without audit logging", async () => {
   const f = fixture();
   await f.service.removeStaff("admin-id", f.staff.id);
   assert.deepEqual(f.staff, { id: "staff-id", firstName: "Jamie", lastName: "Santos", isActive: false, phone: "09123456789" });
-  assert.equal(f.audits.length, 1);
-  const audit = f.audits[0] as { data: { beforeData: { isActive: boolean }; afterData: { isActive: boolean }; entityType: string } };
-  assert.equal(audit.data.entityType, "Staff");
-  assert.equal(audit.data.beforeData.isActive, true);
-  assert.equal(audit.data.afterData.isActive, false);
+  assert.equal(f.audits.length, 0);
   await f.service.removeStaff("admin-id", f.staff.id);
   assert.equal(f.updates(), 1);
-  assert.equal(f.audits.length, 1);
+  assert.equal(f.audits.length, 0);
 });
 
-test("staff deletion rejects blocking reservations without changing or auditing staff", async () => {
+test("staff deletion rejects blocking reservations without changing staff", async () => {
   const f = fixture({ reserved: true });
   await assert.rejects(f.service.removeStaff("admin-id", f.staff.id), { code: "RESERVATION_CONFLICT" });
   assert.equal(f.staff.isActive, true);

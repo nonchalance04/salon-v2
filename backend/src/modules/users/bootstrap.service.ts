@@ -13,10 +13,7 @@ export async function bootstrapAdmin(prisma: PrismaClient, input: unknown) {
     await tx.$executeRaw`LOCK TABLE "User" IN EXCLUSIVE MODE`;
     if (await tx.user.count() !== 0) throw new Error("Bootstrap requires an empty User table.");
     const user = await tx.user.create({ data: { ...fields, passwordHash, role: "ADMIN", isActive: true } });
-    await tx.auditLog.create({ data: {
-      actorType: "SYSTEM", action: "ADMIN_BOOTSTRAPPED", entityType: "User", entityId: user.id,
-      afterData: { id: user.id, role: user.role, isActive: user.isActive },
-    } });
+
     return { id: user.id };
   });
 }

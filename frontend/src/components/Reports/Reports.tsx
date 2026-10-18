@@ -30,7 +30,7 @@ function columnWidth(key: string, rows: Record<string, unknown>[]) {
   if (/At$/.test(key)) return 200;
   if (numericColumn(key)) return 130;
   if (/Time$/.test(key)) return 120;
-  if (["method", "provider", "currency", "actorType", "entityType"].includes(key)) return 130;
+  if (["method", "provider", "currency"].includes(key)) return 130;
   if (key === "status") return 150;
   return 170;
 }
@@ -103,7 +103,7 @@ export function Reports({ admin, initialKind = "appointments" }: { admin: boolea
   function clear() { setCollections(null); setReport(null); }
   return <section className="reports"><h2>{admin ? "Reports" : "Collection summary"}</h2><p>Choose up to 366 days in salon time. Reports use historical transactions and stored service values.</p>
     <form className="account-form" onSubmit={submit}><div className="form-grid"><label>From<Input type="date" required value={from} disabled={busy} onChange={e => { setFrom(e.target.value); clear(); }} /></label><label>Through<Input type="date" required value={to} min={from} disabled={busy} onChange={e => { setTo(e.target.value); clear(); }} /></label>
-    {/* {admin && <label>Report<select value={kind} disabled={busy} onChange={e => { setKind(e.target.value); clear(); }}>{["appointments", "payments", "receipts", "commissions", "audit"].map(k => <option key={k} value={k}>{label(k)}</option>)}</select></label>} */}</div>{!admin && <Button variant="default" className="primary" disabled={busy}>{busy ? "Loading…" : "Run report"}</Button>}</form>
+    {/* {admin && <label>Report<select value={kind} disabled={busy} onChange={e => { setKind(e.target.value); clear(); }}>{["appointments", "payments", "receipts", "commissions"].map(k => <option key={k} value={k}>{label(k)}</option>)}</select></label>} */}</div>{!admin && <Button variant="default" className="primary" disabled={busy}>{busy ? "Loading…" : "Run report"}</Button>}</form>
     {admin && busy && <p role="status">Loading…</p>}
     {error && <p role="alert" className="error">{error}</p>}
     {collections && <><h3>Collections</h3><p>{collections.basis} Timezone: {collections.timeZone}.</p><DataTable rows={collections.totals} title="Collections" /><p>Successful applied and unapplied amounts describe current payment status. Reconciliation required is a subset, not an additional collection.</p><h3>Cash, GCash & other collections</h3><DataTable rows={collections.methodTotals} title="Collections by method" /><h3>Appointment fees & service payment captures</h3><DataTable rows={collections.typeTotals} title="Collections by payment type" /><details><summary>Collection breakdown by payment type and method</summary><DataTable rows={collections.breakdown} title="Collection breakdown" /></details></>}

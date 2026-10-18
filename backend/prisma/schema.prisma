@@ -472,6 +472,8 @@ model CommissionRecord {
   @@index([appointmentId])
 }
 
+// Legacy history only. MVP runtime does not create or expose audit records.
+// Retained to preserve existing data; no destructive migration is required.
 model AuditLog {
   id              String    @id @default(uuid()) @db.Uuid
   actorType       ActorType

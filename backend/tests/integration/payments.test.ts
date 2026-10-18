@@ -127,7 +127,7 @@ async function sendEvent(paymentId: string, changes: Partial<VerifiedPayment> = 
   assert.ok(result); return result;
 }
 
-test("manual capture atomically confirms once, receipts, audits and queues notifications under concurrent retries", async () => {
+test("manual capture atomically confirms once, issues receipts and queues notifications without audits under concurrent retries", async () => {
   const f = await heldBooking(); const input = manual(f.row.bookingCode);
   const results = await Promise.all([payments.manual(cashierId, input), payments.manual(adminId, input)]);
   assert.equal(results[0].id, results[1].id);
@@ -136,7 +136,7 @@ test("manual capture atomically confirms once, receipts, audits and queues notif
   assert.equal(await prisma.payment.count({ where: { appointmentId: f.row.id } }), 1);
   assert.equal(await prisma.receipt.count({ where: { paymentId: results[0].id } }), 1);
   assert.equal(await prisma.notificationQueue.count({ where: { appointmentId: f.row.id } }), 2);
-  assert.equal(await prisma.auditLog.count({ where: { entityId: f.row.id, action: "BOOKING_CONFIRMED" } }), 1);
+  assert.equal(await prisma.auditLog.count({ where: { entityId: f.row.id, action: "BOOKING_CONFIRMED" } }), 0);
   assert.equal(await prisma.commissionRecord.count({ where: { appointmentId: f.row.id } }), 0);
   assert.equal((await bookings.retrieve(f.row.bookingCode, f.guestToken)).appointment.payments[0]!.receipt!.receiptNumber, results[0].receipt!.receiptNumber);
   assert.equal((await payments.manual(cashierId, { ...input, idempotencyKey: randomUUID() })).id, results[0].id);
@@ -316,7 +316,7 @@ test("a deadline crossed during notification insertion rolls back stale confirma
   }
 });
 
-test("outbox insertion failure rolls back payment, receipt, audit, and confirmation together", async () => {
+test("outbox insertion failure rolls back payment, receipt, and confirmation together", async () => {
   const f = await heldBooking();
   await observer.query(`CREATE FUNCTION phase6_reject_notification() RETURNS trigger LANGUAGE plpgsql AS $$
     BEGIN IF NEW."appointmentId" = '${f.row.id}'::uuid THEN RAISE EXCEPTION 'test outbox failure'; END IF; RETURN NEW; END $$`);
@@ -414,7 +414,7 @@ test("PayMongo checkout is claimed once across processes/keys; capture identity 
   assert.equal((receipt.receiptSnapshot as { issuedBy: string }).issuedBy, "SYSTEM");
   assert.equal((receipt.receiptSnapshot as { amount: string }).amount, first.payment.amount);
   assert.equal(await prisma.receipt.count({ where: { paymentId: first.payment.id } }), 1);
-  assert.equal(await prisma.auditLog.count({ where: { entityId: receipt.id, action: "RECEIPT_ISSUED" } }), 1);
+  assert.equal(await prisma.auditLog.count({ where: { entityId: receipt.id, action: "RECEIPT_ISSUED" } }), 0);
   assert.equal((await bookings.retrieve(f.row.bookingCode, f.guestToken)).appointment.payments[0]!.receipt!.receiptNumber, receipt.receiptNumber);
   const customerReceipt = await gateway.service.customerReceipt(f.row.bookingCode, f.guestToken, first.payment.id);
   assert.equal(customerReceipt.receipt!.receiptNumber, receipt.receiptNumber);
@@ -504,6 +504,11 @@ test("PayMongo HTTP webhook uses Paymongo-Signature without browser cookies and 
     const accepted = await request("paymongo-signature"); assert.equal(accepted.status, 200); assert.deepEqual(await accepted.json(), { received: true });
     assert.equal((await request("paymongo-signature")).status, 200);
     assert.equal((await prisma.payment.findUniqueOrThrow({ where: { id: checkout.payment.id } })).status, "SUCCEEDED");
+    assert.equal((await prisma.appointment.findUniqueOrThrow({ where: { id: f.row.id } })).status, "CONFIRMED");
+    assert.equal(await prisma.payment.count({ where: { appointmentId: f.row.id, status: "SUCCEEDED" } }), 1);
+    assert.equal(await prisma.receipt.count({ where: { paymentId: checkout.payment.id } }), 1);
+    assert.equal((await prisma.receipt.findUniqueOrThrow({ where: { paymentId: checkout.payment.id } })).issuedByUserId, null);
+    assert.equal(await prisma.auditLog.count({ where: { entityId: f.row.id, action: "BOOKING_CONFIRMED", actorType: "SYSTEM" } }), 0);
     assert.equal(await prisma.notificationQueue.count({ where: { appointmentId: f.row.id } }), 2);
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
 });

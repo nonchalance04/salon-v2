@@ -1,5 +1,16 @@
 # Salon Booking and Appointment System
 
+## MVP scope update — 2026-10-18
+
+Audit logging and audit-log viewing are removed from this MVP. Runtime workflows
+must not write `AuditLog`, and the audit report is unavailable. Existing audit
+rows, the legacy schema and migrations are retained solely to preserve history;
+no data cleanup or destructive migration is part of this change. Payments,
+receipts, commissions, appointment reschedule history, policy versions and
+operational error logging remain. Check-in and completion actor fields remain.
+No-show correction still validates the reason and physical presence; its reason
+and previous no-show timestamps are no longer retained in a separate audit event.
+
 ## Architecture v1.0
 
 This document defines the application architecture for the Salon Booking and Appointment System.
@@ -70,7 +81,6 @@ Backend Application
 ├── Commissions
 ├── Reports
 ├── Notifications
-├── Audit
 └── Chatbot
 ```
 
@@ -209,7 +219,6 @@ backend/
 │   │   ├── commissions/
 │   │   ├── reports/
 │   │   ├── notifications/
-│   │   ├── audit/
 │   │   └── chatbot/
 │   │
 │   ├── workers/
@@ -299,7 +308,7 @@ Services may:
 - Enforce lifecycle transitions
 - Perform calculations
 - Raise domain errors
-- Create audit/outbox records
+- Create applicable notification outbox records
 
 Services are the primary location for business behavior defined in `SYSTEM_RULES.md`.
 
@@ -1035,21 +1044,11 @@ Used for:
 - Worker problems
 - Deployment troubleshooting
 
-## Audit Logging
+## Legacy Audit History
 
-`AuditLog` represents business/accountability history.
-
-Examples:
-
-- Booking changes
-- Rescheduling
-- Cancellation
-- No-show marking
-- Payment recording
-- Commission finalization
-- Configuration changes
-
-Operational logs must not substitute for AuditLog.
+Audit logging is outside the current MVP. Application services do not create
+`AuditLog` records and reports do not expose them. The legacy table is retained
+for existing history. Operational error logging remains independent.
 
 ---
 
@@ -1212,7 +1211,6 @@ The architecture must enforce:
 - No secrets in source control
 - Safe database transactions
 - Idempotent payment handling
-- Audit logging
 - Appropriate rate limiting where needed
 
 Frontend checks do not replace backend security.
@@ -1393,7 +1391,7 @@ Errors:
 Centralized domain-error handling
 
 Logging:
-Operational logs separate from AuditLog
+Operational logs omit credentials and personal payloads
 
 Testing:
 Unit
@@ -1419,13 +1417,13 @@ The system intentionally favors a straightforward, maintainable architecture ove
 
 ### Public staff profiles
 
-Admin configuration exposes `PUT /api/configuration/staff/:id/profile` using the same admin authentication, origin checks, scheduling locks, transaction, and audit conventions as other staff changes. The strict profile schema bounds text and collection sizes, restricts image URLs to HTTPS without credentials, and accepts ratings from 1 to 5. It updates only `Staff.publicProfile`; basic staff edits preserve it.
+Admin configuration exposes `PUT /api/configuration/staff/:id/profile` using the same admin authentication, origin checks, scheduling locks, transaction conventions as other staff changes. The strict profile schema bounds text and collection sizes, restricts image URLs to HTTPS without credentials, and accepts ratings from 1 to 5. It updates only `Staff.publicProfile`; basic staff edits preserve it.
 
 `GET /api/availability/staff` returns saved public profiles and derived counts of distinct completed appointments and clients where that staff member performed an active service. Staff phone numbers and commission data are excluded. Inactive staff remain hidden. The booking picker renders saved content, empty states for unpublished sections, and an illustrated fallback for unavailable portrait images. Testimonials are labeled as shared by the salon, rather than presented as independently verified reviews. Profile photos and portfolio images are externally hosted URLs; file upload/storage is not part of this editor.
 
 ### Automatic PayMongo customer receipts
 
-PaymentService owns automatic receipt issuance inside the verified capture transaction and idempotent legacy receipt recovery. Guest-authorized POST /api/payments/customer-receipt validates booking access and payment ownership before accepting only successful PayMongo appointment-fee payments. System receipts have nullable issuedByUserId and a SYSTEM audit. React renders the immutable receipt snapshot in the shared branded receipt layout; a customer dialog supports preview and browser Print / Save as PDF.
+PaymentService owns automatic receipt issuance inside the verified capture transaction and idempotent legacy receipt recovery. Guest-authorized POST /api/payments/customer-receipt validates booking access and payment ownership before accepting only successful PayMongo appointment-fee payments. System receipts have nullable issuedByUserId. React renders the immutable receipt snapshot in the shared branded receipt layout; a customer dialog supports preview and browser Print / Save as PDF.
 
 
 ### Date-only salon closure input
@@ -1433,8 +1431,7 @@ PaymentService owns automatic receipt issuance inside the verified capture trans
 Closure POST/PUT requests accept `{ date, reason? }` in addition to the existing
 strict interval format. The configuration service converts a validated date
 into salon-local midnight-to-next-midnight instants before writing within the
-existing exclusive salon coordination transaction. Conflict checks and audit
-snapshots use the normalized period. The Admin UI creates date-only closures
+existing exclusive salon coordination transaction. Conflict checks use the normalized period. The Admin UI creates date-only closures
 and recognizes exact single-day intervals when displaying/editing existing
 records; custom-hours/multi-day records continue to use their original interval
 editor. No database schema change is required.
@@ -1448,6 +1445,6 @@ remain separate ranges. Each day saves through authenticated, admin-only
 `PUT /api/configuration/hours/day/:dayOfWeek`, validating the day, state, ranges,
 and record identities. The configuration service saves the whole day in one
 exclusive salon transaction, checks reservation coverage including buffers before
-mutation, retains unchanged records, audits each change, and deactivates removed
+mutation, retains unchanged records and deactivates removed
 periods instead of deleting them. The existing individual-period endpoints stay
 compatible. There are no new models or database migrations.

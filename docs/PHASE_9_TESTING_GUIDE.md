@@ -226,8 +226,9 @@ ORDER BY q."createdAt", q.id;
 rows exist for hold creation. The LEFT JOIN displays one row with null queue fields.
 
 6. Before the hold expires, click **Open test payment**, then **Simulate successful
-   payment**. Refresh status if needed. If using staff manual fee recording instead,
-   use **Find booking** and **Record received appointment fee** on this test booking.
+   payment**. Refresh status if needed. With PayMongo sandbox, complete checkout
+   and let the signed successful-payment webhook register the fee automatically.
+   Do not record an additional manual collection in Admin.
 7. Run the SQL query again.
 
 **Expected after timely fee confirmation:** appointment is CONFIRMED; one

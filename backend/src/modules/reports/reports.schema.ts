@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { Temporal } from "@js-temporal/polyfill";
-export const reportKinds = ["appointments", "payments", "receipts", "commissions", "audit"] as const;
+export const reportKinds = ["appointments", "payments", "receipts", "commissions"] as const;
 export const reportQuery = z.object({
   from: z.iso.date(), to: z.iso.date(),
   page: z.coerce.number().int().min(1).max(100000).default(1),

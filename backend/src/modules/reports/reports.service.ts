@@ -7,14 +7,7 @@ import { reportPeriod, type ReportQuery, type ConfirmedServicesQuery, reportKind
 type Kind = typeof reportKinds[number];
 const amount = (n: Prisma.Decimal | null) => (n ?? new Prisma.Decimal(0)).toFixed(2);
 const booking = { select: { bookingCode: true } } as const;
-// Audits may contain legacy snapshots. Never expose credentials or provider metadata.
-export function safeAudit(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(safeAudit);
-  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value)
-    .filter(([key]) => !/password|token|secret|authorization|cookie|metadata/i.test(key))
-    .map(([key, item]) => [key, safeAudit(item)]));
-  return value;
-}
+
 // Match a booking code or every word in the customer's name, in any order.
 function customerSearch(search: string): Prisma.AppointmentWhereInput {
   if (!search) return {};
@@ -222,14 +215,6 @@ export function createReportsService(prisma: PrismaClient, timeZone: string) {
               id: true, appointment: booking, staffId: true, sourcePaymentId: true, appointmentService: { select: { serviceNameSnapshot: true } },
               serviceAmount: true, allocatedAppointmentFee: true, commissionBase: true, commissionRate: true, commissionAmount: true, finalizedAt: true,
             } }); break;
-          }
-          case "audit": {
-            const where = { createdAt: period }; dateBasis = "Audit event recorded";
-            total = await tx.auditLog.count({ where });
-            const events = await tx.auditLog.findMany({ where, ...paging, orderBy: [{ createdAt: "desc" }, { id: "desc" }], select: {
-              id: true, action: true, actorType: true, actorUserId: true, actorCustomerId: true, entityType: true, entityId: true, createdAt: true, beforeData: true, afterData: true,
-            } });
-            rows = events.map(r => ({ ...r, beforeData: safeAudit(r.beforeData), afterData: safeAudit(r.afterData) })); break;
           }
         }
         return { kind, from: q.from, to: q.to, timeZone, dateBasis, page: q.page, pageSize: q.pageSize, total, rows };

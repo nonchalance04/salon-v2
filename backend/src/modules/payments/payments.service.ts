@@ -192,8 +192,7 @@ async function issueAutomaticReceipt(tx: Tx, payment: Payment, timeZone: string)
   const existing = await tx.receipt.findUnique({ where: { paymentId: payment.id } });
   if (existing) return existing;
   const receipt = await issueReceipt(tx, payment, null, timeZone);
-  await tx.auditLog.create({ data: { actorType: "SYSTEM", action: "RECEIPT_ISSUED", entityType: "Receipt", entityId: receipt.id,
-    afterData: { paymentId: payment.id, issuance: "VERIFIED_PROVIDER_PAYMENT" } } });
+
   return receipt;
 }
 async function reservationsOwned(
@@ -354,36 +353,8 @@ async function settle(
       where: { id: row.id },
       data: { status: "EXPIRED" },
     });
-    await tx.auditLog.create({
-      data: {
-        actorType: "SYSTEM",
-        action: "BOOKING_HOLD_EXPIRED",
-        entityType: "Appointment",
-        entityId: row.id,
-        beforeData: { status: "PENDING_PAYMENT" },
-        afterData: { status: "EXPIRED" },
-      },
-    });
   }
-  const actor = actorId
-    ? await tx.user.findUniqueOrThrow({ where: { id: actorId } })
-    : null;
-  await tx.auditLog.create({
-    data: {
-      actorType: actor?.role ?? "SYSTEM",
-      actorUserId: actorId,
-      action: `APPOINTMENT_FEE_${event.status}`,
-      entityType: "Payment",
-      entityId: payment.id,
-      afterData: {
-        status: updated.status,
-        amount: updated.amount.toFixed(2),
-        currency: updated.currency,
-        satisfiesObligation: confirm,
-        reconciliationReason: reason,
-      },
-    },
-  });
+
   if (event.status === "SUCCEEDED") {
     if (updated.provider === "paymongo") await issueAutomaticReceipt(tx, updated, timeZone);
     else if (actorId) await issueReceipt(tx, updated, actorId, timeZone);
@@ -425,17 +396,6 @@ async function settle(
         },
       });
     }
-    if (confirm)
-      await tx.auditLog.create({
-        data: {
-          actorType: "SYSTEM",
-          action: "BOOKING_CONFIRMED",
-          entityType: "Appointment",
-          entityId: row.id,
-          beforeData: { status: "PENDING_PAYMENT" },
-          afterData: { status: "CONFIRMED", paymentId: payment.id },
-        },
-      });
   }
   const result = await view(tx, payment.id);
   // A late wait on inserts/foreign keys must not commit a stale confirmation.
@@ -591,21 +551,7 @@ export function createPaymentsService(
               : {}),
           },
         });
-        await tx.auditLog.create({
-          data: {
-            actorType: "CUSTOMER",
-            actorCustomerId: row.customerId,
-            action: "PAYMENT_ATTEMPT_CREATED",
-            entityType: "Payment",
-            entityId: payment.id,
-            afterData: {
-              provider: provider.name,
-              status: "PENDING",
-              amount: payment.amount.toFixed(2),
-              currency: "PHP",
-            },
-          },
-        });
+
         return { payment, appointment: row, create: true };
       });
       if (pending.payment.status !== "PENDING")
@@ -888,7 +834,7 @@ export function createPaymentsService(
     async issueReceipt(actorId: string, paymentId: string) {
       return transaction(prisma, async (tx) => {
         const payment = await lockPayment(tx, paymentId);
-        const actor = await authorize(tx, actorId);
+        await authorize(tx, actorId);
         if (payment.type !== "APPOINTMENT_FEE")
           throw new ApiError(
             400,
@@ -897,17 +843,7 @@ export function createPaymentsService(
           );
         const existing = await tx.receipt.findUnique({ where: { paymentId } });
         if (!existing) {
-          const receipt = await issueReceipt(tx, payment, actorId, timeZone);
-          await tx.auditLog.create({
-            data: {
-              actorType: actor.role,
-              actorUserId: actorId,
-              action: "RECEIPT_ISSUED",
-              entityType: "Receipt",
-              entityId: receipt.id,
-              afterData: { paymentId },
-            },
-          });
+          await issueReceipt(tx, payment, actorId, timeZone);
         }
         return view(tx, paymentId);
       });
@@ -991,31 +927,12 @@ export function createPaymentsService(
               : {}),
           },
         });
-        if (actorId)
-          await tx.auditLog.create({
-            data: {
-              actorType: "ADMIN",
-              actorUserId: actorId,
-              action: "PAYMONGO_CHECKOUT_RECOVERED",
-              entityType: "Payment",
-              entityId: payment.id,
-              afterData: { checkoutReference: event.checkoutReference },
-            },
-          });
         if (event.status !== "SUCCEEDED") {
           // A session is not a captured transaction. Keep externalReference for pay_ identity.
           if (event.status === "EXPIRED" && payment.status === "PENDING") {
             await tx.payment.update({
               where: { id: payment.id },
               data: { status: "EXPIRED" },
-            });
-            await tx.auditLog.create({
-              data: {
-                actorType: "SYSTEM",
-                action: "PAYMENT_ATTEMPT_EXPIRED",
-                entityType: "Payment",
-                entityId: payment.id,
-              },
             });
           }
           return view(tx, payment.id);

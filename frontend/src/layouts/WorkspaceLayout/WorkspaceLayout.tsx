@@ -2,11 +2,11 @@ import { Link, Navigate, useBlocker, useLocation, useNavigate, useParams, useSea
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "../../contexts/AuthProvider";
 import { Configuration } from "../../components/Configuration";
+import { StaffAvailability } from "../../components/StaffAvailability/StaffAvailability";
 import { definitions, type Section } from "../../components/Configuration/Configuration.fields";
 import { AdminAppointments } from "../../components/AdminAppointments";
 import { SettlementWorkspace } from "../../components/SettlementWorkspace";
 import { Reports } from "../../components/Reports";
-import { PaymentsWorkspace } from "../../components/PaymentsWorkspace";
 import { CashierDashboard } from "../../components/CashierDashboard";
 import { AdminDashboard } from "../../components/AdminDashboard";
 import type { AppointmentFilters } from "../../types/appointment-filters";
@@ -139,31 +139,17 @@ const masterCards: Card[] = [
   },
   {
     title: "Staff / Stylists",
-    description: "Manage the people behind every appointment",
+    description: "Manage staff, service skills, and commission rates",
     icon: "user",
     page: "configuration",
     section: "staff",
   },
   {
-    title: "Service assignments",
-    description: "Manage staff qualifications and commission rates",
-    icon: "check",
-    page: "configuration",
-    section: "qualifications",
-  },
-  {
-    title: "Staff schedules",
-    description: "Manage working hours and recurring shifts",
+    title: "Staff availability",
+    description: "Manage weekly schedules and temporary time off",
     icon: "calendar",
     page: "configuration",
     section: "schedules",
-  },
-  {
-    title: "Staff time off",
-    description: "Manage temporary absences and availability",
-    icon: "clock",
-    page: "configuration",
-    section: "unavailability",
   },
 ];
 const settingsCards: Card[] = [
@@ -231,13 +217,6 @@ const reportCards: Card[] = [
     page: "report-detail",
     kind: "receipts",
   },
-  {
-    title: "Audit history",
-    description: "Review recorded system and account activity",
-    icon: "data",
-    page: "report-detail",
-    kind: "audit",
-  },
 ];
 const overviewCards: Card[] = [
   {
@@ -245,12 +224,6 @@ const overviewCards: Card[] = [
     description: "View bookings, status, and reschedule appointments",
     icon: "calendar",
     page: "appointments",
-  },
-  {
-    title: "Appointment fees",
-    description: "Review and record appointment fee payments",
-    icon: "receipt",
-    page: "payments",
   },
   {
     title: "Outcomes & commissions",
@@ -274,7 +247,7 @@ const headings: Partial<Record<Page, [string, string]>> = {
   master: ["Salon Management", "Core configurations and salon data"],
   settings: ["Settings", "Configure settings and manage system controls"],
   reports: ["Reports", "Collections and transaction history"],
-  overview: ["Appointments", "Appointments, payments, and service outcomes"],
+  overview: ["Appointments", "Appointments and service outcomes"],
   accounts: ["Manage Users", "Workspace accounts and permissions"],
   configuration: [
     "Salon management",
@@ -282,10 +255,6 @@ const headings: Partial<Record<Page, [string, string]>> = {
   ],
   "report-detail": ["Reports", "Historical records and salon activity"],
   appointments: ["Appointments", "Review and manage salon bookings"],
-  payments: [
-    "Appointment fees",
-    "Review booking obligations and payment history",
-  ],
   settlement: [
     "Service payments",
     "Service outcomes, settlement, and receipts",
@@ -299,12 +268,13 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
   const routerNavigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const allowedPages: Page[] = admin
-    ? ["dashboard", "master", "settings", "reports", "overview", "appointments", "payments", "settlement", "accounts", "configuration", "report-detail"]
+    ? ["dashboard", "master", "settings", "reports", "overview", "appointments", "settlement", "accounts", "configuration", "report-detail"]
     : ["dashboard", "payments"];
   const validPage = allowedPages.includes(routePage as Page);
   const page = (validPage ? routePage : "dashboard") as Page;
   const requestedSection = params.get("section") ?? "profile";
   const section: Section = Object.hasOwn(definitions, requestedSection) ? requestedSection as Section : "profile";
+  const availabilitySection = section === "schedules" || section === "unavailability";
   const kind = params.get("kind") ?? "appointments";
   const bookingCode = params.get("code") || undefined;
   const appointmentFilters: AppointmentFilters = Object.fromEntries(
@@ -325,6 +295,7 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
   const [error, setError] = useState("");
   const menu = useRef<HTMLButtonElement>(null);
   const content = useRef<HTMLElement>(null);
+  const previousContentLocation = useRef<{ pathname: string; section: string } | null>(null);
   useEffect(() => {
     if (!open) return;
     const escape = (event: KeyboardEvent) => {
@@ -340,7 +311,11 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
     if (!bookingCode) setCashierNavigation({ busy: false, dirty: false });
     setOpen(false);
     setSearch("");
-    content.current?.focus({ preventScroll: true });
+    const previous = previousContentLocation.current;
+    const switchingAvailabilityTabs = page === "configuration" && availabilitySection &&
+      previous?.pathname === location.pathname && ["schedules", "unavailability"].includes(previous.section);
+    if (!switchingAvailabilityTabs) content.current?.focus({ preventScroll: true });
+    previousContentLocation.current = { pathname: location.pathname, section };
   }, [location.key]);
   function navigate(next: Page, code?: string, options: Record<string, string> = {}) {
     const search = new URLSearchParams(options);
@@ -349,9 +324,6 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
   }
   function openAppointments(filters: AppointmentFilters) {
     navigate("appointments", undefined, Object.fromEntries(Object.entries(filters).filter((entry): entry is [string, string] => entry[1] !== undefined)));
-  }
-  function openBooking(next: "payments" | "settlement", code?: string) {
-    navigate(next, code);
   }
   function choose(card: Card) {
     navigate(card.page, undefined, {
@@ -368,7 +340,7 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
         ? "settings"
         : page === "report-detail"
           ? "reports"
-          : admin && ["appointments", "payments", "settlement"].includes(page)
+          : admin && ["appointments", "settlement"].includes(page)
             ? "overview"
             : page;
   const cards = admin
@@ -386,11 +358,23 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
     ? page === "payments"
       ? ["Payments", "Collect service payments and review receipts"]
       : ["Services", "Manage arrivals, service outcomes and no-show corrections"]
+    : page === "configuration" && availabilitySection
+      ? ["Staff availability", "Manage regular working hours and temporary absences"]
     : (headings[page] ?? [
         "CLIQUE SALON AND SPA",
         "Where everything you need meets you at the best time.",
       ]);
+  if (admin && routePage === "payments") {
+    const search = new URLSearchParams();
+    if (bookingCode) search.set("search", bookingCode);
+    return <Navigate to={{ pathname: "/staff/appointments", search: search.toString() }} replace />;
+  }
   if (!validPage) return <Navigate to="/staff/dashboard" replace />;
+  if (admin && page === "configuration" && requestedSection === "qualifications") {
+    const updatedParams = new URLSearchParams(params);
+    updatedParams.set("section", "staff");
+    return <Navigate to={{ pathname: location.pathname, search: updatedParams.toString(), hash: location.hash }} replace />;
+  }
   return (
     <div
       className={`clique-workspace ${admin ? "clique-admin" : "clique-cashier"}`}
@@ -579,7 +563,7 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
               )}
               {page === "dashboard" && admin ? (
                 <AdminDashboard
-                  onSettlement={(code) => openBooking("settlement", code)}
+                  onSettlement={(code) => navigate("settlement", code)}
                 />
               ) : !admin ? (
                 <CashierDashboard
@@ -589,7 +573,11 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
                   onNavigationStateChange={setCashierNavigation}
                 />
               ) : page === "configuration" && admin ? (
-                <Configuration
+                availabilitySection ? <StaffAvailability
+                  tab={section}
+                  onTabChange={next => setParams(previous => { const updated = new URLSearchParams(previous); updated.set("section", next); return updated; })}
+                  onReviewBooking={(code) => openAppointments({ search: code })}
+                /> : <Configuration
                   key={section}
                   initialSection={section}
                   onReviewBooking={(code) => openAppointments({ search: code })}
@@ -600,14 +588,7 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
                 <AdminAppointments
                   key={JSON.stringify(appointmentFilters)}
                   initialFilters={appointmentFilters}
-                  onPayment={(code) => openBooking("payments", code)}
-                  onSettlement={(code) => openBooking("settlement", code)}
-                />
-              ) : page === "payments" ? (
-                <PaymentsWorkspace
-                  key={bookingCode ?? "payments"}
-                  admin={admin}
-                  initialCode={bookingCode}
+                  onSettlement={(code) => navigate("settlement", code)}
                 />
               ) : page === "settlement" ? (
                 <SettlementWorkspace

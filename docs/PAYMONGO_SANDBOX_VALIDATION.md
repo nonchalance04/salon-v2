@@ -295,16 +295,17 @@ status later confirms the booking. That button is a separate recovery path.
 Inspect endpoint secret, environment mode, raw body/header forwarding, and host
 clock. The app allows five minutes of signature timestamp difference.
 
-## 10. Validate staff receipt and persisted financial identity
+## 10. Validate automatic receipt and persisted financial identity
 
-1. Open the frontend root in another tab and sign in as Admin/Cashier.
-2. Admin: select Appointment fees. Cashier: use the displayed payment workspace.
-3. Find booking by code; verify CONFIRMED and one successful fee payment.
-4. Click Issue receipt for PHP ….
+1. Open the frontend root in another tab and sign in as Admin.
+2. Open Appointments and find the booking by code; verify CONFIRMED.
+3. Open Reports and review payment history; verify one successful fee payment.
+4. Do not record or issue the PayMongo payment manually. The verified successful
+   capture automatically creates its receipt without an Admin action.
 5. Refresh the private guest booking; expand Receipt … and verify amount,
    currency PHP, method GCash, booking, customer, and paid time.
-6. Admin: uncheck Show only payments requiring reconciliation and refresh the list.
-   Expect the normal capture without review required.
+6. Review the persisted financial identity below. Expect the normal capture
+   without reconciliation required.
 
 Optional read-only database validation in your PostgreSQL client (replace code):
 

@@ -31,32 +31,6 @@ const required = <T>(value: T | null): T => {
   return value;
 };
 
-async function audit(
-  tx: Tx,
-  actorId: string,
-  entity: string,
-  id: string,
-  before: unknown,
-  after: unknown,
-) {
-  await tx.auditLog.create({
-    data: {
-      actorType: "ADMIN",
-      actorUserId: actorId,
-      action:
-        after === null
-          ? "CONFIGURATION_REMOVED"
-          : before === null
-            ? "CONFIGURATION_CREATED"
-            : "CONFIGURATION_UPDATED",
-      entityType: entity,
-      entityId: id,
-      ...(before === null ? {} : { beforeData: json(before) }),
-      ...(after === null ? {} : { afterData: json(after) }),
-    },
-  });
-}
-
 export function createConfigurationService(
   prisma: PrismaClient,
   timeZone: string,
@@ -282,7 +256,7 @@ export function createConfigurationService(
               data: input,
             })
           : await tx.salonProfile.create({ data: input });
-        await audit(tx, actorId, "SalonProfile", row.id, before, row);
+
         return row;
       });
     },
@@ -296,7 +270,7 @@ export function createConfigurationService(
           : await tx.service.create({ data: input });
         if (before?.isActive && !row.isActive)
           await protect(tx, { serviceId: row.id }, () => true);
-        await audit(tx, actorId, "Service", row.id, before, row);
+
         return row;
       });
     },
@@ -310,7 +284,7 @@ export function createConfigurationService(
           : await tx.staff.create({ data: input });
         if (before?.isActive && !row.isActive)
           await protect(tx, { staffId: row.id }, () => true);
-        await audit(tx, actorId, "Staff", row.id, before, row);
+
         return row;
       });
     },
@@ -319,11 +293,10 @@ export function createConfigurationService(
         const before = required(await tx.staff.findUnique({ where: { id } }));
         if (!before.isActive) return;
         await protect(tx, { staffId: id }, () => true);
-        const row = await tx.staff.update({
+        await tx.staff.update({
           where: { id },
           data: { isActive: false },
         });
-        await audit(tx, actorId, "Staff", id, before, row);
       });
     },
     saveStaffPublicProfile(
@@ -332,19 +305,12 @@ export function createConfigurationService(
       input: StaffPublicProfileInput,
     ) {
       return write(actorId, "shared", [id], async (tx) => {
-        const before = required(await tx.staff.findUnique({ where: { id } }));
+        required(await tx.staff.findUnique({ where: { id } }));
         const row = await tx.staff.update({
           where: { id },
           data: { publicProfile: json(input) },
         });
-        await audit(
-          tx,
-          actorId,
-          "StaffPublicProfile",
-          id,
-          before.publicProfile,
-          row.publicProfile,
-        );
+
         return row;
       });
     },
@@ -373,7 +339,7 @@ export function createConfigurationService(
             { staffId: row.staffId, serviceId: row.serviceId },
             () => true,
           );
-        await audit(tx, actorId, "StaffService", row.id, before, row);
+
         return row;
       });
     },
@@ -418,11 +384,10 @@ export function createConfigurationService(
             () => true,
           );
         for (const before of removed) {
-          const row = await tx.staffService.update({
+          await tx.staffService.update({
             where: { id: before.id },
             data: { isActive: false },
           });
-          await audit(tx, actorId, "StaffService", row.id, before, row);
         }
         for (const item of input.services) {
           const before =
@@ -433,10 +398,9 @@ export function createConfigurationService(
           )
             continue;
           const data = { staffId, ...item, isActive: true };
-          const row = before
+          before
             ? await tx.staffService.update({ where: { id: before.id }, data })
             : await tx.staffService.create({ data });
-          await audit(tx, actorId, "StaffService", row.id, before, row);
         }
         return tx.staffService.findMany({
           where: { staffId },
@@ -477,7 +441,7 @@ export function createConfigurationService(
                 timeZone,
               ),
           );
-        await audit(tx, actorId, "SalonOperatingHour", row.id, before, row);
+
         return row;
       });
     },
@@ -564,23 +528,14 @@ export function createConfigurationService(
               })
             : await tx.salonOperatingHour.create({ data: values });
           retained.add(row.id);
-          await audit(
-            tx,
-            actorId,
-            "SalonOperatingHour",
-            row.id,
-            before ?? null,
-            row,
-          );
         }
         for (const before of existing.filter(
           (row) => row.isActive && !retained.has(row.id),
         )) {
-          const row = await tx.salonOperatingHour.update({
+          await tx.salonOperatingHour.update({
             where: { id: before.id },
             data: { isActive: false },
           });
-          await audit(tx, actorId, "SalonOperatingHour", row.id, before, row);
         }
         return tx.salonOperatingHour.findMany({
           where: { dayOfWeek },
@@ -624,15 +579,13 @@ export function createConfigurationService(
                 timeZone,
               ),
           );
-        await audit(tx, actorId, "StaffSchedule", row.id, before, row);
+
         return row;
       });
     },
     saveClosure(actorId: string, input: ClosureRequestInput, id?: string) {
       return write(actorId, "exclusive", [], async (tx) => {
-        const before = id
-          ? required(await tx.salonClosure.findUnique({ where: { id } }))
-          : null;
+        if (id) required(await tx.salonClosure.findUnique({ where: { id } }));
         const period = closurePeriod(input, timeZone);
         const row = id
           ? await tx.salonClosure.update({ where: { id }, data: period })
@@ -653,7 +606,7 @@ export function createConfigurationService(
               row.endsAt,
             ),
         );
-        await audit(tx, actorId, "SalonClosure", row.id, before, row);
+
         return row;
       });
     },
@@ -686,17 +639,16 @@ export function createConfigurationService(
           },
           () => true,
         );
-        await audit(tx, actorId, "StaffUnavailability", row.id, before, row);
+
         return row;
       });
     },
     removeClosure(actorId: string, id: string) {
       return write(actorId, "exclusive", [], async (tx) => {
-        const before = required(
+        required(
           await tx.salonClosure.findUnique({ where: { id } }),
         );
         await tx.salonClosure.delete({ where: { id } });
-        await audit(tx, actorId, "SalonClosure", id, before, null);
       });
     },
     async removeUnavailability(actorId: string, id: string) {
@@ -706,11 +658,10 @@ export function createConfigurationService(
         await prisma.staffUnavailability.findUnique({ where: { id } }),
       );
       return write(actorId, "shared", [preliminary.staffId], async (tx) => {
-        const before = required(
+        required(
           await tx.staffUnavailability.findUnique({ where: { id } }),
         );
         await tx.staffUnavailability.delete({ where: { id } });
-        await audit(tx, actorId, "StaffUnavailability", id, before, null);
       });
     },
     createPolicy(actorId: string, input: PolicyInput) {
@@ -733,7 +684,7 @@ export function createConfigurationService(
             createdByUserId: actorId,
           },
         });
-        await audit(tx, actorId, "BookingPolicyVersion", row.id, null, row);
+
         return row;
       });
     },

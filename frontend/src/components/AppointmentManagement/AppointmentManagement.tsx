@@ -2,7 +2,8 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/NativeSelect";
-import { useRef, useState } from "react";
+import { ArrowUp, CalendarDays, Plus, Scissors, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../../lib/api";
 import type { Appointment } from "../../types/booking";
 
@@ -32,10 +33,12 @@ export function AppointmentManagement({
   appointment,
   token,
   onChange,
+  onBusyChange,
 }: {
   appointment: Appointment;
   token: string;
   onChange: (appointment: Appointment, token?: string) => void;
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const recovery = appointment.status === "NO_SHOW";
   const [editing, setEditing] = useState(false);
@@ -49,6 +52,10 @@ export function AppointmentManagement({
   const [startAt, setStartAt] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  useEffect(() => {
+    onBusyChange?.(busy);
+    return () => onBusyChange?.(false);
+  }, [busy, onBusyChange]);
   const key = useRef(0);
   const generation = useRef(0);
   const policy = appointment.bookingPolicyVersion;
@@ -195,262 +202,80 @@ export function AppointmentManagement({
       setBusy(false);
     }
   }
+  const selectedSlot = slots?.find(slot => slot.startAt === startAt);
+  const changeUnavailable = appointment.checkedInAt
+    ? "Your arrival has been recorded. Please speak with the salon about any changes."
+    : appointment.rescheduleCount >= policy.maxReschedules
+      ? "All allowed schedule changes for this booking have been used."
+      : "Rescheduling is unavailable for this booking’s current status or policy deadline.";
   return (
-    <section aria-label="Manage appointment">
-      <h3>Manage your appointment</h3>
-      <p>
-        {appointment.rescheduleCount} of {policy.maxReschedules} allowed changes
-        used.
-      </p>
-      {appointment.carriedAppointmentFeePaymentId && (
-        <p>
-          Appointment fee satisfied by credit from the missed booking. No
-          additional appointment-fee payment is due.
-        </p>
-      )}
-      {appointment.recoveryAppointment && (
-        <p>
-          Replacement booking: {appointment.recoveryAppointment.bookingCode}.
-          Verify your phone number on Your appointment to manage the replacement
-          booking.
-        </p>
-      )}
-      {canChange && !editing && (
-        <Button variant="outline" disabled={busy} onClick={() => void open()}>
-          {recovery
-            ? "Request a recovery booking"
-            : "Reschedule or change services"}
-        </Button>
-      )}
-      {canCancel && (
-        <Button variant="outline" disabled={busy} onClick={() => setConfirmCancel(true)}>
-          Cancel appointment
-        </Button>
-      )}
-      {!canChange && !canCancel && !appointment.recoveryAppointment && (
-        <p>
-          No customer changes are currently available. Please contact the salon
-          for assistance.
-        </p>
-      )}
-      {confirmCancel && (
-        <fieldset disabled={busy}>
-          <legend>Confirm cancellation</legend>
-          <p>
-            This releases your reserved time. The collected appointment fee
-            remains unchanged.
-          </p>
-          <Button variant="outline" onClick={() => void cancel()}>Confirm cancellation</Button>
-          <Button variant="outline" onClick={() => setConfirmCancel(false)}>
-            Keep appointment
-          </Button>
+    <section className="appointment-manager" aria-label="Manage appointment" aria-busy={busy}>
+      <div className="appointment-manager-policy">
+        <span>{appointment.rescheduleCount} of {policy.maxReschedules} schedule changes used</span>
+        {!recovery && <span>Reschedule at least {policy.rescheduleCutoffHours} hours before your visit</span>}
+      </div>
+      {appointment.carriedAppointmentFeePaymentId && <p className="appointment-manager-notice">Your appointment fee is covered by credit from the missed booking. No additional appointment-fee payment is due.</p>}
+      {appointment.recoveryAppointment && <p className="appointment-manager-notice">Replacement booking: <strong>{appointment.recoveryAppointment.bookingCode}</strong>. Verify your phone number on Your appointment to manage it.</p>}
+      {!editing && !confirmCancel && <div className="appointment-manager-options">
+        <div className="appointment-manager-option">
+          <span className="appointment-manager-option-icon" aria-hidden="true"><CalendarDays size={22} /></span>
+          <div><h3>{recovery ? "Plan a replacement visit" : "Reschedule your visit"}</h3><p>{canChange ? "Choose your services, preferred professional, and a new available time." : changeUnavailable}</p></div>
+          {canChange && <Button className="appointment-manager-primary" disabled={busy} onClick={() => void open()}>{recovery ? "Request a recovery booking" : "Reschedule or change services"}</Button>}
+        </div>
+        {canCancel && <div className="appointment-manager-option appointment-manager-cancel-option">
+          <div><h3>Cancel this appointment</h3><p>Release your reserved time. Your collected appointment fee remains unchanged.</p></div>
+          <Button variant="outline" disabled={busy} onClick={() => setConfirmCancel(true)}>Cancel appointment</Button>
+        </div>}
+        {!canChange && !canCancel && !appointment.recoveryAppointment && <p className="appointment-manager-help">Please contact the salon for assistance.</p>}
+      </div>}
+      {confirmCancel && <fieldset className="appointment-manager-cancel" disabled={busy}>
+        <legend>Cancel your appointment?</legend>
+        <p>This releases your reserved time. The collected appointment fee remains unchanged.</p>
+        <div className="appointment-manager-actions">
+          <Button variant="outline" onClick={() => setConfirmCancel(false)}>Keep appointment</Button>
+          <Button variant="destructive" onClick={() => void cancel()}>Confirm cancellation</Button>
+        </div>
+      </fieldset>}
+      {editing && <form className="appointment-manager-form" onSubmit={event => { event.preventDefault(); void search(); }}>
+        <fieldset disabled={busy} className="appointment-manager-fields">
+          <div className="appointment-manager-step"><span>01</span><div><h3>{recovery ? "Plan your replacement visit" : "Services & professionals"}</h3><p>{recovery ? "Your original policy applies. Eligible unused appointment-fee credit is carried automatically; otherwise payment is required." : "Retained services keep their booked prices and durations. Added services use current values."}</p></div></div>
+          <div className="appointment-manager-services">
+            {rows.map((row, index) => <div className="appointment-manager-service" key={row.key}>
+              <div className="appointment-manager-service-heading"><span><Scissors size={16} aria-hidden="true" />Service {index + 1}</span><div>
+                <Button variant="ghost" size="icon-sm" type="button" disabled={index === 0} aria-label={`Move service ${index + 1} earlier`} onClick={() => {
+                  invalidate(); setRows(items => { const copy = [...items]; [copy[index - 1], copy[index]] = [copy[index]!, copy[index - 1]!]; return copy; });
+                }}><ArrowUp size={16} /></Button>
+                <Button variant="ghost" size="icon-sm" type="button" aria-label={`Remove service ${index + 1}`} onClick={() => { invalidate(); setRows(items => items.filter(item => item.key !== row.key)); }}><Trash2 size={16} /></Button>
+              </div></div>
+              <div className="appointment-manager-service-fields">
+                {row.appointmentServiceId ? <div className="appointment-manager-retained"><span>Booked service</span><strong>{row.label}</strong><small>Original price & duration retained</small></div> : <label>Service<NativeSelect value={row.serviceId} onChange={event => { invalidate(); setRows(items => items.map(item => item.key === row.key ? { ...item, serviceId: event.target.value, staffId: "" } : item)); }}>{services.map(service => <NativeSelectOption key={service.id} value={service.id}>{service.name} · PHP {service.price}</NativeSelectOption>)}</NativeSelect></label>}
+                <label>Preferred professional<NativeSelect value={row.staffId} onChange={event => { invalidate(); setRows(items => items.map(item => item.key === row.key ? { ...item, staffId: event.target.value } : item)); }}>
+                  <NativeSelectOption value="">Any available staff</NativeSelectOption>
+                  {row.staffId && !staff.some(person => person.id === row.staffId && person.serviceIds.includes(row.serviceId)) && <NativeSelectOption value={row.staffId}>Previous staff (availability will be checked)</NativeSelectOption>}
+                  {staff.filter(person => person.serviceIds.includes(row.serviceId)).map(person => <NativeSelectOption key={person.id} value={person.id}>{person.firstName} {person.lastName}</NativeSelectOption>)}
+                </NativeSelect></label>
+              </div>
+            </div>)}
+          </div>
+          <Button variant="outline" type="button" className="appointment-manager-add" disabled={!services.length || rows.length >= 20} onClick={() => { invalidate(); setRows(items => [...items, { key: key.current++, serviceId: services[0]!.id, staffId: "", label: services[0]!.name }]); }}><Plus size={16} />Add service</Button>
+          <div className="appointment-manager-step"><span>02</span><div><h3>Date & available times</h3><p>All times follow {appointment.timeZone}. Availability is checked again when you confirm.</p></div></div>
+          <div className="appointment-manager-date-row">
+            <label>New visit date<Input type="date" value={date} required onChange={event => { invalidate(); setDate(event.target.value); }} /></label>
+            <Button className="appointment-manager-primary" disabled={!rows.length}>Find available times</Button>
+          </div>
+          {slots && (slots.length ? <div className="appointment-manager-time">
+            <label>Available start<NativeSelect value={startAt} onChange={event => setStartAt(event.target.value)}><NativeSelectOption value="">Choose a time</NativeSelectOption>{slots.map(slot => <NativeSelectOption key={slot.startAt} value={slot.startAt}>{format(slot.startAt)}</NativeSelectOption>)}</NativeSelect></label>
+            {selectedSlot && <div className="appointment-manager-preview"><span>YOUR UPDATED VISIT</span><strong>{format(selectedSlot.startAt)}</strong><ol>{selectedSlot.services.map((service, index) => <li key={index}>{service.serviceName}<span>with {service.staffName}</span></li>)}</ol></div>}
+          </div> : <p role="status" className="appointment-manager-notice">No available times. Try another date or professional.</p>)}
+          <label className="appointment-manager-reason">Reason <span>(optional)</span><Textarea maxLength={1000} rows={3} value={reason} onChange={event => setReason(event.target.value)} /></label>
+          <div className="appointment-manager-actions">
+            <Button variant="outline" type="button" onClick={() => { setEditing(false); invalidate(); }}>Back</Button>
+            {selectedSlot && <Button type="button" className="appointment-manager-primary" onClick={() => void save()}>{recovery ? "Create replacement booking" : "Confirm appointment changes"}</Button>}
+          </div>
         </fieldset>
-      )}
-      {editing && (
-        <form
-          className="account-form"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void search();
-          }}
-        >
-          <fieldset disabled={busy}>
-            <legend>
-              {recovery ? "Replacement visit" : "Replacement schedule"}
-            </legend>
-            <p>
-              {recovery
-                ? "The original policy applies. An eligible unused appointment fee is carried automatically; otherwise the new booking requires payment."
-                : "Retained services keep their booked prices and durations. Added services use current values."}
-            </p>
-            {rows.map((row, index) => (
-              <fieldset key={row.key}>
-                <legend>Service {index + 1}</legend>
-                {row.appointmentServiceId ? (
-                  <p>{row.label} · retained booked service</p>
-                ) : (
-                  <label>
-                    Service
-                    <NativeSelect
-                      value={row.serviceId}
-                      onChange={(e) => {
-                        invalidate();
-                        setRows((items) =>
-                          items.map((r) =>
-                            r.key === row.key
-                              ? { ...r, serviceId: e.target.value, staffId: "" }
-                              : r,
-                          ),
-                        );
-                      }}
-                    >
-                      {services.map((s) => (
-                        <NativeSelectOption key={s.id} value={s.id}>
-                          {s.name} · PHP {s.price}
-                        </NativeSelectOption>
-                      ))}
-                    </NativeSelect>
-                  </label>
-                )}
-                <label>
-                  Staff
-                  <NativeSelect
-                    value={row.staffId}
-                    onChange={(e) => {
-                      invalidate();
-                      setRows((items) =>
-                        items.map((r) =>
-                          r.key === row.key
-                            ? { ...r, staffId: e.target.value }
-                            : r,
-                        ),
-                      );
-                    }}
-                  >
-                    <NativeSelectOption value="">Any available staff</NativeSelectOption>
-                    {row.staffId &&
-                      !staff.some(
-                        (s) =>
-                          s.id === row.staffId &&
-                          s.serviceIds.includes(row.serviceId),
-                      ) && (
-                        <NativeSelectOption value={row.staffId}>
-                          Previous staff (availability will be checked)
-                        </NativeSelectOption>
-                      )}
-                    {staff
-                      .filter((s) => s.serviceIds.includes(row.serviceId))
-                      .map((s) => (
-                        <NativeSelectOption key={s.id} value={s.id}>
-                          {s.firstName} {s.lastName}
-                        </NativeSelectOption>
-                      ))}
-                  </NativeSelect>
-                </label>
-                <Button variant="outline"
-                  type="button"
-                  disabled={index === 0}
-                  onClick={() => {
-                    invalidate();
-                    setRows((items) => {
-                      const copy = [...items];
-                      [copy[index - 1], copy[index]] = [
-                        copy[index]!,
-                        copy[index - 1]!,
-                      ];
-                      return copy;
-                    });
-                  }}
-                >
-                  Move earlier
-                </Button>
-                <Button variant="outline"
-                  type="button"
-                  onClick={() => {
-                    invalidate();
-                    setRows((items) => items.filter((r) => r.key !== row.key));
-                  }}
-                >
-                  Remove service {index + 1}
-                </Button>
-              </fieldset>
-            ))}
-            <Button variant="outline"
-              type="button"
-              disabled={!services.length || rows.length >= 20}
-              onClick={() => {
-                invalidate();
-                setRows((items) => [
-                  ...items,
-                  {
-                    key: key.current++,
-                    serviceId: services[0]!.id,
-                    staffId: "",
-                    label: services[0]!.name,
-                  },
-                ]);
-              }}
-            >
-              Add service
-            </Button>
-            <label>
-              Visit date ({appointment.timeZone})
-              <Input
-                type="date"
-                value={date}
-                required
-                onChange={(e) => {
-                  invalidate();
-                  setDate(e.target.value);
-                }}
-              />
-            </label>
-            <label>
-              Reason (optional)
-              <Textarea
-                maxLength={1000}
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-              />
-            </label>
-            <Button variant="outline" disabled={!rows.length}>Find available times</Button>
-            <Button variant="outline" type="button" onClick={() => setEditing(false)}>
-              Close changes
-            </Button>
-            {slots &&
-              (slots.length ? (
-                <>
-                  <label>
-                    Available start
-                    <NativeSelect
-                      value={startAt}
-                      onChange={(e) => setStartAt(e.target.value)}
-                    >
-                      <NativeSelectOption value="">Choose a time</NativeSelectOption>
-                      {slots.map((s) => (
-                        <NativeSelectOption key={s.startAt} value={s.startAt}>
-                          {format(s.startAt)}
-                        </NativeSelectOption>
-                      ))}
-                    </NativeSelect>
-                  </label>
-                  {startAt && (
-                    <>
-                      <ol>
-                        {slots
-                          .find((s) => s.startAt === startAt)
-                          ?.services.map((s, i) => (
-                            <li key={i}>
-                              {s.serviceName} with {s.staffName}
-                            </li>
-                          ))}
-                      </ol>
-                      <p>
-                        Availability and eligibility are checked again when you
-                        confirm.
-                      </p>
-                      <Button variant="outline" type="button" onClick={() => void save()}>
-                        {recovery
-                          ? "Create replacement booking"
-                          : "Confirm appointment changes"}
-                      </Button>
-                    </>
-                  )}
-                </>
-              ) : (
-                <p role="status">
-                  No available times. Try another date or staff member.
-                </p>
-              ))}
-          </fieldset>
-        </form>
-      )}
-      {busy && <p role="status">Working…</p>}
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
+      </form>}
+      {busy && <p role="status" className="appointment-manager-help">Working…</p>}
+      {error && <p role="alert" className="appointment-manager-error">{error}</p>}
     </section>
   );
 }

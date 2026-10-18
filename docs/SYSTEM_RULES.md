@@ -1,5 +1,16 @@
 # Salon Booking and Appointment System
 
+## MVP scope update — 2026-10-18
+
+Audit logging and audit-log viewing are removed from this MVP. Runtime workflows
+must not write `AuditLog`, and the audit report is unavailable. Existing audit
+rows, the legacy schema and migrations are retained solely to preserve history;
+no data cleanup or destructive migration is part of this change. Payments,
+receipts, commissions, appointment reschedule history, policy versions and
+operational error logging remain. Check-in and completion actor fields remain.
+No-show correction still validates the reason and physical presence; its reason
+and previous no-show timestamps are no longer retained in a separate audit event.
+
 ## System Rules v1.0
 
 This document defines the authoritative business rules for the Salon Booking and Appointment System.
@@ -81,7 +92,6 @@ An Admin may:
 - View commission records.
 - View reports and analytics.
 - Manage Admin and Cashier user accounts.
-- View audit logs.
 
 Administrative override functionality for rescheduling, cancellation, or post-settlement financial corrections is outside the initial MVP unless explicitly added later.
 
@@ -151,7 +161,7 @@ Staff-service qualifications are explicitly configured by the Admin.
 
 Admins can manage a staff member's qualifications together using service checkboxes grouped by the Service category (for example Hair Services or Nail Services). Categories organize the list and do not grant eligibility: each service must be individually selected. Staff may qualify for services in multiple categories; staff with no active qualifications cannot receive new assignments.
 
-Saving skills updates qualifications in one audited transaction, retaining deactivated records and reusing them when re-enabled. Removing a qualification needed by an existing blocking reservation is rejected together with all other changes in that save. Existing appointment commission snapshots remain unchanged.
+Saving skills updates qualifications in one transaction, retaining deactivated records and reusing them when re-enabled. Removing a qualification needed by an existing blocking reservation is rejected together with all other changes in that save. Existing appointment commission snapshots remain unchanged.
 
 Before assigning a staff member to a service, the system must verify that:
 
@@ -416,7 +426,6 @@ In that case:
 - No zero-value Payment record is created merely to force lifecycle completion.
 - No commission records are created.
 - The existing appointment-fee payment remains historically unchanged.
-- The closure is audit logged.
 - Finalized service outcomes become immutable.
 
 Therefore, COMPLETED means the appointment's operational and financial handling is closed, not necessarily that one or more services were successfully performed.
@@ -675,9 +684,9 @@ If a staff assignment must change, the newly assigned staff member must have an 
 
 An active Admin or Cashier may record arrival for a CONFIRMED, uncompleted appointment on its scheduled salon-local date. Early arrival on that date is allowed; check-in on another date or after recorded active service outcomes is rejected. Staff must confirm the customer is physically present.
 
-Check-in records `checkedInAt` using server/database time and `checkedInByUserId` using the authenticated account. These fields are recorded atomically with a BOOKING_CHECKED_IN audit event. Repeated or concurrent check-ins preserve the first arrival and first actor and do not duplicate audit events. Clients cannot supply the timestamp or actor.
+Check-in records `checkedInAt` using server/database time and `checkedInByUserId` using the authenticated account. These fields are recorded atomically. Repeated or concurrent check-ins preserve the first arrival and first actor. Clients cannot supply the timestamp or actor.
 
-Check-in leaves status CONFIRMED and does not record service performance, completion, payment, or a new reservation interval. Checked-in appointments cannot be marked NO_SHOW or changed/cancelled through customer workflows. Staff views show arrival time and the recording staff member. An Admin can correct eligible no-shows through the audited correction workflow below; the checked-in waiting queue below supports staff follow-up. Automatic no-show marking uses this arrival record to protect present customers.
+Check-in leaves status CONFIRMED and does not record service performance, completion, payment, or a new reservation interval. Checked-in appointments cannot be marked NO_SHOW or changed/cancelled through customer workflows. Staff views show arrival time and the recording staff member. An Admin can correct eligible no-shows through the correction workflow below; the checked-in waiting queue below supports staff follow-up. Automatic no-show marking uses this arrival record to protect present customers.
 
 ---
 
@@ -687,7 +696,7 @@ An Admin may mark a CONFIRMED appointment NO_SHOW when the customer fails to app
 
 The hold worker automatically marks an appointment NO_SHOW once 15 minutes have elapsed from its scheduled start, only when status is CONFIRMED, there is no check-in, no completion record, and no recorded active service outcome or finalized outcome timestamp. Removed service rows do not establish activity for the current visit. Eligibility is inclusive at the deadline and is revalidated against database time under the same locks used for check-in and settlement. Checked-in customers remain protected even while waiting for a stylist.
 
-Automatic marking sets noShowAt, uses the original appointment policy to calculate the recovery deadline from the scheduled start, releases availability through the NO_SHOW status, and writes one SYSTEM BOOKING_NO_SHOW audit event atomically. Repeated/competing workers do not duplicate the transition or audit. The worker checks roughly every five seconds while running, processes up to 100 eligible appointments per pass, and catches up overdue eligible appointments after downtime. This is not an exact-time scheduler.
+Automatic marking sets noShowAt, uses the original appointment policy to calculate the recovery deadline from the scheduled start, releases availability through the NO_SHOW status atomically. Repeated/competing workers do not duplicate the transition. The worker checks roughly every five seconds while running, processes up to 100 eligible appointments per pass, and catches up overdue eligible appointments after downtime. This is not an exact-time scheduler.
 
 If check-in commits first, automatic marking skips the visit. If automatic marking commits first, ordinary check-in rejects the NO_SHOW visit; it does not restore a released reservation. An eligible Admin correction can restore and check in the customer as described below. Staff must record physical arrival promptly; forgetting check-in can still result in a no-show when no service activity is recorded.
 
@@ -697,7 +706,7 @@ The MVP default is:
 
 The grace deadline is calculated from the original appointment start time, not from the time the Admin eventually marks the appointment NO_SHOW.
 
-A NO_SHOW appointment remains a historical record of the missed occurrence unless an Admin corrects the classification under the exception below. The original audit event always remains.
+A NO_SHOW appointment remains a historical record of the missed occurrence unless an Admin corrects the classification under the exception below.
 
 Ordinary customer recovery must not transition it back to CONFIRMED. The Admin correction exception below may restore a mistakenly marked no-show or an eligible late arrival.
 
@@ -720,7 +729,7 @@ An active Admin or Cashier may restore an unresolved NO_SHOW to CONFIRMED only w
 
 Under the same salon/staff/appointment locks as booking and recovery, verify the full original active service intervals including buffers against current operating hours, staff schedules, active staff and qualifications, closures, unavailability and blocking reservations (including live payment holds). Existing service snapshots are retained; this action does not move or extend the visit. If any original interval is unavailable or the visit has ended, reject restoration and arrange a new available booking.
 
-Restoration sets CONFIRMED and records check-in at fresh database time by the correcting staff member, preventing immediate automatic no-show marking. Clear the current noShowAt and recovery deadline fields, and preserve their previous values, the original no-show event, correcting staff member and reason in the audit history. Write BOOKING_NO_SHOW_CORRECTED atomically with restoration. No payment, refund, fee credit, reschedule count or policy changes occur. Concurrent duplicate corrections cannot create duplicate restoration audit events. Ordinary check-in and customer recovery cannot perform this exception.
+Restoration sets CONFIRMED and records check-in at fresh database time by the correcting staff member, preventing immediate automatic no-show marking. Clear the current noShowAt and recovery deadline fields atomically with restoration. The correcting staff member remains recorded in checkedInByUserId. No payment, refund, fee credit, reschedule count or policy changes occur. Concurrent duplicate corrections cannot restore the visit twice. Ordinary check-in and customer recovery cannot perform this exception.
 
 ## No-Show Recovery With Valid Carried Appointment-Fee Credit
 
@@ -742,7 +751,7 @@ When those conditions are satisfied:
 6. The original successful payment remains attached to its original financial transaction history.
 7. The replacement Appointment stores an explicit reference to the source appointment/payment or equivalent credit-allocation record defined by the database design.
 8. The credit is marked as consumed for that recovery so it cannot be reused.
-9. The audit log records that the replacement was confirmed using carried appointment-fee credit.
+9. The replacement retains its carried appointment-fee credit linkage.
 
 This workflow does not create a temporary PENDING_PAYMENT hold because no additional appointment-fee payment is required.
 
@@ -857,7 +866,6 @@ Successful settlement transactionally:
 3. Finalizes commission records.
 4. Transitions the Appointment to COMPLETED.
 5. Makes service outcomes immutable.
-6. Creates required audit entries.
 7. Queues applicable notifications.
 
 Repeated manual submissions must be idempotent and must not create duplicate collections.
@@ -890,7 +898,6 @@ The no-service closure transactionally:
 4. Does not allocate the appointment fee into commissions.
 5. Transitions the Appointment to COMPLETED.
 6. Makes all service outcomes immutable.
-7. Records the no-service closure in AuditLog.
 8. Queues any applicable completion notification.
 
 The previously collected APPOINTMENT_FEE remains historically unchanged and is not automatically refunded.
@@ -1436,12 +1443,12 @@ The queue refreshes every 30 seconds while visible, on focus, after local arriva
 
 ## Cashier check-in and payment workspace (updated 2026-10-16)
 
-The cashier workspace handles customer check-in, service outcomes, eligible no-show corrections, service-payment collection and payment receipts. It lists confirmed, uncompleted visits across all dates, including pending outcomes; service collection requires every active outcome to be recorded and at least one positive performed-service charge. Booking-code lookup remains available for payment review and receipts; it cannot bypass settlement prerequisites. Cashiers may record arrival through the same validated, audited check-in workflow as Admins. A separate customer check-in list shows today’s confirmed, uncompleted visits with active services and no recorded/finalized active outcomes, including already checked-in visits. Cashiers may record and correct service outcomes before finalization and correct eligible no-shows through the validated, audited restoration workflow. The confirmed-services list includes visits with pending outcomes, and booking-code lookup opens no-shows for review and correction. Cashiers cannot finalize no-service closures, including through direct API calls; Admins close visits with no performed services. Existing payment amounts, receipt history, commission formulas, and transaction/concurrency rules remain authoritative. Manual appointment-fee payment APIs remain authorized payment operations; the separate cashier fee menu remains removed.
+The cashier workspace handles customer check-in, service outcomes, eligible no-show corrections, service-payment collection and payment receipts. It lists confirmed, uncompleted visits across all dates, including pending outcomes; service collection requires every active outcome to be recorded and at least one positive performed-service charge. Booking-code lookup remains available for payment review and receipts; it cannot bypass settlement prerequisites. Cashiers may record arrival through the same validated check-in workflow as Admins. A separate customer check-in list shows today’s confirmed, uncompleted visits with active services and no recorded/finalized active outcomes, including already checked-in visits. Cashiers may record and correct service outcomes before finalization and correct eligible no-shows through the validated restoration workflow. The confirmed-services list includes visits with pending outcomes, and booking-code lookup opens no-shows for review and correction. Cashiers cannot finalize no-service closures, including through direct API calls; Admins close visits with no performed services. Existing payment amounts, receipt history, commission formulas, and transaction/concurrency rules remain authoritative. Manual appointment-fee payment APIs remain authorized payment operations; the separate cashier fee menu remains removed.
 
 
 ## Automatic customer e-receipts (updated 2026-10-16)
 
-Verified successful PayMongo appointment-fee captures automatically issue one immutable e-receipt in the same transaction as payment settlement. System issuance has no staff issuer and records a SYSTEM receipt-issuance audit. Pending, failed, expired and returned payments cannot create a new e-receipt. Existing receipts are reused without rewriting their issuer or snapshots. Authorized customer access may idempotently issue a missing receipt for an already verified successful PayMongo capture from before this feature. The receipt states the actual fee paid, provider payment reference, customer, salon and booked schedule; scheduled service charges remain separate. Customers can preview and print/save the e-receipt after restoring their authorized appointment session. Manual and service-payment staff issuance rules remain unchanged.
+Verified successful PayMongo appointment-fee captures automatically issue one immutable e-receipt in the same transaction as payment settlement. System issuance has no staff issuer. Pending, failed, expired and returned payments cannot create a new e-receipt. Existing receipts are reused without rewriting their issuer or snapshots. Authorized customer access may idempotently issue a missing receipt for an already verified successful PayMongo capture from before this feature. The receipt states the actual fee paid, provider payment reference, customer, salon and booked schedule; scheduled service charges remain separate. Customers can preview and print/save the e-receipt after restoring their authorized appointment session. Manual and service-payment staff issuance rules remain unchanged.
 
 
 ## All-day salon closures (2026-10-17)

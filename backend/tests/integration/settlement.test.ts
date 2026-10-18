@@ -264,7 +264,7 @@ test("no-service outbox failure rolls back closure and leaves outcomes editable 
 });
 
 
-test("Cashier records and corrects outcomes with audit attribution and cannot edit finalized services", async () => {
+test("Cashier records and corrects outcomes without audit writes and cannot edit finalized services", async () => {
   const f = await fixture();
   const initial = await settlement.lookup(cashierId, f.booking.bookingCode);
   const input = { bookingCode: initial.bookingCode, revision: initial.revision, services: initial.services.map(s => ({ id: s.id, outcome: "NOT_PERFORMED" as const })) };
@@ -273,9 +273,7 @@ test("Cashier records and corrects outcomes with audit attribution and cannot ed
   const corrected = await settlement.outcomes(cashierId, { ...input, revision: saved.revision, services: input.services.map(s => ({ ...s, outcome: "PERFORMED" as const })) });
   assert.equal(corrected.services[0]!.outcome, "PERFORMED");
   assert.equal("commissions" in corrected, false);
-  const audits = await prisma.auditLog.findMany({ where: { entityId: f.booking.id, action: "SERVICE_OUTCOMES_RECORDED" } });
-  assert.equal(audits.length, 2);
-  assert.ok(audits.every(a => a.actorType === "CASHIER" && a.actorUserId === cashierId));
+  assert.equal(await prisma.auditLog.count({ where: { entityId: f.booking.id } }), 0);
   await assert.rejects(settlement.outcomes(cashierId, input), { code: "STALE_SETTLEMENT" });
   await settlement.settle(cashierId, pay(corrected));
   const completed = await settlement.lookup(cashierId, corrected.bookingCode);

@@ -2,7 +2,6 @@ export type Section =
   | "profile"
   | "services"
   | "staff"
-  | "qualifications"
   | "hours"
   | "schedules"
   | "closures"
@@ -100,22 +99,6 @@ export const definitions: Record<
       { key: "firstName", label: "First name" },
       { key: "lastName", label: "Last name" },
       { key: "phone", label: "Phone", optional: true },
-      active,
-    ],
-  },
-  qualifications: {
-    title: "Qualifications",
-    singular: "qualification",
-    description: "Choose each staff member’s services and commission rate.",
-    fields: [
-      staff,
-      { key: "serviceId", label: "Service", type: "service" },
-      {
-        key: "commissionRate",
-        label: "Commission (%)",
-        type: "percent",
-        initial: "40",
-      },
       active,
     ],
   },

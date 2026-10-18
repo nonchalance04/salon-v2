@@ -126,7 +126,7 @@ export function AdminDashboard({ onSettlement }: {
         <>
           <h3>What needs attention</h3>
           <p className="muted">
-            Pending fees, unsettled services, and reconciliation include all dates.
+            Unsettled services include all dates.
           </p>
           <div className="admin-action-grid">
             <div className="admin-action-card">
@@ -137,19 +137,9 @@ export function AdminDashboard({ onSettlement }: {
               <small>All booking statuses</small>
             </div>
             <div className="admin-action-card">
-              <span>Pending appointment fees</span>
-              <strong>{data.attention.pendingFees}</strong>
-              <small>Active payment holds</small>
-            </div>
-            <div className="admin-action-card">
               <span>Unsettled services</span>
               <strong>{data.attention.unsettled}</strong>
               <small>Confirmed bookings whose start time has passed</small>
-            </div>
-            <div className={`admin-action-card${data.attention.reconciliation ? " needs-attention" : ""}`}>
-              <span>Payment reconciliation</span>
-              <strong>{data.attention.reconciliation}</strong>
-              <small>Successful captures requiring review</small>
             </div>
           </div>
         </>

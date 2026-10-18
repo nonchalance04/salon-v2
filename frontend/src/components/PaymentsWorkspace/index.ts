@@ -1,1 +1,0 @@
-export { PaymentsWorkspace } from "./PaymentsWorkspace";
