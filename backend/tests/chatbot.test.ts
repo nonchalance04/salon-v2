@@ -38,3 +38,30 @@ test("specific service lookup excludes unrelated catalog entries", async () => {
   assert.doesNotMatch((await bot.answer("How much is Current cut?")).answer, /Pedicure/);
   assert.match((await bot.answer("services")).answer, /Pedicure/);
 });
+
+test("Tagalog and Taglish questions receive localized factual guidance and safe handoffs", async () => {
+  const bot = createChatbotService(source);
+  for (const [question, topic, expected] of [
+    ["Magkano ang haircut?", "services", /123.45, 30 minuto/],
+    ["Saan ang salon?", "salon", /Hindi pa nakalagay/],
+    ["Paano mag-book?", "booking", /Piliin ang Humanap/],
+    ["May available po bukas?", "availability", /hindi makapagkukumpirma/],
+    ["Gusto ko i-cancel ang appointment", "cancel", /Hindi nagbabago ang nakolektang bayad/],
+    ["Paano ilipat ang appointment?", "reschedule", /orihinal nitong patakaran/],
+    ["Ano ang patakaran sa bayad?", "policy", /Hindi pa nakalagay/],
+  ] as const) {
+    const result = await bot.answer(question);
+    assert.equal(result.topic, topic);
+    assert.match(result.answer, expected);
+    assert.equal(result.links[0]!.label, "Humanap ng oras at mag-book");
+  }
+});
+
+test("unrecognized questions ask for clarification and retain user language on ambiguous follow-ups", async () => {
+  const bot = createChatbotService(source);
+  assert.match((await bot.answer("asdfgh" )).answer, /Could you clarify/);
+  const history = [{ role: "user" as const, text: "Tuyo ang buhok ko" }, { role: "model" as const, text: "When did it start?" }];
+  assert.match((await bot.answer("asdfgh", history)).answer, /Maaari mo bang linawin/);
+  assert.match((await bot.answer("What do you mean?", history)).answer, /Could you clarify/);
+  assert.equal((await bot.answer("Gusto ko palitan ang kulay ng buhok")).topic, "help");
+});

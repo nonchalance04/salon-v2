@@ -3,6 +3,8 @@ import { Prisma } from "../../../generated/prisma/client.js";
 import { Temporal } from "@js-temporal/polyfill";
 import { ApiError } from "../../shared/http.js";
 import { reportPeriod } from "./reports.schema.js";
+import { readSalesSummary } from "./sales-summary.service.js";
+import { readCommissionSummary } from "./commission-summary.service.js";
 const amount = (n) => (n ?? new Prisma.Decimal(0)).toFixed(2);
 const booking = { select: { bookingCode: true } };
 // Match a booking code or every word in the customer's name, in any order.
@@ -34,6 +36,12 @@ export function createReportsService(prisma, timeZone) {
         }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
     }
     return {
+        salesSummary(actorId, q) {
+            return read(actorId, true, tx => readSalesSummary(tx, q, timeZone));
+        },
+        commissionSummary(actorId, q) {
+            return read(actorId, true, tx => readCommissionSummary(tx, q, timeZone));
+        },
         collections(actorId, q) {
             return read(actorId, false, async (tx) => {
                 const period = reportPeriod(q, timeZone);
@@ -182,13 +190,14 @@ export function createReportsService(prisma, timeZone) {
                 let dateBasis;
                 switch (kind) {
                     case "appointments": {
-                        const where = { startAt: period };
+                        const where = { startAt: period, ...(q.status ? { status: q.status } : {}) };
                         dateBasis = "Scheduled start";
                         total = await tx.appointment.count({ where });
                         rows = await tx.appointment.findMany({ where, ...paging, orderBy: [{ startAt: "desc" }, { id: "desc" }], select: {
                                 id: true, bookingCode: true, status: true, startAt: true, endAt: true, completionType: true, appointmentFeeAmount: true,
+                                customer: { select: { firstName: true, lastName: true } },
                                 recoveryOfAppointmentId: true, carriedAppointmentFeePaymentId: true,
-                                appointmentServices: { orderBy: [{ sequenceNo: "asc" }, { id: "asc" }], select: { serviceNameSnapshot: true, priceSnapshot: true, staffId: true, membershipStatus: true, outcome: true, actualChargedAmount: true } },
+                                appointmentServices: { orderBy: [{ sequenceNo: "asc" }, { id: "asc" }], select: { serviceNameSnapshot: true, priceSnapshot: true, staffId: true, staffFirstNameSnapshot: true, staffLastNameSnapshot: true, staff: { select: { firstName: true, lastName: true } }, membershipStatus: true, outcome: true, actualChargedAmount: true } },
                             } });
                         break;
                     }

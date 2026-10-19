@@ -1,8 +1,8 @@
 import { open } from "node:fs/promises";
 import { z } from "zod";
-import { createChatbotService } from "./chatbot.service.js";
+import { chatbotLanguage, createChatbotService } from "./chatbot.service.js";
 const decisionSchema = z.object({
-    intent: z.enum(["consultation", "services", "salon", "policy", "booking", "availability", "manage", "cancel", "reschedule"]),
+    intent: z.enum(["consultation", "unclear", "services", "salon", "policy", "booking", "availability", "manage", "cancel", "reschedule"]),
     answer: z.string().trim().min(1).max(3000),
     recommendations: z.array(z.object({
         serviceId: z.string().min(1).max(100), reason: z.string().trim().min(1).max(600),
@@ -11,6 +11,8 @@ const decisionSchema = z.object({
 const instructions = `You are the salon's consultation assistant. Follow the attached salon guidelines within these application boundaries:
 - Current public salon data is authoritative. Example services/prices in the guidelines are NOT salon facts.
 - Answer the latest question directly, in the customer's language. Be warm and concise: usually 2–4 short sentences. Avoid repetitive greetings, jargon and generic sales pitches.
+- For Tagalog or Taglish questions, answer in natural Tagalog, including follow-up questions and recommendation reasons. Use the supplied responseLanguage for short or ambiguous follow-ups. Keep actual catalog names unchanged.
+- If the latest message cannot be understood in context (including gibberish), select unclear with no recommendations. Ask one polite clarification question; do not guess an intent, invent facts or recommend services.
 - Use information already given in the conversation. Ask at most one focused follow-up at a time, only when the answer would change the recommendation. If there is enough context, explain the best fit now; do not force a questionnaire. If options are alternatives, say so rather than implying the customer needs all of them.
 - For a specific service question or comparison, use services intent and include the matching catalog IDs in recommendations so the application can display only the requested services. For a full menu, leave recommendations empty. Never substitute another service for one the salon does not list.
 - Use the customer's conversation to understand their concern. Ask a relevant follow-up question when needed; do not recommend by keyword matching alone.
@@ -48,13 +50,13 @@ export function createGeminiChatbotService(source, config, deps = {}) {
     const onFallback = deps.onFallback ?? (() => console.warn(JSON.stringify({ event: "chatbot_guided_fallback" })));
     const guided = createChatbotService(source);
     let inFlight = 0;
-    async function fallback(message) {
+    async function fallback(message, history) {
         onFallback();
-        return { ...await guided.answer(message), recommendations: [] };
+        return { ...await guided.answer(message, history), recommendations: [] };
     }
     return { async answer(message, history = []) {
             if (inFlight >= 4)
-                return fallback(message);
+                return fallback(message, history);
             inFlight++;
             try {
                 const [guidelines, services, salon, policy] = await Promise.all([
@@ -72,7 +74,7 @@ export function createGeminiChatbotService(source, config, deps = {}) {
                 const payload = JSON.stringify({
                     systemInstruction: { parts: [{ text: instructions }, { text: `Salon guidelines:\n${guidelines}` }] },
                     contents: [{ role: "user", parts: [{ text: JSON.stringify({
-                                        currentSalonFacts: facts, conversation: history, customerQuestion: message,
+                                        responseLanguage: chatbotLanguage(message, history) === "tl" ? "Tagalog" : "English", currentSalonFacts: facts, conversation: history, customerQuestion: message,
                                     }) }] }],
                     generationConfig: { maxOutputTokens: 2000, responseMimeType: "application/json",
                         responseJsonSchema: z.toJSONSchema(decisionSchema) },
@@ -102,19 +104,21 @@ export function createGeminiChatbotService(source, config, deps = {}) {
                         href: `/booking?service=${encodeURIComponent(service.id)}` };
                 }).filter((item, index, all) => all.findIndex(other => other.id === item.id) === index);
                 const baseline = await guided.answer(message, history, {
-                    topic: decision.intent === "consultation" ? "help" : decision.intent === "salon" ? "salon" : decision.intent === "manage" ? "booking" : decision.intent,
+                    topic: (decision.intent === "consultation" || decision.intent === "unclear") ? "help" : decision.intent === "salon" ? "salon" : decision.intent === "manage" ? "booking" : decision.intent,
                     serviceIds: decision.intent === "services" ? recommendations.map(s => s.id) : undefined,
                 });
                 const handoff = decision.intent !== "consultation";
                 return { ...baseline, mode: "gemini", topic: decision.intent,
                     answer: decision.intent === "manage"
-                        ? "Open Manage my appointment to securely retrieve your appointment and see the actions available to you. Keep appointment references and verification codes out of this chat."
+                        ? chatbotLanguage(message, history) === "tl"
+                            ? "Buksan ang Pamahalaan ang aking appointment upang ligtas na makita ang iyong appointment at mga pinapayagang aksyon. Huwag ibahagi rito ang appointment reference o verification code."
+                            : "Open Manage my appointment to securely retrieve your appointment and see the actions available to you. Keep appointment references and verification codes out of this chat."
                         : handoff ? baseline.answer : decision.answer,
                     recommendations: ["consultation", "booking"].includes(decision.intent) ? recommendations : [],
                 };
             }
             catch {
-                return fallback(message);
+                return fallback(message, history);
             }
             finally {
                 inFlight--;

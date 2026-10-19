@@ -151,3 +151,31 @@ test("specific service questions render selected current facts instead of genera
   assert.match(result.answer, /Hair Treatment: PHP 1500.00, 60 minutes/);
   assert.doesNotMatch(result.answer, /Pedicure|free|one minute/);
 });
+
+test("Gemini Tagalog handoffs keep authoritative guidance in the customer's language", async () => {
+  for (const intent of ["booking", "availability", "manage", "cancel", "reschedule", "policy", "salon", "services", "unclear"]) {
+    const bot = createGeminiChatbotService(source, config, { ...deps, fetch: async (_url, options) => {
+      const body = JSON.parse(String(options?.body));
+      assert.match(body.systemInstruction.parts[0].text, /Tagalog or Taglish/);
+      assert.match(body.systemInstruction.parts[0].text, /do not guess an intent/);
+      assert.equal(JSON.parse(body.contents[0].parts[0].text).responseLanguage, "Tagalog");
+      return fakeResponse({ ...decision, intent, answer: "Your payment is confirmed." });
+    } });
+    const result = await bot.answer("Tulungan mo po ako");
+    assert.equal(result.mode, "gemini");
+    assert.equal(result.links[0]!.label, "Humanap ng oras at mag-book");
+    assert.doesNotMatch(result.answer, /Your payment|Open Manage|Current policy|minutes/);
+    if (intent === "unclear") {
+      assert.match(result.answer, /Maaari mo bang linawin/);
+      assert.deepEqual(result.recommendations, []);
+    }
+  }
+});
+
+test("provider failures retain Tagalog context for unclear follow-ups", async () => {
+  const bot = createGeminiChatbotService(source, config, { ...deps, fetch: async () => { throw new Error("offline"); } });
+  const result = await bot.answer("???", [{ role: "user", text: "Tuyo ang buhok ko" }, { role: "model", text: "Since when?" }]);
+  assert.equal(result.mode, "guided");
+  assert.match(result.answer, /Maaari mo bang linawin/);
+  assert.deepEqual(result.recommendations, []);
+});
