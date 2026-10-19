@@ -244,7 +244,7 @@ const services = [
   },
   {
     name: "Eyebrow Shaping",
-    description: "Nail Services",
+    description: "Hair Services",
     price: "50.00",
     durationMinutes: 15,
   },

@@ -11,6 +11,17 @@ export const reportQuery = z.object({
 },
   "Choose an ordered date range of at most 366 days.");
 export type ReportQuery = z.infer<typeof reportQuery>;
+export const appointmentReportQuery = reportQuery.safeExtend({
+  status: z.enum(["PENDING_PAYMENT", "CONFIRMED", "COMPLETED", "CANCELLED", "NO_SHOW", "EXPIRED"]).optional(),
+});
+export type AppointmentReportQuery = z.infer<typeof appointmentReportQuery>;
+export const salesSummaryQuery = reportQuery.safeExtend({
+  method: z.enum(["CASH", "GCASH", "QRPH", "OTHER"]).optional(),
+  type: z.enum(["APPOINTMENT_FEE", "SERVICE_PAYMENT"]).optional(),
+});
+export type SalesSummaryQuery = z.infer<typeof salesSummaryQuery>;
+export const commissionSummaryQuery = reportQuery.safeExtend({ staffId: z.uuid().optional() });
+export type CommissionSummaryQuery = z.infer<typeof commissionSummaryQuery>;
 export const confirmedServicesQuery = z.object({
   page: z.coerce.number().int().min(1).max(100000).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(25),

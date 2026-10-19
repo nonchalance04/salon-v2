@@ -2,7 +2,9 @@ import { freshTime } from "../scheduling/coordination.js";
 import { Prisma, type PrismaClient } from "../../../generated/prisma/client.js";
 import { Temporal } from "@js-temporal/polyfill";
 import { ApiError } from "../../shared/http.js";
-import { reportPeriod, type ReportQuery, type ConfirmedServicesQuery, reportKinds } from "./reports.schema.js";
+import { reportPeriod, type ReportQuery, type AppointmentReportQuery, type ConfirmedServicesQuery, type SalesSummaryQuery, type CommissionSummaryQuery, reportKinds } from "./reports.schema.js";
+import { readSalesSummary } from "./sales-summary.service.js";
+import { readCommissionSummary } from "./commission-summary.service.js";
 
 type Kind = typeof reportKinds[number];
 const amount = (n: Prisma.Decimal | null) => (n ?? new Prisma.Decimal(0)).toFixed(2);
@@ -36,6 +38,12 @@ export function createReportsService(prisma: PrismaClient, timeZone: string) {
     }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
   }
   return {
+    salesSummary(actorId: string, q: SalesSummaryQuery) {
+      return read(actorId, true, tx => readSalesSummary(tx, q, timeZone));
+    },
+    commissionSummary(actorId: string, q: CommissionSummaryQuery) {
+      return read(actorId, true, tx => readCommissionSummary(tx, q, timeZone));
+    },
     collections(actorId: string, q: ReportQuery) {
       return read(actorId, false, async tx => {
         const period = reportPeriod(q, timeZone);
@@ -177,19 +185,20 @@ export function createReportsService(prisma: PrismaClient, timeZone: string) {
           attention: { pendingFees, unsettled, reconciliation }, scheduling: { until, closures, absences } };
       });
     },
-    list(actorId: string, kind: Kind, q: ReportQuery) {
+    list(actorId: string, kind: Kind, q: AppointmentReportQuery) {
       return read(actorId, true, async tx => {
         const period = reportPeriod(q, timeZone);
         const paging = { skip: (q.page - 1) * q.pageSize, take: q.pageSize };
         let rows: unknown[]; let total: number; let dateBasis: string;
         switch (kind) {
           case "appointments": {
-            const where = { startAt: period }; dateBasis = "Scheduled start";
+            const where = { startAt: period, ...(q.status ? { status: q.status } : {}) }; dateBasis = "Scheduled start";
             total = await tx.appointment.count({ where });
             rows = await tx.appointment.findMany({ where, ...paging, orderBy: [{ startAt: "desc" }, { id: "desc" }], select: {
               id: true, bookingCode: true, status: true, startAt: true, endAt: true, completionType: true, appointmentFeeAmount: true,
+              customer: { select: { firstName: true, lastName: true } },
               recoveryOfAppointmentId: true, carriedAppointmentFeePaymentId: true,
-              appointmentServices: { orderBy: [{ sequenceNo: "asc" }, { id: "asc" }], select: { serviceNameSnapshot: true, priceSnapshot: true, staffId: true, membershipStatus: true, outcome: true, actualChargedAmount: true } },
+              appointmentServices: { orderBy: [{ sequenceNo: "asc" }, { id: "asc" }], select: { serviceNameSnapshot: true, priceSnapshot: true, staffId: true, staffFirstNameSnapshot: true, staffLastNameSnapshot: true, staff: { select: { firstName: true, lastName: true } }, membershipStatus: true, outcome: true, actualChargedAmount: true } },
             } }); break;
           }
           case "payments": {

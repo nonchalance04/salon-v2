@@ -6,6 +6,9 @@ import { ReceiptPrintButton } from "../ReceiptPrintButton";
 import { paymentStatusLabel, visibleReportEntries } from "../../utils/payment-presentation";
 
 import "./Reports.css";
+import { AppointmentReport } from "./AppointmentReport";
+import { SalesSummary } from "./SalesSummary";
+import { StaffCommissionReport } from "./StaffCommissionReport";
 
 type Collections = { timeZone: string; basis: string; totals: { currency: string; captured: string; netCashMovement: string; successfulApplied: string; successfulUnapplied: string; reconciliationRequired: string }[]; methodTotals: Record<string, unknown>[]; typeTotals: Record<string, unknown>[]; breakdown: Record<string, unknown>[] };
 type Report = { rows: Record<string, unknown>[]; total: number; page: number; pageSize: number; dateBasis: string; timeZone: string };
@@ -57,6 +60,11 @@ function receiptCell(column: string, row: Record<string, unknown>) {
   return <ReceiptPrintButton label="Print / Save PDF" receipt={{ receiptNumber: row.receiptNumber, receiptSnapshot: snapshot as Record<string, unknown> }} />;
 }
 export function Reports({ admin, initialKind = "appointments" }: { admin: boolean; initialKind?: string }) {
+  if (admin && initialKind === "payments") return <SalesSummary />;
+  if (admin && initialKind === "commissions") return <StaffCommissionReport />;
+  return admin && initialKind === "appointments" ? <AppointmentReport /> : <TransactionReports admin={admin} initialKind={initialKind} />;
+}
+function TransactionReports({ admin, initialKind = "appointments" }: { admin: boolean; initialKind?: string }) {
   const [from, setFrom] = useState(""); const [to, setTo] = useState("");
   const [kind, setKind] = useState(initialKind); const [collections, setCollections] = useState<Collections | null>(null);
   const [report, setReport] = useState<Report | null>(null);

@@ -13,7 +13,7 @@ import { createDatabasePool } from "../../src/database/pool.js";
 import { createReportsService } from "../../src/modules/reports/reports.service.js";
 import { createAppointmentChangesService } from "../../src/modules/appointments/appointment-changes.service.js";
 import { appointmentListQuery } from "../../src/modules/appointments/appointments.schema.js";
-import { confirmedServicesQuery, reportQuery } from "../../src/modules/reports/reports.schema.js";
+import { commissionSummaryQuery, confirmedServicesQuery, reportQuery, salesSummaryQuery } from "../../src/modules/reports/reports.schema.js";
 import { createApp } from "../../src/app/app.js";
 import { createApiRouter } from "../../src/app/routes.js";
 import { createTokenService } from "../../src/modules/auth/auth.token.js";
@@ -76,6 +76,101 @@ test("collections reconcile exact capture/refund movement without counting carri
   assert.equal(JSON.stringify(result).includes("never-expose"), false);
 });
 
+test("sales summary reconciles daily collections, returns, currencies and filters across all detail pages", async () => {
+  const admin = await actor();
+  const a = await appointment({ status: "NO_SHOW" });
+  const start = new Date("2026-12-09T16:00Z");
+  const fee = await payment(a.id, "100.10", { paidAt: start, createdAt: day, satisfiesObligation: true });
+  await appointment({ recoveryOfAppointment: { connect: { id: a.id } }, carriedAppointmentFeePayment: { connect: { id: fee.id } } });
+  await payment(a.id, "200.20", { paidAt: new Date("2026-12-10T15:59:59Z"), type: "SERVICE_PAYMENT", method: "QRPH" });
+  await payment(a.id, "3.03", { paidAt: start, reconciliationStatus: "REQUIRED" });
+  await payment(a.id, "4.04", { paidAt: new Date("2026-12-08T00:00Z"), status: "REFUNDED", refundedAt: new Date("2026-12-10T01:00Z") });
+  await payment(a.id, "5.05", { paidAt: start, status: "REFUNDED", method: "GCASH", refundedAt: new Date("2026-12-11T00:00Z") });
+  await payment(a.id, "10.00", { paidAt: start, currency: "USD" });
+  await payment(a.id, "7.07", { paidAt: new Date("2026-12-11T16:00Z") });
+  for (const status of ["PENDING", "FAILED", "EXPIRED"] as const) await payment(a.id, "500.00", { paidAt: start, status });
+  const query = salesSummaryQuery.parse({ from: "2026-12-10", to: "2026-12-11", pageSize: 1 });
+  const result = await reports.salesSummary(admin.id, query);
+  const php = result.totals.find(row => row.currency === "PHP")!;
+  assert.equal(php.successfulPayments, 4);
+  assert.equal(php.appointmentFees, "108.18"); assert.equal(php.servicePayments, "200.20");
+  assert.equal(php.collected, "308.38"); assert.equal(php.returned, "9.09"); assert.equal(php.netCollections, "299.29");
+  assert.equal(result.totals.find(row => row.currency === "USD")!.collected, "10.00");
+  const returnDay = result.rows.find(row => row.date === "2026-12-11" && row.currency === "PHP")!;
+  assert.equal(returnDay.collected, "0.00"); assert.equal(returnDay.netCollections, "-5.05");
+  assert.equal(result.totalMovements, 7); assert.equal(result.transactions.length, 1);
+  const second = await reports.salesSummary(admin.id, { ...query, page: 2 });
+  assert.deepEqual(second.totals, result.totals);
+  assert.notDeepEqual(second.transactions, result.transactions);
+  const movements = await reports.salesSummary(admin.id, { ...query, pageSize: 100 });
+  assert.equal(movements.transactions.length, result.totalMovements);
+  assert.equal(new Set(movements.transactions.map(row => `${row.id}-${row.eventType}`)).size, 7);
+  assert.equal(movements.transactions.filter(row => row.reconciliationStatus === "REQUIRED").length, 1);
+  const qr = await reports.salesSummary(admin.id, { ...query, method: "QRPH", type: "SERVICE_PAYMENT" });
+  assert.equal(qr.totals.length, 1); assert.equal(qr.totals[0]!.collected, "200.20"); assert.equal(qr.totalMovements, 1);
+  const cash = await reports.salesSummary(admin.id, { ...query, method: "CASH", type: "APPOINTMENT_FEE" });
+  assert.equal(cash.totals.find(row => row.currency === "PHP")!.netCollections, "99.09");
+  const empty = await reports.salesSummary(admin.id, { ...query, method: "OTHER" });
+  assert.deepEqual(empty.rows, []); assert.deepEqual(empty.totals, []); assert.equal(empty.totalMovements, 0);
+  assert.doesNotMatch(JSON.stringify(result), /guestAccess|never-expose|externalReference|idempotencyKey|metadata/);
+  await assert.rejects(reports.salesSummary((await actor("CASHIER")).id, query), { code: "FORBIDDEN" });
+});
+
+test("staff commission summary preserves finalized values, former staff and per-currency totals across pages", async () => {
+  const admin = await actor();
+  const former = await prisma.staff.create({ data: { firstName: "Jordan", lastName: "Lee" } });
+  const inactive = await prisma.staff.create({ data: { firstName: "Jordan", lastName: "Lee", isActive: false } });
+  const service = await prisma.service.create({ data: { name: "Original service", price: "100.00", durationMinutes: 30 } });
+  const start = new Date("2027-01-04T16:00Z");
+  async function finalized(staffId: string, base: string, commission: string, finalizedAt = start, currency = "PHP", rate = "0.4") {
+    const a = await appointment({ status: "COMPLETED" });
+    const line = await prisma.appointmentService.create({ data: {
+      appointmentId: a.id, staffId, serviceId: service.id, assignmentMode: "SPECIFIC", sequenceNo: 1,
+      serviceNameSnapshot: "Original service", priceSnapshot: base, durationMinutesSnapshot: 30, bufferMinutesSnapshot: 0,
+      commissionRateSnapshot: rate, scheduledStartAt: a.startAt, scheduledEndAt: a.endAt, reservedUntilAt: a.endAt,
+      outcome: "PERFORMED", actualChargedAmount: base,
+    } });
+    const source = await payment(a.id, base, { type: "SERVICE_PAYMENT", currency });
+    await prisma.commissionRecord.create({ data: {
+      appointmentId: a.id, appointmentServiceId: line.id, staffId, sourcePaymentId: source.id,
+      serviceAmount: base, allocatedAppointmentFee: "0.00", commissionBase: base, commissionRate: rate,
+      commissionAmount: commission, finalizedAt, finalizedByUserId: admin.id,
+    } });
+    return source;
+  }
+  const source = await finalized(former.id, "101.01", "40.40");
+  await finalized(former.id, "202.02", "80.81", new Date("2027-01-05T15:59:59Z"));
+  await finalized(former.id, "11.11", "4.44", start, "USD");
+  await finalized(inactive.id, "50.05", "10.01", start, "PHP", "0.2");
+  await finalized(former.id, "900.00", "360.00", new Date(+start - 1));
+  await finalized(former.id, "900.00", "360.00", new Date("2027-01-05T16:00Z"));
+  await prisma.payment.update({ where: { id: source.id }, data: { status: "REFUNDED", refundedAt: start } });
+  await prisma.service.update({ where: { id: service.id }, data: { name: "Changed service", price: "999.00" } });
+  await prisma.staff.update({ where: { id: former.id }, data: { firstName: "Changed" } });
+  await prisma.staff.delete({ where: { id: former.id } });
+  const query = commissionSummaryQuery.parse({ from: "2027-01-05", to: "2027-01-05", pageSize: 1 });
+  const result = await reports.commissionSummary(admin.id, query);
+  assert.equal(result.rows.length, 3); assert.equal(result.total, 4); assert.equal(result.details.length, 1);
+  assert.deepEqual(result.totals.find(row => row.currency === "PHP"), { currency: "PHP", serviceCount: 3, commissionBase: "353.08", commissionAmount: "131.22" });
+  assert.equal(result.totals.find(row => row.currency === "USD")!.commissionAmount, "4.44");
+  assert.equal(result.rows.find(row => row.staffId === former.id && row.currency === "PHP")!.commissionAmount, "121.21");
+  assert.equal(result.rows.find(row => row.staffId === former.id)!.state, "Former staff");
+  assert.equal(result.rows.find(row => row.staffId === inactive.id)!.state, "Inactive");
+  assert.equal(result.staffOptions.find(row => row.staffId === former.id)!.name, "Jordan Lee");
+  const second = await reports.commissionSummary(admin.id, { ...query, page: 2 });
+  assert.deepEqual(second.totals, result.totals); assert.notEqual(second.details[0]!.id, result.details[0]!.id);
+  const filtered = await reports.commissionSummary(admin.id, { ...query, staffId: former.id, pageSize: 100 });
+  assert.equal(filtered.total, 3); assert.equal(filtered.rows.length, 2);
+  assert.ok(filtered.details.every(row => row.staffId === former.id && row.name === "Jordan Lee" && row.serviceName === "Original service" && row.commissionRate === "40.00"));
+  const inactiveOnly = await reports.commissionSummary(admin.id, { ...query, staffId: inactive.id });
+  assert.equal(inactiveOnly.total, 1); assert.equal(inactiveOnly.details[0]!.commissionRate, "20.00");
+  const empty = await reports.commissionSummary(admin.id, { ...query, from: "2027-02-01", to: "2027-02-01", staffId: former.id });
+  assert.deepEqual(empty.rows, []); assert.deepEqual(empty.details, []); assert.deepEqual(empty.totals, []);
+  assert.ok(empty.staffOptions.some(row => row.staffId === former.id));
+  assert.doesNotMatch(JSON.stringify(result), /guestAccess|never-expose|externalReference|idempotencyKey|Changed service|Changed Lee/);
+  await assert.rejects(reports.commissionSummary((await actor("CASHIER")).id, query), { code: "FORBIDDEN" });
+});
+
 test("reports preserve service, receipt and commission snapshots after catalog changes", async () => {
   const admin = await actor(); const a = await appointment();
   const staff = await prisma.staff.create({ data: { firstName: "Historical", lastName: "Staff" } });
@@ -94,6 +189,42 @@ test("reports preserve service, receipt and commission snapshots after catalog c
   const first = await reports.list(admin.id, "payments", { ...q, pageSize: 1 });
   const second = await reports.list(admin.id, "payments", { ...q, pageSize: 1, page: 2 });
   assert.equal(first.rows.length, 1); assert.notDeepEqual(first.rows, second.rows); assert.equal(first.total, second.total);
+});
+
+test("appointment report filters across pages and preserves customer and historical staff context", async () => {
+  const admin = await actor();
+  const startAt = new Date("2026-12-04T16:00Z");
+  const a = await appointment({ startAt, endAt: new Date(+startAt + 1800000), status: "COMPLETED", completionType: "NO_SERVICE_CLOSURE" });
+  await appointment({ startAt, status: "NO_SHOW" });
+  await appointment({ startAt: new Date("2026-12-05T16:00Z"), status: "CANCELLED" });
+  const staff = await prisma.staff.create({ data: { firstName: "Original", lastName: "Stylist" } });
+  const service = await prisma.service.create({ data: { name: "Current service", price: "90.00", durationMinutes: 30 } });
+  await prisma.appointmentService.create({ data: {
+    appointmentId: a.id, staffId: staff.id, staffRecordId: staff.id, serviceId: service.id,
+    staffFirstNameSnapshot: "Original", staffLastNameSnapshot: "Stylist", assignmentMode: "SPECIFIC", sequenceNo: 1,
+    serviceNameSnapshot: "Booked service", priceSnapshot: "80.00", durationMinutesSnapshot: 30,
+    bufferMinutesSnapshot: 0, commissionRateSnapshot: "0.4", scheduledStartAt: startAt,
+    scheduledEndAt: a.endAt, reservedUntilAt: a.endAt, outcome: "NOT_PERFORMED", membershipStatus: "REMOVED",
+  } });
+  await prisma.staff.update({ where: { id: staff.id }, data: { firstName: "New", lastName: "Name" } });
+  await prisma.staff.delete({ where: { id: staff.id } });
+  const query = reportQuery.parse({ from: "2026-12-05", to: "2026-12-05", pageSize: 1 });
+  const first = await reports.list(admin.id, "appointments", query);
+  const second = await reports.list(admin.id, "appointments", { ...query, page: 2 });
+  assert.equal(first.total, 2); assert.equal(first.rows.length, 1);
+  const filtered = await reports.list(admin.id, "appointments", { ...query, status: "COMPLETED" });
+  assert.equal(filtered.total, 1);
+  assert.equal((filtered.rows[0] as { bookingCode: string }).bookingCode, a.bookingCode);
+  const none = await reports.list(admin.id, "appointments", { ...query, status: "CONFIRMED" });
+  assert.equal(none.total, 0); assert.deepEqual(none.rows, []);
+  const rows = [...first.rows, ...second.rows] as { bookingCode: string; customer: { firstName: string }; appointmentServices: { staff: unknown; staffFirstNameSnapshot: string; serviceNameSnapshot: string; membershipStatus: string }[] }[];
+  const row = rows.find(row => row.bookingCode === a.bookingCode)!;
+  assert.equal(row.customer.firstName, "Test");
+  assert.equal(row.appointmentServices[0]!.staff, null);
+  assert.equal(row.appointmentServices[0]!.staffFirstNameSnapshot, "Original");
+  assert.equal(row.appointmentServices[0]!.serviceNameSnapshot, "Booked service");
+  assert.equal(row.appointmentServices[0]!.membershipStatus, "REMOVED");
+  assert.doesNotMatch(JSON.stringify(first), /guestAccess|phone|email/);
 });
 
 test("cashier queue uses salon dates, paginates and only exposes settlement information", async () => {
@@ -200,7 +331,16 @@ test("report HTTP authorization, cache controls, validation and public chatbot b
     assert.equal((await fetch(`${base}/reports/confirmed-services?pageSize=101`, { headers: { Cookie: cashierCookie } })).status, 400);
     assert.equal((await fetch(`${base}/reports/waiting-queue?pageSize=101`, { headers: { Cookie: cashierCookie } })).status, 400);
     assert.equal((await fetch(`${base}/reports/waiting-queue?unknown=true`, { headers: { Cookie: cashierCookie } })).status, 400);
-    for (const kind of ["dashboard", "appointments", "payments", "receipts", "commissions", "audit"]) assert.equal((await fetch(`${base}/reports/${kind}${query}`, { headers: { Cookie: cashierCookie } })).status, 403);
+    for (const kind of ["dashboard", "appointments", "payments", "receipts", "commissions", "sales-summary", "commission-summary", "audit"]) assert.equal((await fetch(`${base}/reports/${kind}${query}`, { headers: { Cookie: cashierCookie } })).status, 403);
+    assert.equal((await fetch(`${base}/reports/commission-summary${query}`)).status, 401);
+    const commissions = await fetch(`${base}/reports/commission-summary?from=2027-01-05&to=2027-01-05`, { headers: { Cookie: adminCookie } });
+    assert.equal(commissions.status, 200); assert.equal(commissions.headers.get("cache-control"), "no-store");
+    assert.equal((await commissions.json()).totals.find((row: { currency: string }) => row.currency === "PHP").commissionAmount, "131.22");
+    assert.equal((await fetch(`${base}/reports/commission-summary${query}&staffId=invalid`, { headers: { Cookie: adminCookie } })).status, 400);
+    const sales = await fetch(`${base}/reports/sales-summary?from=2026-12-10&to=2026-12-11&method=QRPH&type=SERVICE_PAYMENT`, { headers: { Cookie: adminCookie } });
+    assert.equal(sales.status, 200); assert.equal(sales.headers.get("cache-control"), "no-store");
+    assert.equal((await sales.json()).totals[0].collected, "200.20");
+    assert.equal((await fetch(`${base}/reports/sales-summary${query}&method=INVALID`, { headers: { Cookie: adminCookie } })).status, 400);
     const removedAudit = await fetch(`${base}/reports/audit${query}`, { headers: { Cookie: adminCookie } });
     assert.equal(removedAudit.status, 400);
     const summary = await fetch(`${base}/reports/collections${query}`, { headers: { Cookie: cashierCookie } }); assert.equal(summary.status, 200); assert.equal(summary.headers.get("cache-control"), "no-store");

@@ -19,16 +19,23 @@ Configuration conflicts continue to be rejected by the existing reservation prot
 
 Rescheduling retains the existing customer private-link workflow and original policy checks. This UI update does not add an Admin override or expose private guest credentials.
 
-## Confirmed services
+## Service outcomes & payment
 
-The service-outcome workspace automatically lists confirmed,
-unfinalized bookings across all dates. The dashboard shows a short preview of today’s appointments. Choose **Review services** to open the
-selected appointment without entering its booking code. The shared list refreshes
-every 30 seconds while visible and on tab focus, supports customer-name or booking
-code search, and uses bounded pagination. Cashiers see the same confirmed bookings
-with **Process payment** actions. Existing role restrictions still govern saving
-outcomes, corrections and payment finalization.
+The Admin combined workspace uses a two-column layout: a searchable, paginated
+**Awaiting settlement** list on the left and the selected booking, service outcomes,
+and payment summary on the right. The list includes confirmed, unfinalized bookings
+across all dates and shows their recorded arrival status. Refresh reloads the list
+and selected booking; outcome saves and finalization refresh the list as well.
+Unsaved outcomes, cash tendered and no-show corrections are protected when switching
+bookings or refreshing. Cashier and separate Payments workflows keep their existing layouts.
 
+Select a booking to record Performed or Not performed for each service, then save.
+Collection is available only after all outcomes are saved. The summary shows the
+verified appointment fee separately: it is not deducted from the full service
+charge. Cash collection requires sufficient cash and shows exact change; existing
+payment verification, finalization confirmation, revision checks and idempotency
+remain in force. Finalized visits are read-only with payment history/receipts
+available. All-not-performed visits use the existing Admin-only no-service closure.
 
 ### Manage recurring staff schedules
 

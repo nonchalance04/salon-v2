@@ -90,9 +90,10 @@ test("migrations apply and development seeding is repeatable with hashed passwor
   assert.deepEqual(migrations.rows.map(row => row.migration_name).sort(), expectedMigrations);
   const categoryCounts = await prisma.service.groupBy({ by: ["category"], _count: true });
   assert.deepEqual(Object.fromEntries(categoryCounts.map(row => [row.category, row._count])), {
-    "Hair Services": 9, "Hair Color & Styling": 9, "Hair Treatments": 4,
-    "Nail Services": 6, "Spa & Relaxation": 2,
+    "Hair Services": 10, "Hair Color & Styling": 9, "Hair Treatments": 4,
+    "Nail Services": 5, "Spa & Relaxation": 2,
   });
+  assert.equal((await prisma.service.findFirstOrThrow({ where: { name: "Eyebrow Shaping" } })).category, "Hair Services");
 });
 
 test("seed configures Mildred for explicit nail services and reconciles stale qualifications on rerun", async () => {

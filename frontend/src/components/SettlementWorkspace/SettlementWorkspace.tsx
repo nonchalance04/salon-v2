@@ -1,3 +1,6 @@
+import { CheckCircle2, RefreshCw } from "lucide-react";
+import { SettlementQueue } from "./SettlementQueue";
+import "./SettlementWorkspace.css";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/NativeSelect";
@@ -24,6 +27,7 @@ type Appointment = {
   bookingCode: string;
   status: string;
   revision: string;
+  startAt: string;
   completionType: string | null;
   customer: { firstName: string; lastName: string };
   eligibleAppointmentFee: string;
@@ -72,6 +76,9 @@ export function SettlementWorkspace({
   onOpenServices?: (code: string) => void;
   onNavigationStateChange?: (state: { busy: boolean; dirty: boolean }) => void;
 }) {
+  const simplified = admin && mode === "combined";
+  const [queueRefresh, setQueueRefresh] = useState(0);
+  const [timeZone, setTimeZone] = useState<string>();
   const [row, setRow] = useState<Appointment | null>(null);
   const [outcomes, setOutcomes] = useState<Record<string, Outcome>>({});
   const [busy, setBusy] = useState(false);
@@ -87,6 +94,7 @@ export function SettlementWorkspace({
   const [method, setMethod] = useState("CASH");
   const [tendered, setTendered] = useState("");
   function accept(appointment: Appointment) {
+    setQueueRefresh(value => value + 1);
     setRow(appointment);
     setTendered("");
     setOutcomes(
@@ -118,6 +126,12 @@ export function SettlementWorkspace({
       ).appointment,
     );
   }
+  useEffect(() => {
+    if (!simplified) return;
+    let active = true;
+    void api<{ timeZone: string }>("/salon").then(salon => { if (active) setTimeZone(salon.timeZone); }).catch(() => {});
+    return () => { active = false; };
+  }, [simplified]);
   useEffect(() => {
     if (initialCode) void act(() => lookup(initialCode));
   }, [initialCode]);
@@ -161,11 +175,22 @@ export function SettlementWorkspace({
     <section
       className={
         admin
-          ? `outcomes-workspace${mode === "payments" ? " admin-payment-detail" : ""}`
+          ? `outcomes-workspace${simplified ? " admin-settlement" : ""}${mode === "payments" ? " admin-payment-detail" : ""}`
           : undefined
       }
     >
-      {!(admin && mode === "payments" && initialCode) && (
+      {simplified && <div className="admin-settlement-page-heading"><div><h2>Service outcomes &amp; payment</h2><p>Review services and finalize a visit</p></div><Button variant="outline" disabled={busy || correctionNavigation.busy} onClick={() => {
+        if ((dirty || tendered || correctionNavigation.dirty) && !window.confirm("Discard unsaved changes and refresh this visit?")) return;
+        setQueueRefresh(value => value + 1);
+        if (row || initialCode) void act(() => lookup(row?.bookingCode ?? initialCode!));
+      }}><RefreshCw size={16} aria-hidden="true" />{busy ? "Refreshing…" : "Refresh"}</Button></div>}
+      {simplified && <SettlementQueue selectedCode={row?.bookingCode ?? initialCode} disabled={busy || correctionNavigation.busy} refresh={queueRefresh} onSelect={code => {
+        if ((dirty || tendered || correctionNavigation.dirty) && !window.confirm("Discard unsaved changes and open another booking?")) return;
+        void act(async () => { await lookup(code); key.current = createPaymentKey(); setCorrectionNavigation({ busy: false, dirty: false }); });
+      }} />}
+      {simplified && !row && !busy && !error && <div className="admin-settlement-empty"><h3>Select a booking</h3><p>Choose a visit awaiting settlement to review its services and payment.</p></div>}
+      {simplified && busy && !row && <p className="admin-settlement-empty" role="status">Loading appointment…</p>}
+      {!simplified && !(admin && mode === "payments" && initialCode) && (
         <div className="outcomes-page-heading">
           <p className="eyebrow">
             {mode === "payments"
@@ -194,12 +219,12 @@ export function SettlementWorkspace({
           </p>
         </div>
       )}
-      {onBack && (
+      {!simplified && onBack && (
         <Button variant="outline" disabled={busy} onClick={onBack}>
           ← Back to {backLabel}
         </Button>
       )}
-      {!initialCode && !row && (
+      {!simplified && !initialCode && !row && (
         <>
           <ConfirmedServices
             admin={admin}
@@ -260,7 +285,7 @@ export function SettlementWorkspace({
           {notice}
         </p>
       )}
-      {!initialCode && row && (
+      {!simplified && !initialCode && row && (
         <Button
           variant="outline"
           disabled={busy}
@@ -287,19 +312,14 @@ export function SettlementWorkspace({
               >
                 {row.status.replaceAll("_", " ")}
               </Badge>
+              {simplified && timeZone && <p className="admin-settlement-reference">{new Intl.DateTimeFormat("en-PH", { timeZone, dateStyle: "medium", timeStyle: "short" }).format(new Date(row.startAt))} · {timeZone}</p>}
               {row.completionType && (
                 <span className="outcomes-completion">
                   {row.completionType.replaceAll("_", " ")}
                 </span>
               )}
             </div>
-            {/* <Button
-              variant="outline"
-              disabled={busy}
-              onClick={() => void act(() => lookup(row.bookingCode))}
-            >
-              Refresh appointment
-            </Button> */}
+            {simplified && <span className="admin-settlement-fee-status">{Number(row.eligibleAppointmentFee) > 0 ? <><CheckCircle2 size={18} aria-hidden="true" />{row.carriedFee ? "Carried appointment fee verified" : "Appointment fee verified"}</> : "No eligible appointment fee"}</span>}
           </div>
           {manageServices && row.status === "NO_SHOW" && (
             <NoShowCorrection
@@ -317,7 +337,7 @@ export function SettlementWorkspace({
               }
             />
           )}
-          {collectPayments && (
+          {!simplified && collectPayments && (
             <ol className="settlement-steps" aria-label="Settlement progress">
               <li aria-current={!ready || dirty ? "step" : undefined}>
                 1. Review services
@@ -338,7 +358,7 @@ export function SettlementWorkspace({
               </li>
             </ol>
           )}
-          <div className="outcomes-financial-summary">
+          {!simplified && <div className="outcomes-financial-summary">
             <div>
               <span>Verified eligible appointment fee</span>
               <strong>PHP {row.eligibleAppointmentFee}</strong>
@@ -352,7 +372,7 @@ export function SettlementWorkspace({
               The service charge is collected separately; the appointment fee is
               not deducted from the service amount due.
             </p>
-          </div>
+          </div>}
           {!admin && Number(row.eligibleAppointmentFee) === 0 && (
             <p className="muted">
               No eligible appointment-fee payment is available. Check the
@@ -370,14 +390,16 @@ export function SettlementWorkspace({
                 <p className="muted">
                   Review each service and record whether it was performed.
                 </p>
+                {simplified && <div className="admin-settlement-columns" aria-hidden="true"><span>Service / Stylist</span><span>Booked price</span><span>Outcome</span></div>}
                 <div className="outcomes-service-list">
                   {row.services.map((s) => (
                     <label className="outcomes-service" key={s.id}>
                       <span className="outcomes-service-copy">
                         <strong>{s.name}</strong>
                         <small>Stylist · {s.staff}</small>
-                        <span>PHP {s.price}</span>
+                        {!simplified && <span>PHP {s.price}</span>}
                       </span>
+                      {simplified && <strong className="admin-settlement-price">PHP {s.price}</strong>}
                       <span className="outcomes-service-control">
                         <span>Outcome</span>
                         <NativeSelect
@@ -406,6 +428,7 @@ export function SettlementWorkspace({
                 </div>
                 {row.status === "CONFIRMED" && (
                   <div className="outcomes-save">
+                    {simplified && <span className={`admin-settlement-save-state${dirty ? " is-dirty" : ""}`} role="status">{dirty ? "Unsaved changes" : ready ? <><CheckCircle2 size={17} aria-hidden="true" />Outcomes saved</> : "Record an outcome for each service"}</span>}
                     <Button
                       variant="default"
                       className="primary"
@@ -423,7 +446,12 @@ export function SettlementWorkspace({
             </form>
           )}
           <div className="payment-settlement-grid">
-            {collectPayments && (
+            {simplified && <div className="admin-settlement-summary"><h3>Payment summary</h3><dl><div><dt>Performed services{dirty || !ready ? " · Saved outcomes" : ""}</dt><dd>PHP {row.amountDue}</dd></div><div><dt>{row.carriedFee ? "Verified carried appointment fee" : "Verified appointment fee"}</dt><dd>PHP {row.eligibleAppointmentFee}</dd></div><div className="admin-settlement-amount"><dt>{row.status === "COMPLETED" ? "Final service charge" : "Service amount due"}</dt><dd>PHP {row.amountDue}</dd></div></dl><p>The appointment fee is separate and is not deducted from the service charge.</p>
+              {row.status === "CONFIRMED" && (!ready || dirty) && <p role="status">Save all service outcomes before collecting payment.</p>}
+              {row.status === "CONFIRMED" && ready && !dirty && !performed && <p role="status">No service payment is due. Close this visit without performed services below.</p>}
+              {row.status === "COMPLETED" && <p role="status">This visit is finalized. Service outcomes are read-only.</p>}
+            </div>}
+            {!simplified && collectPayments && (
               <section className="payment-recorded-services">
                 {paymentLayout ? (
                   <>
@@ -567,11 +595,9 @@ export function SettlementWorkspace({
                 >
                   <fieldset disabled={busy}>
                     <legend>
-                      {paymentLayout
-                        ? "Collect payment"
-                        : "Review performed services"}
+                      {simplified || paymentLayout ? "Collect payment" : "Review performed services"}
                     </legend>
-                    <ul className="payment-charge-lines">
+                    {!simplified && <ul className="payment-charge-lines">
                       {row.services
                         .filter((s) => s.outcome === "PERFORMED")
                         .map((s) => (
@@ -579,11 +605,11 @@ export function SettlementWorkspace({
                             {s.name} · PHP {s.actualChargedAmount}
                           </li>
                         ))}
-                    </ul>
-                    <div className="payment-amount-due">
+                    </ul>}
+                    {!simplified && <div className="payment-amount-due">
                       <span>Full service amount due: </span>
                       <strong>PHP {row.amountDue}</strong>
-                    </div>
+                    </div>}
                     <div className="payment-tender-fields">
                       <label>
                         Payment method
@@ -648,9 +674,7 @@ export function SettlementWorkspace({
                       className="primary"
                       disabled={method === "CASH" && change === null}
                     >
-                      {paymentLayout
-                        ? "Finalize payment & issue receipt"
-                        : "Finalize received service payment"}
+                      {simplified ? `Collect PHP ${row.amountDue}` : paymentLayout ? "Finalize payment & issue receipt" : "Finalize received service payment"}
                     </Button>
                   </fieldset>
                 </form>
