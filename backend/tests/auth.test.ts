@@ -96,6 +96,9 @@ test("account validation limits roles and bcrypt byte length, and PATCH has no i
   assert.equal(createAccountSchema.safeParse({ body: { ...body, username: "owner@example.test" } }).success, false);
   assert.equal(createAccountSchema.parse({ body }).body.email, "test@example.com");
   assert.equal(createAccountSchema.parse({ body }).body.isActive, true);
+  assert.equal(createAccountSchema.safeParse({ body: { ...body, firstName: "Cher", lastName: "" } }).success, true);
+  assert.deepEqual(updateAccountSchema.parse({ params: { id }, body: { firstName: "Cher", lastName: "" } }).body, { firstName: "Cher", lastName: "" });
+  assert.equal(createAccountSchema.safeParse({ body: { ...body, firstName: "   ", lastName: "" } }).success, false);
   assert.equal(createAccountSchema.safeParse({ body: { ...body, role: "STYLIST" } }).success, false);
   assert.equal(createAccountSchema.safeParse({ body: { ...body, password: "é".repeat(37) } }).success, false);
   assert.deepEqual(updateAccountSchema.parse({ params: { id }, body: { firstName: "Edited" } }).body, { firstName: "Edited" });

@@ -292,6 +292,7 @@ export const AppointmentRescheduleHistoryScalarFieldEnum = {
 };
 export const PaymentScalarFieldEnum = {
     id: 'id',
+    paymentReference: 'paymentReference',
     appointmentId: 'appointmentId',
     type: 'type',
     method: 'method',

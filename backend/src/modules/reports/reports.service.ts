@@ -206,7 +206,7 @@ export function createReportsService(prisma: PrismaClient, timeZone: string) {
             const where = { createdAt: period }; dateBasis = "Payment attempt created";
             total = await tx.payment.count({ where });
             rows = await tx.payment.findMany({ where, ...paging, orderBy: [{ createdAt: "desc" }, { id: "desc" }], select: {
-              id: true, appointment: booking, type: true, method: true, provider: true, status: true, amount: true, currency: true,
+              id: true, paymentReference: true, appointment: booking, type: true, method: true, provider: true, status: true, amount: true, currency: true,
               satisfiesObligation: true, reconciliationStatus: true, createdAt: true, paidAt: true, refundedAt: true,
             } }); break;
           }

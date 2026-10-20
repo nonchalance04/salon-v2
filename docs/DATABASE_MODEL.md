@@ -1294,6 +1294,11 @@ A Payment must never be created only to simulate a non-financial lifecycle event
 
 Every Payment attempt requires a stable internal `idempotencyKey`.
 
+New attempts also receive a unique, database-generated `paymentReference` such as
+`P-100001`. This nullable field remains null on historical payments. It is separate
+from provider identity and idempotency keys. PostgreSQL sequences allocate these
+numbers across concurrent writers; gaps are allowed and numbers never reset.
+
 An external provider reference is additional identity when available.
 
 Recommended uniqueness:
@@ -1389,6 +1394,7 @@ Represents a receipt for a successful financial transaction.
 - `receiptNumber`
   - String
   - Unique
+  - New receipts use a database sequence, e.g. `R-100001`; historical numbers and snapshots are preserved.
 
 - `issuedByUserId`
   - Nullable FK → User; null identifies automatic system issuance for verified PayMongo appointment-fee captures.

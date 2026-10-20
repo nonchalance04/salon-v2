@@ -70,7 +70,6 @@ export function AppointmentReport() {
   const time = new Intl.DateTimeFormat("en-PH", { timeZone: timeZone || "UTC", hour: "numeric", minute: "2-digit" });
   return <section className="reports appointment-report" aria-busy={busy}>
     <div className="appointment-report-heading"><div><h2>Appointment Report</h2><p>Review bookings, service outcomes, and assigned staff.</p></div>
-      <Button variant="outline" disabled={busy || (Boolean(timeZone) && !validRange)} onClick={() => timeZone ? setRevision(n => n + 1) : setRetrySalon(n => n + 1)}>Refresh</Button>
     </div>
     <form className="appointment-report-filters" onSubmit={e => e.preventDefault()}>
       <label>From<Input type="date" required value={from} onChange={e => changeDate(setFrom, e.target.value)} /></label>
@@ -79,7 +78,7 @@ export function AppointmentReport() {
       <p>Based on scheduled start date.<br />{timeZone ? `Salon time · ${timeZone}` : "Loading salon timezone…"}<br />Choose up to 366 days.</p>
     </form>
     {!validRange && timeZone && <p role="alert" className="error">Choose a start date and an end date on or after it.</p>}
-    {error && <p role="alert" className="error">{error} Use Refresh to try again.</p>}
+    {error && <p role="alert" className="error">{error} <Button variant="outline" disabled={busy || (Boolean(timeZone) && !validRange)} onClick={() => timeZone ? setRevision(n => n + 1) : setRetrySalon(n => n + 1)}>Retry</Button></p>}
     <div className="appointment-report-records"><div className="appointment-report-list-heading"><h3>Appointment list</h3>{report && <span>{report.total} bookings · Latest scheduled first</span>}</div>
       {busy && <p role="status" className="appointment-report-message">Loading appointment report…</p>}
       {!busy && report && !report.total && <div className="appointment-report-message"><CalendarDays size={28} aria-hidden="true" /><h3>No appointments match these filters</h3><p>Try another date range or status.</p></div>}

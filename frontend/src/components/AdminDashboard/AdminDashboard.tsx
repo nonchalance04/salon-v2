@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowRight, CalendarDays, Check, Coins, CreditCard, RefreshCw, Scissors, TriangleAlert, UsersRound, X, type LucideIcon } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, Coins, CreditCard, Scissors, TriangleAlert, UsersRound, X, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { api } from "../../lib/api";
 import type { Appointment } from "../../types/booking";
@@ -36,8 +36,7 @@ function Metric({ icon: Icon, label, value, tone = "plum", children }: {
   </article>;
 }
 
-export function AdminDashboard({ onSettlement, onAppointments }: {
-  onSettlement: (code: string) => void;
+export function AdminDashboard({ onAppointments }: {
   onAppointments: (filters: AppointmentFilters) => void;
 }) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
@@ -100,7 +99,6 @@ export function AdminDashboard({ onSettlement, onAppointments }: {
       <div><p className="admin-overview-date">{snapshot ? new Intl.DateTimeFormat("en-PH", { timeZone: data!.timeZone, weekday: "long", month: "long", day: "numeric", year: "numeric" }).format(snapshot.updated) : "Today’s overview"}</p>
         {snapshot && <small>{data!.timeZone} · Updated {new Intl.DateTimeFormat("en-PH", { timeZone: data!.timeZone, hour: "numeric", minute: "2-digit" }).format(snapshot.updated)}</small>}
       </div>
-      <Button variant="outline" disabled={busy} onClick={() => void load()}><RefreshCw size={16} aria-hidden="true" />{busy ? "Refreshing…" : "Refresh"}</Button>
     </div>
     {error && <div className="error" role="alert">{error} {snapshot && "Showing the last successful update."} <Button variant="outline" disabled={busy} onClick={() => void load()}>Retry</Button></div>}
     {busy && !snapshot && <p role="status">Loading today’s dashboard…</p>}
@@ -143,7 +141,7 @@ export function AdminDashboard({ onSettlement, onAppointments }: {
               <td data-label="Customer">{row.customer.firstName} {row.customer.lastName}<small>{row.bookingCode}</small></td>
               <td data-label="Service / Stylist">{row.appointmentServices.map(service => <div key={service.id}>{service.serviceNameSnapshot} <span>· {service.staff.firstName} {service.staff.lastName}</span></div>)}</td>
               <td data-label="Booking / Arrival"><span className={`admin-overview-status ${row.status.toLowerCase()}`}>{statusLabels[row.status] ?? row.status}</span>{row.checkedInAt && <small className="admin-overview-arrived">Arrived</small>}</td>
-              <td data-label="Action"><Button variant="outline" aria-label={`${row.status === "CONFIRMED" ? "Review services for" : "View appointment for"} ${row.customer.firstName} ${row.customer.lastName}`} onClick={() => row.status === "CONFIRMED" ? onSettlement(row.bookingCode) : onAppointments({ from: snapshot.date, to: snapshot.date, search: row.bookingCode })}>{row.status === "CONFIRMED" ? "Review" : "View"}</Button></td>
+              <td data-label="Action"><Button variant="outline" aria-label={`View appointment for ${row.customer.firstName} ${row.customer.lastName}`} onClick={() => onAppointments({ from: snapshot.date, to: snapshot.date, search: row.bookingCode })}>View</Button></td>
             </tr>)}</tbody>
           </table></div>
           <p className="admin-overview-list-footer">Showing {preview.length} of {snapshot.appointments.length} appointments · Earliest first</p>

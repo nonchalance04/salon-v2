@@ -1,7 +1,7 @@
 import "dotenv/config";
 
 import bcrypt from "bcrypt";
-import { username } from "../src/modules/auth/auth.schema.js";
+import { parseSeedCredentials } from "./seed-credentials.js";
 import { createDatabasePool } from "../src/database/pool.js";
 import { PrismaPg } from "@prisma/adapter-pg";
 
@@ -28,16 +28,6 @@ const BCRYPT_ROUNDS = 12;
 // ------------------------------------------------------------
 // Environment
 // ------------------------------------------------------------
-
-function requireEnv(name: string): string {
-  const value = process.env[name]?.trim();
-
-  if (!value) {
-    throw new Error(`${name} is required for database seeding.`);
-  }
-
-  return value;
-}
 
 // ------------------------------------------------------------
 // Deterministic development UUIDs
@@ -334,14 +324,8 @@ async function main() {
 
   console.log("Starting Clique Salon development seed...");
 
-  const adminUsername = username.parse(requireEnv("SEED_ADMIN_USERNAME"));
-  const cashierUsername = username.parse(requireEnv("SEED_CASHIER_USERNAME"));
-  if (adminUsername === cashierUsername) throw new Error("Seed usernames must be distinct.");
-  const adminEmail = requireEnv("SEED_ADMIN_EMAIL").toLowerCase();
-  const adminPassword = requireEnv("SEED_ADMIN_PASSWORD");
-
-  const cashierEmail = requireEnv("SEED_CASHIER_EMAIL").toLowerCase();
-  const cashierPassword = requireEnv("SEED_CASHIER_PASSWORD");
+  const { adminUsername, cashierUsername, adminEmail, cashierEmail, adminPassword, cashierPassword } =
+    parseSeedCredentials(process.env);
 
   // Hash before starting the database transaction.
   const [adminPasswordHash, cashierPasswordHash] = await Promise.all([

@@ -1,5 +1,4 @@
 import { notificationRecipients } from "../notifications/notification-recipients.js";
-import { randomUUID } from "node:crypto";
 import { Prisma, } from "../../../generated/prisma/client.js";
 import { ApiError } from "../../shared/http.js";
 import { lockSalon, lockStaff, freshTime } from "../scheduling/coordination.js";
@@ -88,6 +87,7 @@ async function view(tx, id) {
         where: { id },
         select: {
             id: true,
+            paymentReference: true,
             status: true,
             amount: true,
             currency: true,
@@ -120,7 +120,6 @@ async function issueReceipt(tx, payment, actorId, timeZone = "Asia/Manila") {
     return tx.receipt.create({
         data: {
             paymentId: payment.id,
-            receiptNumber: `R-${randomUUID()}`,
             issuedByUserId: actorId,
             receiptSnapshot: {
                 schemaVersion: 2,
@@ -133,6 +132,7 @@ async function issueReceipt(tx, payment, actorId, timeZone = "Asia/Manila") {
                 method: payment.method,
                 provider: payment.provider,
                 externalReference: payment.externalReference,
+                paymentReference: payment.paymentReference,
                 paidAt: payment.paidAt.toISOString(),
                 customerName: `${appointment.customer.firstName} ${appointment.customer.lastName}`,
                 timeZone,
@@ -359,6 +359,7 @@ export function createPaymentsService(prisma, provider, timeZone = "Asia/Manila"
                             where: { type: "APPOINTMENT_FEE" },
                             select: {
                                 id: true,
+                                paymentReference: true,
                                 status: true,
                                 amount: true,
                                 reconciliationStatus: true,
@@ -727,6 +728,7 @@ export function createPaymentsService(prisma, provider, timeZone = "Asia/Manila"
                         method: true,
                         provider: true,
                         externalReference: true,
+                        paymentReference: true,
                         paidAt: true,
                         satisfiesObligation: true,
                         reconciliationStatus: true,

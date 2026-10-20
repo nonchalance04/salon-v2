@@ -1,4 +1,4 @@
-import { CheckCircle2, RefreshCw } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { SettlementQueue } from "./SettlementQueue";
 import "./SettlementWorkspace.css";
 import { Button } from "@/components/ui/Button";
@@ -76,7 +76,7 @@ export function SettlementWorkspace({
   onOpenServices?: (code: string) => void;
   onNavigationStateChange?: (state: { busy: boolean; dirty: boolean }) => void;
 }) {
-  const simplified = admin && mode === "combined";
+  const simplified = admin && mode !== "payments";
   const [queueRefresh, setQueueRefresh] = useState(0);
   const [timeZone, setTimeZone] = useState<string>();
   const [row, setRow] = useState<Appointment | null>(null);
@@ -179,16 +179,12 @@ export function SettlementWorkspace({
           : undefined
       }
     >
-      {simplified && <div className="admin-settlement-page-heading"><div><h2>Service outcomes &amp; payment</h2><p>Review services and finalize a visit</p></div><Button variant="outline" disabled={busy || correctionNavigation.busy} onClick={() => {
-        if ((dirty || tendered || correctionNavigation.dirty) && !window.confirm("Discard unsaved changes and refresh this visit?")) return;
-        setQueueRefresh(value => value + 1);
-        if (row || initialCode) void act(() => lookup(row?.bookingCode ?? initialCode!));
-      }}><RefreshCw size={16} aria-hidden="true" />{busy ? "Refreshing…" : "Refresh"}</Button></div>}
+      {simplified && <div className="admin-settlement-page-heading"><div><h2>{mode === "services" ? "Service outcomes" : "Service outcomes & payment"}</h2><p>{mode === "services" ? "Record outcomes and close visits with no performed services" : "Review services and finalize a visit"}</p></div></div>}
       {simplified && <SettlementQueue selectedCode={row?.bookingCode ?? initialCode} disabled={busy || correctionNavigation.busy} refresh={queueRefresh} onSelect={code => {
         if ((dirty || tendered || correctionNavigation.dirty) && !window.confirm("Discard unsaved changes and open another booking?")) return;
         void act(async () => { await lookup(code); key.current = createPaymentKey(); setCorrectionNavigation({ busy: false, dirty: false }); });
       }} />}
-      {simplified && !row && !busy && !error && <div className="admin-settlement-empty"><h3>Select a booking</h3><p>Choose a visit awaiting settlement to review its services and payment.</p></div>}
+      {simplified && !row && !busy && !error && <div className="admin-settlement-empty"><h3>Select a booking</h3><p>{mode === "services" ? "Choose a visit to review its service outcomes." : "Choose a visit awaiting settlement to review its services and payment."}</p></div>}
       {simplified && busy && !row && <p className="admin-settlement-empty" role="status">Loading appointment…</p>}
       {!simplified && !(admin && mode === "payments" && initialCode) && (
         <div className="outcomes-page-heading">

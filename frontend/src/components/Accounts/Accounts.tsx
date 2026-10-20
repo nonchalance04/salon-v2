@@ -40,9 +40,23 @@ export function Accounts() {
       return;
     }
     const target = editing;
+    const fullName = String(data.get("fullName") ?? "").trim();
+    const existing = target && target !== "new" ? target : null;
+    const parts = fullName.match(/^(\S+)\s+(.+)$/);
+    // Preserve existing name boundaries when only other account details change.
+    const name = existing && fullName === `${existing.firstName} ${existing.lastName}`.trim()
+      ? { firstName: existing.firstName, lastName: existing.lastName }
+      : parts ? { firstName: parts[1], lastName: parts[2].trim() } : { firstName: fullName, lastName: "" };
+    if (!fullName) {
+      setError("Enter a full name.");
+      return;
+    }
+    if (name.firstName.length > 100 || name.lastName.length > 100) {
+      setError("This name is too long. Use no more than 100 characters for each name part.");
+      return;
+    }
     const body = {
-      firstName: String(data.get("firstName")),
-      lastName: String(data.get("lastName")),
+      ...name,
       username: String(data.get("username")).trim().toLowerCase(),
       email: String(data.get("email")).trim().toLowerCase(),
       role: String(data.get("role")),
@@ -109,21 +123,13 @@ export function Accounts() {
           <h3>{selected ? "Edit account" : "New account"}</h3>
           <div className="form-grid">
             <label>
-              First name
+              Full name
               <Input
-                name="firstName"
+                name="fullName"
                 required
-                maxLength={100}
-                defaultValue={selected?.firstName}
-              />
-            </label>
-            <label>
-              Last name
-              <Input
-                name="lastName"
-                required
-                maxLength={100}
-                defaultValue={selected?.lastName}
+                maxLength={201}
+                autoComplete="name"
+                defaultValue={selected ? `${selected.firstName} ${selected.lastName}`.trim() : ""}
               />
             </label>
             <label>

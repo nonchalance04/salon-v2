@@ -1,5 +1,4 @@
 import { notificationRecipients } from "../notifications/notification-recipients.js";
-import { randomUUID } from "node:crypto";
 import {
   Prisma,
   type PrismaClient,
@@ -123,6 +122,7 @@ async function view(tx: Tx, id: string) {
     where: { id },
     select: {
       id: true,
+      paymentReference: true,
       status: true,
       amount: true,
       currency: true,
@@ -158,7 +158,6 @@ async function issueReceipt(tx: Tx, payment: Payment, actorId: string | null, ti
   return tx.receipt.create({
     data: {
       paymentId: payment.id,
-      receiptNumber: `R-${randomUUID()}`,
       issuedByUserId: actorId,
       receiptSnapshot: {
         schemaVersion: 2,
@@ -171,6 +170,7 @@ async function issueReceipt(tx: Tx, payment: Payment, actorId: string | null, ti
         method: payment.method,
         provider: payment.provider,
         externalReference: payment.externalReference,
+        paymentReference: payment.paymentReference,
         paidAt: payment.paidAt!.toISOString(),
         customerName: `${appointment.customer.firstName} ${appointment.customer.lastName}`,
         timeZone,
@@ -435,6 +435,7 @@ export function createPaymentsService(
               where: { type: "APPOINTMENT_FEE" },
               select: {
                 id: true,
+                paymentReference: true,
                 status: true,
                 amount: true,
                 reconciliationStatus: true,
@@ -874,6 +875,7 @@ export function createPaymentsService(
             method: true,
             provider: true,
             externalReference: true,
+            paymentReference: true,
             paidAt: true,
             satisfiesObligation: true,
             reconciliationStatus: true,

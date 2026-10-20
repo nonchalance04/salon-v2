@@ -1,4 +1,4 @@
-import { CalendarDays, Clock3, RefreshCw, Search, Scissors, UserRound } from "lucide-react";
+import { CalendarDays, Clock3, Search, Scissors, UserRound } from "lucide-react";
 import "./AdminAppointments.css";
 import { Button } from "@/components/ui/Button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/Dialog";
@@ -18,9 +18,8 @@ const statusLabels: Record<string, string> = {
   CANCELLED: "Cancelled", NO_SHOW: "No-show", EXPIRED: "Expired",
 };
 
-export function AdminAppointments({ initialFilters = {}, onSettlement }: {
+export function AdminAppointments({ initialFilters = {} }: {
   initialFilters?: AppointmentFilters;
-  onSettlement?: (code: string) => void;
 }) {
   const [rows, setRows] = useState<Appointment[]>([]);
   const [filters, setFilters] = useState<AppointmentFilters>(initialFilters);
@@ -112,7 +111,6 @@ export function AdminAppointments({ initialFilters = {}, onSettlement }: {
     <section className="admin-bookings" aria-labelledby="appointments-title">
       <div className="admin-bookings-heading">
         <div><h2 id="appointments-title">Appointments</h2><p>Find and review salon bookings{zone ? ` · ${zone}` : ""}</p></div>
-        <Button variant="outline" disabled={busy} onClick={() => void refresh()}><RefreshCw size={16} aria-hidden="true" />{busy ? "Refreshing…" : "Refresh"}</Button>
       </div>
       <div className="admin-bookings-panel">
         <form className="admin-bookings-filters" onSubmit={event => { event.preventDefault(); setFilters(previous => ({ ...previous, search: search.trim() || undefined })); }}>
@@ -287,18 +285,6 @@ export function AdminAppointments({ initialFilters = {}, onSettlement }: {
           <footer className="appointment-details-footer">
             <Button variant="outline" onClick={() => { setSelected(null); setMarking(null); }}>Close details</Button>
           <div className="appointment-details-actions">
-            {onSettlement &&
-              ["CONFIRMED", "COMPLETED"].includes(current.status) && (
-                <Button variant="default"
-                  className="primary"
-                  disabled={busy}
-                  onClick={() => onSettlement(current.bookingCode)}
-                >
-                  {current.status === "COMPLETED"
-                    ? "View settlement / receipt"
-                    : "Settle services"}
-                </Button>
-              )}
             {current.status === "CONFIRMED" &&
               !current.checkedInAt &&
               Date.parse(current.startAt) <= Date.parse(current.serverTime) && (

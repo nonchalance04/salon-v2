@@ -413,6 +413,7 @@ enum PaymentReconciliationStatus {
 
 model Payment {
   id                   String                      @id @default(uuid()) @db.Uuid
+  paymentReference     String?                     @unique @default(dbgenerated("('P-'::text || (nextval('payment_reference_seq'::regclass))::text)"))
   appointmentId        String                      @db.Uuid
   type                 PaymentType
   method               PaymentMethod
@@ -455,7 +456,7 @@ model Payment {
 model Receipt {
   id              String   @id @default(uuid()) @db.Uuid
   paymentId       String   @unique @db.Uuid
-  receiptNumber   String   @unique
+  receiptNumber   String   @unique @default(dbgenerated("('R-'::text || (nextval('receipt_number_seq'::regclass))::text)"))
   issuedByUserId  String?  @db.Uuid
   receiptSnapshot Json
   issuedAt        DateTime @default(now()) @db.Timestamptz(3)

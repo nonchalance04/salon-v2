@@ -526,6 +526,10 @@ test("QR Ph pending checkout, verified capture, receipts and duplicate recovery 
     assert.equal((result!.receipt!.receiptSnapshot as { method: string }).method, "QRPH");
   }
   const receipt = await prisma.receipt.findUniqueOrThrow({ where: { paymentId: checkout.payment.id } });
+  assert.match(receipt.receiptNumber, /^R-[1-9]\d{5,}$/);
+  const numberedPayment = await prisma.payment.findUniqueOrThrow({ where: { id: checkout.payment.id } });
+  assert.match(numberedPayment.paymentReference!, /^P-[1-9]\d{5,}$/);
+  assert.equal((receipt.receiptSnapshot as { paymentReference: string }).paymentReference, numberedPayment.paymentReference);
   assert.equal(receipt.issuedByUserId, null);
   assert.equal(await prisma.receipt.count({ where: { paymentId: checkout.payment.id } }), 1);
   const refreshed = await gateway.service.refresh(f.row.bookingCode, f.guestToken, checkout.payment.id);

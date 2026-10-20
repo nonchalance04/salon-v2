@@ -78,7 +78,6 @@ export function SalesSummary() {
   }
   return <section className="reports sales-summary" aria-busy={busy}>
     <div className="appointment-report-heading"><div><h2>Sales Summary</h2><p>Review money collected by day, payment method, and payment type.</p></div>
-      <Button variant="outline" disabled={busy} onClick={() => applied ? setRevision(n => n + 1) : setSalonRetry(n => n + 1)}>Refresh</Button>
     </div>
     <form className="appointment-report-filters sales-summary-filters" onSubmit={submit}>
       <label>From<Input type="date" required value={draft.from} disabled={busy} onChange={e => setDraft({ ...draft, from: e.target.value })} /></label>
@@ -89,7 +88,7 @@ export function SalesSummary() {
     </form>
     <p className="sales-summary-note">Choose up to 366 days. Collections use payment collection date; returns use recorded return date. {timeZone && `Salon time · ${timeZone}.`}</p>
     {pendingFilters && <p role="status" className="sales-summary-note">Filters changed. Select Apply filters to update results.</p>}
-    {error && <p role="alert" className="error">{error}</p>}
+    {error && <p role="alert" className="error">{error} <Button variant="outline" disabled={busy} onClick={() => applied ? setRevision(n => n + 1) : setSalonRetry(n => n + 1)}>Retry</Button></p>}
     {busy && <p role="status">Loading sales summary…</p>}
     {report && applied && <>
       <div className="appointment-report-list-heading"><h3>Daily collections</h3><span>{day(report.from)} – {day(report.to)} · {methods[applied.method] ?? "All methods"} · {types[applied.type] ?? "All types"}</span></div>

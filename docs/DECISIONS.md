@@ -681,3 +681,14 @@ apply to customers who supplied both contacts.
 ## Independent staff usernames — 2026-10-19
 
 Store independent canonical usernames on User rather than deriving login identity from email. Preserve existing login names during backfill and stop on ambiguous legacy names. Keep email for recovery. Require explicit usernames for seed/bootstrap and account creation; allow Admin editing through Accounts.
+
+## Simple transaction numbers — 2026-10-20
+
+Use PostgreSQL sequences and unique indexes for new receipt numbers (`R-100001`)
+and system payment references (`P-100001`). Numbers grow without truncation or
+annual reset; rollbacks can leave gaps. Payment references are separate from
+external references and idempotency keys, preserving provider verification and
+retry behavior. Do not renumber historical receipts or rewrite their snapshots.
+Old payments retain null system references and existing receipts display their
+original external reference. New snapshots include the system payment reference;
+PayMongo receipts also retain their provider reference.

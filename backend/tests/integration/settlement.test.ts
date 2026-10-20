@@ -87,12 +87,37 @@ async function recorded(outcome: "PERFORMED" | "NOT_PERFORMED" = "PERFORMED") {
 function pay(row: { bookingCode: string; revision: string; amountDue: string }) { return { bookingCode: row.bookingCode, revision: row.revision, idempotencyKey: randomUUID(), amount: row.amountDue, currency: "PHP" as const, method: "CASH" as const, externalReference: randomUUID() }; }
 async function fee(appointmentId: string, amount = "100.00", extra = {}) { return prisma.payment.create({ data: { appointmentId, type: "APPOINTMENT_FEE", status: "SUCCEEDED", satisfiesObligation: true, amount, method: "CASH", provider: "manual", idempotencyKey: randomUUID(), externalReference: randomUUID(), paidAt: new Date(), ...extra } }); }
 
+test("database numbering is unique under concurrency and preserves historical receipts", async () => {
+  const f = await fixture();
+  const original = await fee(f.booking.id);
+  const legacy = await prisma.receipt.create({ data: { paymentId: original.id,
+    receiptNumber: `R-${randomUUID()}`, receiptSnapshot: { externalReference: original.externalReference, legacy: true } } });
+  const fixtures = await Promise.all(Array.from({ length: 12 }, () => fixture()));
+  const issued = await Promise.all(fixtures.map(visit => prisma.payment.create({ data: {
+    appointmentId: visit.booking.id, type: "SERVICE_PAYMENT", status: "SUCCEEDED", amount: "120.00",
+    method: "CASH", provider: "manual", idempotencyKey: randomUUID(), paidAt: new Date(),
+    receipt: { create: { receiptSnapshot: { test: true } } },
+  }, include: { receipt: true } })));
+  const references = issued.map(p => p.paymentReference!);
+  const numbers = issued.map(p => p.receipt!.receiptNumber);
+  assert.equal(new Set(references).size, issued.length);
+  assert.equal(new Set(numbers).size, issued.length);
+  references.forEach(reference => assert.match(reference, /^P-[1-9]\d{5,}$/));
+  numbers.forEach(number => assert.match(number, /^R-[1-9]\d{5,}$/));
+  await assert.rejects(prisma.payment.update({ where: { id: issued[1]!.id }, data: { paymentReference: references[0] } }), { code: "P2002" });
+  await assert.rejects(prisma.receipt.update({ where: { id: issued[1]!.receipt!.id }, data: { receiptNumber: numbers[0] } }), { code: "P2002" });
+  assert.deepEqual(await prisma.receipt.findUniqueOrThrow({ where: { id: legacy.id } }), legacy);
+});
+
 test("settlement retries atomically create one payment, receipt, commissions and completion", async () => {
   const f = await recorded(); await fee(f.booking.id); const input = pay(f.saved);
   const results = await Promise.all([settlement.settle(cashierId, input), settlement.settle(cashierId, input)]);
   assert.equal(results[0].status, "COMPLETED"); assert.equal(results[1].status, "COMPLETED");
   const payment = await prisma.payment.findFirstOrThrow({ where: { appointmentId: f.booking.id, type: "SERVICE_PAYMENT" }, include: { receipt: true } });
   assert.equal(payment.amount.toFixed(2), "120.00"); assert.ok(payment.receipt);
+  assert.match(payment.paymentReference!, /^P-[1-9]\d{5,}$/);
+  assert.match(payment.receipt.receiptNumber, /^R-[1-9]\d{5,}$/);
+  assert.equal((payment.receipt.receiptSnapshot as { paymentReference: string }).paymentReference, payment.paymentReference);
   const commissions = await prisma.commissionRecord.findMany({ where: { appointmentId: f.booking.id } });
   assert.equal(commissions.length, 1); assert.equal(commissions[0]!.commissionAmount.toFixed(2), "88.00");
   assert.equal(await prisma.payment.count({ where: { appointmentId: f.booking.id, type: "SERVICE_PAYMENT" } }), 1);
@@ -125,6 +150,9 @@ test("service settlement generates receipt references automatically for all meth
     await Promise.all([settlement.settle(cashierId, input), settlement.settle(cashierId, input)]);
     const saved = await prisma.payment.findFirstOrThrow({ where: { appointmentId: f.booking.id, type: "SERVICE_PAYMENT" }, include: { receipt: true } });
     assert.match(saved.externalReference!, /^SALON-SERVICE-[a-f0-9-]{36}$/);
+    assert.match(saved.paymentReference!, /^P-[1-9]\d{5,}$/);
+    assert.match(saved.receipt!.receiptNumber, /^R-[1-9]\d{5,}$/);
+    assert.equal((saved.receipt!.receiptSnapshot as { paymentReference: string }).paymentReference, saved.paymentReference);
     assert.equal((saved.receipt!.receiptSnapshot as { externalReference: string }).externalReference, saved.externalReference);
     references.add(saved.externalReference!);
     assert.equal(await prisma.payment.count({ where: { appointmentId: f.booking.id, type: "SERVICE_PAYMENT" } }), 1);

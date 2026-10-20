@@ -1,5 +1,5 @@
 import { notificationRecipients } from "../notifications/notification-recipients.js";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { Prisma } from "../../../generated/prisma/client.js";
 import { ApiError } from "../../shared/http.js";
 import { freshTime, lockStaff } from "../scheduling/coordination.js";
@@ -52,7 +52,7 @@ async function view(tx, row, admin) {
         amountDue: row.appointmentServices.filter(s => s.outcome === "PERFORMED").reduce((n, s) => n.plus(s.actualChargedAmount ?? 0), new Prisma.Decimal(0)).toFixed(2),
         services: row.appointmentServices.map(s => ({ id: s.id, name: s.serviceNameSnapshot, staff: `${s.staff?.firstName ?? s.staffFirstNameSnapshot} ${s.staff?.lastName ?? s.staffLastNameSnapshot}`.trim() || "Former staff", outcome: s.outcome,
             price: s.priceSnapshot.toFixed(2), actualChargedAmount: s.actualChargedAmount?.toFixed(2) ?? null })),
-        payments: row.payments.map(p => ({ id: p.id, type: p.type, status: p.status, amount: p.amount.toFixed(2), receipt: p.receipt ? { receiptNumber: p.receipt.receiptNumber, receiptSnapshot: p.receipt.receiptSnapshot } : null })),
+        payments: row.payments.map(p => ({ id: p.id, paymentReference: p.paymentReference, type: p.type, status: p.status, amount: p.amount.toFixed(2), receipt: p.receipt ? { receiptNumber: p.receipt.receiptNumber, receiptSnapshot: p.receipt.receiptSnapshot } : null })),
         ...(admin ? { commissions: row.commissionRecords.map(c => ({ appointmentServiceId: c.appointmentServiceId, staffId: c.staffId,
                 serviceAmount: c.serviceAmount.toFixed(2), allocatedAppointmentFee: c.allocatedAppointmentFee.toFixed(2), commissionBase: c.commissionBase.toFixed(2), commissionRate: c.commissionRate.toFixed(4), commissionAmount: c.commissionAmount.toFixed(2) })) } : {}) };
 }
@@ -112,9 +112,9 @@ export function createSettlementService(prisma) {
                 const payment = await tx.payment.create({ data: { appointmentId: row.id, type: "SERVICE_PAYMENT", method: input.method, provider: "manual", status: "SUCCEEDED", amount,
                         currency: "PHP", idempotencyKey: key, externalReference: reference, satisfiesObligation: true, recordedByUserId: actor.id, paidAt: now } });
                 const salon = await tx.salonProfile.findFirst();
-                await tx.receipt.create({ data: { paymentId: payment.id, receiptNumber: `R-${randomUUID()}`, issuedByUserId: actor.id,
+                await tx.receipt.create({ data: { paymentId: payment.id, issuedByUserId: actor.id,
                         receiptSnapshot: { schemaVersion: 1, bookingCode: row.bookingCode, paymentId: payment.id, type: "SERVICE_PAYMENT", amount: amount.toFixed(2), currency: "PHP", method: input.method,
-                            externalReference: reference, paidAt: now.toISOString(), customerName: `${row.customer.firstName} ${row.customer.lastName}`,
+                            paymentReference: payment.paymentReference, externalReference: reference, paidAt: now.toISOString(), customerName: `${row.customer.firstName} ${row.customer.lastName}`,
                             salon: salon ? { name: salon.name, address: salon.address, phone: salon.phone } : null,
                             services: performed.map(s => ({ name: s.serviceNameSnapshot, amount: s.actualChargedAmount.toFixed(2) })) } } });
                 await tx.commissionRecord.createMany({ data: commissions.map(c => ({ ...c, appointmentId: row.id, sourcePaymentId: payment.id, finalizedByUserId: actor.id, finalizedAt: now })) });

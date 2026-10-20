@@ -1,17 +1,17 @@
 # Admin workspace
 
-The Admin dashboard links to live appointment and payment workflows.
+The Admin workspace keeps appointment management, service outcomes, and payment processing in their dedicated screens.
 
 - The simplified dashboard contains today's appointment totals, financial summaries, and a three-row preview of today's appointments ordered by scheduled time. It uses the salon's configured calendar date and includes all stored statuses in the total; confirmed, completed, cancelled and no-show counts are shown separately.
-- The preview shows customer, booking code, services/stylists, booking status and arrival information. Confirmed rows open service review; other rows open the matching appointment list. **View all** opens appointments filtered to today.
+- The preview shows customer, booking code, services/stylists, booking status and arrival information. Every row opens the matching appointment list. **View all** opens appointments filtered to today.
 - The unsettled badge counts `CONFIRMED` bookings whose scheduled start has passed across all dates. It opens the existing unsettled filter without restricting dates. Settlement still validates outcomes and eligibility.
 - Financial cards show total collections, appointment-fee/service-payment capture breakdowns, net collections after recorded adjustments, and finalized commissions separately. Collections use capture time and commissions use finalization time. Carried credits do not create new collections.
-- Refresh reloads all dashboard data; it also refreshes every 30 seconds while visible and on window focus. Failed refreshes retain the last successful snapshot with an explicit error.
+- The dashboard refreshes every 30 seconds while visible and on window focus. Failed refreshes retain the last successful snapshot with an explicit error and Retry control. Admin screens omit manual Refresh buttons.
 - Payment reconciliation, pending-fee cards, quick-action panels and schedule-change panels are not displayed on the dashboard. The existing sidebar is unchanged.
 
-The simplified Appointments tab opens on today’s salon-local date when opened without filters. Its main controls are customer/booking-code search, a single date, status and Clear. Search applies after a short typing pause; date and status changes apply immediately. Clearing filters restores all dates and statuses. Existing date-range, stylist and attention filters from dashboard/configuration links remain supported and visibly identified. Filtering runs on the server before cursor pagination; Previous and Next browse 50-record pages without inventing a total count. Refresh reloads the current page.
+The simplified Appointments tab opens on today’s salon-local date when opened without filters. Its main controls are customer/booking-code search, a single date, status and Clear. Search applies after a short typing pause; date and status changes apply immediately. Clearing filters restores all dates and statuses. Existing date-range, stylist and attention filters from dashboard/configuration links remain supported and visibly identified. Filtering runs on the server before cursor pagination; Previous and Next browse 50-record pages without inventing a total count.
 
-The compact table shows time (and date for multi-date lists), customer/booking code, services/stylists, booking status, arrival status and View details. The details dialog preserves customer check-in, eligible no-show marking/correction, and service settlement/receipt links. The waiting queue is no longer duplicated above the appointment list.
+The compact table shows time (and date for multi-date lists), customer/booking code, services/stylists, booking status, arrival status and View details. The details dialog preserves customer check-in and eligible no-show marking/correction. Settlement and receipt shortcuts are removed; use Payments for collection and receipts. The waiting queue is no longer duplicated above the appointment list.
 
 Appointment-fee payments are registered automatically after the backend verifies a successful PayMongo payment. The same transaction records the capture, issues the receipt, and confirms the booking if its hold and reservations remain valid. Repeated callbacks do not duplicate these records. Late or additional captures are recorded and flagged for reconciliation without restoring expired bookings. Admin has no manual Appointment fees screen or recording button; payment history, receipts, and reconciliation remain visible in Reports. Old Admin payment-screen links redirect to Appointments, retaining the booking code as a search filter. Cashier service-payment collection is unchanged.
 
@@ -19,18 +19,19 @@ Configuration conflicts continue to be rejected by the existing reservation prot
 
 Rescheduling retains the existing customer private-link workflow and original policy checks. This UI update does not add an Admin override or expose private guest credentials.
 
-## Service outcomes & payment
+## Service outcomes
 
-The Admin combined workspace uses a two-column layout: a searchable, paginated
+Open **Appointments → Service outcomes** to record or correct service outcomes.
+The Admin service workspace uses a two-column layout: a searchable, paginated
 **Awaiting settlement** list on the left and the selected booking, service outcomes,
 and payment summary on the right. The list includes confirmed, unfinalized bookings
-across all dates and shows their recorded arrival status. Refresh reloads the list
-and selected booking; outcome saves and finalization refresh the list as well.
-Unsaved outcomes, cash tendered and no-show corrections are protected when switching
-bookings or refreshing. Cashier and separate Payments workflows keep their existing layouts.
+across all dates and shows their recorded arrival status. Outcome saves and
+finalization refresh the list.
+Unsaved outcomes and no-show corrections are protected when switching
+bookings. Cashier and separate Payments workflows keep their existing layouts.
 
 Select a booking to record Performed or Not performed for each service, then save.
-Collection is available only after all outcomes are saved. The summary shows the
+Collection is available in **Payments** only, after all outcomes are saved. The summary shows the
 verified appointment fee separately: it is not deducted from the full service
 charge. Cash collection requires sufficient cash and shows exact change; existing
 payment verification, finalization confirmation, revision checks and idempotency

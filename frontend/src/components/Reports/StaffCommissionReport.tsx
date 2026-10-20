@@ -74,7 +74,6 @@ export function StaffCommissionReport() {
   }
   return <section className="reports commission-report" aria-busy={busy}>
     <div className="appointment-report-heading"><div><h2>Staff Commission Report</h2><p>Review finalized commissions by staff member.</p></div>
-      <Button variant="outline" disabled={busy} onClick={() => applied ? setRevision(n => n + 1) : setSalonRetry(n => n + 1)}>Refresh</Button>
     </div>
     <form className="appointment-report-filters sales-summary-filters" onSubmit={submit}>
       <label>From<Input type="date" required value={draft.from} disabled={busy} onChange={e => setDraft({ ...draft, from: e.target.value })} /></label>
@@ -84,7 +83,7 @@ export function StaffCommissionReport() {
     </form>
     <p className="sales-summary-note">Choose up to 366 days, based on commission finalization date. {timeZone && `Salon time · ${timeZone}.`} Finalized commissions do not indicate payment to staff.</p>
     {pendingFilters && <p role="status" className="sales-summary-note">Filters changed. Select Apply filters to update results.</p>}
-    {error && <p role="alert" className="error">{error}</p>}
+    {error && <p role="alert" className="error">{error} <Button variant="outline" disabled={busy} onClick={() => applied ? setRevision(n => n + 1) : setSalonRetry(n => n + 1)}>Retry</Button></p>}
     {busy && <p role="status">Loading commission report…</p>}
     {report && applied && <>
       <div className="appointment-report-list-heading"><h3>Finalized commissions</h3><span>{day(report.from)} – {day(report.to)} · {staffOptions.find(staff => staff.staffId === applied.staffId)?.name ?? "All staff"}</span></div>

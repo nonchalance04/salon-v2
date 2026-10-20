@@ -237,8 +237,8 @@ const overviewCards: Card[] = [
     page: "appointments",
   },
   {
-    title: "Outcomes & commissions",
-    description: "Settle services and review staff commissions",
+    title: "Service outcomes",
+    description: "Record service outcomes and close visits with no performed services",
     icon: "check",
     page: "settlement",
   },
@@ -269,8 +269,8 @@ const headings: Partial<Record<Page, [string, string]>> = {
   "report-detail": ["Reports", "Historical records and salon activity"],
   appointments: ["Appointments", "Review and manage salon bookings"],
   settlement: [
-    "Service payments",
-    "Service outcomes, settlement, and receipts",
+    "Service outcomes",
+    "Record outcomes and close visits with no performed services",
   ],
 };
 export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
@@ -640,7 +640,6 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
               {page === "dashboard" && admin ? (
                 <AdminDashboard
                   onAppointments={openAppointments}
-                  onSettlement={(code) => navigate("settlement", code)}
                 />
               ) : !admin || page === "payments" ? (
                 <CashierDashboard
@@ -689,12 +688,12 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
                 <AdminAppointments
                   key={JSON.stringify(appointmentFilters)}
                   initialFilters={appointmentFilters}
-                  onSettlement={(code) => navigate("settlement", code)}
                 />
               ) : page === "settlement" ? (
                 <SettlementWorkspace
                   key={bookingCode ?? "settlement"}
                   admin={admin}
+                  mode="services"
                   initialCode={bookingCode}
                   onNavigationStateChange={setCashierNavigation}
                   onBack={
