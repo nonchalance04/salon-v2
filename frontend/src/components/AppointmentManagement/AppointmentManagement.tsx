@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/NativeSelect";
-import { ArrowUp, CalendarDays, Plus, Scissors, Trash2 } from "lucide-react";
+import { ArrowRight, ArrowUp, CalendarDays, Check, Clock3, LoaderCircle, Plus, Scissors, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../lib/api";
 import type { Appointment } from "../../types/booking";
@@ -34,11 +34,13 @@ export function AppointmentManagement({
   token,
   onChange,
   onBusyChange,
+  onRescheduled,
 }: {
   appointment: Appointment;
   token: string;
   onChange: (appointment: Appointment, token?: string) => void;
   onBusyChange?: (busy: boolean) => void;
+  onRescheduled?: (appointment: Appointment) => void;
 }) {
   const recovery = appointment.status === "NO_SHOW";
   const [editing, setEditing] = useState(false);
@@ -82,6 +84,12 @@ export function AppointmentManagement({
       timeZone: appointment.timeZone,
       dateStyle: "medium",
       timeStyle: "short",
+    }).format(new Date(value));
+  const time = (value: string) =>
+    new Intl.DateTimeFormat(undefined, {
+      timeZone: appointment.timeZone,
+      hour: "numeric",
+      minute: "2-digit",
     }).format(new Date(value));
   function invalidate() {
     generation.current++;
@@ -167,6 +175,7 @@ export function AppointmentManagement({
       setEditing(false);
       invalidate();
       onChange(result.appointment, result.guestToken);
+      onRescheduled?.(result.appointment);
     } catch (err) {
       setError(message(err));
       invalidate();
@@ -238,6 +247,7 @@ export function AppointmentManagement({
       </fieldset>}
       {editing && <form className="appointment-manager-form" onSubmit={event => { event.preventDefault(); void search(); }}>
         <fieldset disabled={busy} className="appointment-manager-fields">
+          <section className="appointment-manager-panel" aria-label="Services and professionals">
           <div className="appointment-manager-step"><span>01</span><div><h3>{recovery ? "Plan your replacement visit" : "Services & professionals"}</h3><p>{recovery ? "Your original policy applies. Eligible unused appointment-fee credit is carried automatically; otherwise payment is required." : "Retained services keep their booked prices and durations. Added services use current values."}</p></div></div>
           <div className="appointment-manager-services">
             {rows.map((row, index) => <div className="appointment-manager-service" key={row.key}>
@@ -257,24 +267,39 @@ export function AppointmentManagement({
               </div>
             </div>)}
           </div>
-          <Button variant="outline" type="button" className="appointment-manager-add" disabled={!services.length || rows.length >= 20} onClick={() => { invalidate(); setRows(items => [...items, { key: key.current++, serviceId: services[0]!.id, staffId: "", label: services[0]!.name }]); }}><Plus size={16} />Add service</Button>
-          <div className="appointment-manager-step"><span>02</span><div><h3>Date & available times</h3><p>All times follow {appointment.timeZone}. Availability is checked again when you confirm.</p></div></div>
+          <Button variant="outline" type="button" className="appointment-manager-add" disabled={!services.length || rows.length >= 20} onClick={() => { invalidate(); setRows(items => [...items, { key: key.current++, serviceId: services[0]!.id, staffId: "", label: services[0]!.name }]); }}><Plus size={16} />Add another service</Button>
+          </section>
+          <section className="appointment-manager-panel" aria-label="Date and time">
+          <div className="appointment-manager-step"><span>02</span><div><h3>Find your new time</h3><p>All times follow {appointment.timeZone}. Availability is checked again when you confirm.</p></div></div>
           <div className="appointment-manager-date-row">
             <label>New visit date<Input type="date" value={date} required onChange={event => { invalidate(); setDate(event.target.value); }} /></label>
-            <Button className="appointment-manager-primary" disabled={!rows.length}>Find available times</Button>
+            <Button className="appointment-manager-primary" disabled={!rows.length}><CalendarDays size={16} aria-hidden="true" />Find available times</Button>
           </div>
+          {slots === null && <div className="appointment-manager-time-placeholder"><Clock3 size={20} aria-hidden="true" /><p>Choose a date and search to see available times.</p></div>}
           {slots && (slots.length ? <div className="appointment-manager-time">
-            <label>Available start<NativeSelect value={startAt} onChange={event => setStartAt(event.target.value)}><NativeSelectOption value="">Choose a time</NativeSelectOption>{slots.map(slot => <NativeSelectOption key={slot.startAt} value={slot.startAt}>{format(slot.startAt)}</NativeSelectOption>)}</NativeSelect></label>
-            {selectedSlot && <div className="appointment-manager-preview"><span>YOUR UPDATED VISIT</span><strong>{format(selectedSlot.startAt)}</strong><ol>{selectedSlot.services.map((service, index) => <li key={index}>{service.serviceName}<span>with {service.staffName}</span></li>)}</ol></div>}
-          </div> : <p role="status" className="appointment-manager-notice">No available times. Try another date or professional.</p>)}
-          <label className="appointment-manager-reason">Reason <span>(optional)</span><Textarea maxLength={1000} rows={3} value={reason} onChange={event => setReason(event.target.value)} /></label>
+            <fieldset className="appointment-manager-slot-picker">
+              <legend>Choose a start time <span>{slots.length} available</span></legend>
+              <div className="appointment-manager-slot-grid">
+                {slots.map(slot => <label className={`appointment-manager-slot${startAt === slot.startAt ? " is-selected" : ""}`} key={slot.startAt}>
+                  <input type="radio" name="reschedule-start" value={slot.startAt} checked={startAt === slot.startAt} onChange={() => setStartAt(slot.startAt)} />
+                  <span>{time(slot.startAt)}</span><Check size={14} aria-hidden="true" />
+                </label>)}
+              </div>
+            </fieldset>
+            {selectedSlot && <div className="appointment-manager-preview" aria-live="polite"><span><Check size={14} aria-hidden="true" /> YOUR UPDATED VISIT</span><strong>{format(selectedSlot.startAt)}</strong><p>Ends at {time(selectedSlot.endAt)} · {appointment.timeZone}</p><ol>{selectedSlot.services.map((service, index) => <li key={index}><Scissors size={15} aria-hidden="true" /><div>{service.serviceName}<span>with {service.staffName}</span></div></li>)}</ol></div>}
+          </div> : <div role="status" className="appointment-manager-empty"><CalendarDays size={22} aria-hidden="true" /><strong>No times available on this date</strong><p>Try another date or choose a different professional.</p></div>)}
+          </section>
+          <section className="appointment-manager-panel appointment-manager-note-panel" aria-label="Additional details">
+            <label className="appointment-manager-reason"><span>Reason for your change <small>Optional</small></span><Textarea maxLength={1000} rows={2} placeholder="Anything you’d like the salon to know?" value={reason} onChange={event => setReason(event.target.value)} /></label>
+          </section>
           <div className="appointment-manager-actions">
+            <div className="appointment-manager-save-hint">{selectedSlot ? "Ready when you are. Review your new visit above." : "Select an available time to continue."}</div>
             <Button variant="outline" type="button" onClick={() => { setEditing(false); invalidate(); }}>Back</Button>
-            {selectedSlot && <Button type="button" className="appointment-manager-primary" onClick={() => void save()}>{recovery ? "Create replacement booking" : "Confirm appointment changes"}</Button>}
+            <Button type="button" className="appointment-manager-primary" disabled={!selectedSlot} onClick={() => void save()}>{recovery ? "Create replacement booking" : "Confirm changes"}<ArrowRight size={16} aria-hidden="true" /></Button>
           </div>
         </fieldset>
       </form>}
-      {busy && <p role="status" className="appointment-manager-help">Working…</p>}
+      {busy && <p role="status" className="appointment-manager-help appointment-manager-loading"><LoaderCircle size={16} aria-hidden="true" />Updating your booking options…</p>}
       {error && <p role="alert" className="appointment-manager-error">{error}</p>}
     </section>
   );

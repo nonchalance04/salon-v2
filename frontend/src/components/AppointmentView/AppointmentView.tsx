@@ -1,5 +1,5 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/Dialog";
-import { CalendarDays, X } from "lucide-react";
+import { CalendarDays, Check, X } from "lucide-react";
 import "./AppointmentView.css";
 import { Button } from "@/components/ui/Button";
 import { Link } from "react-router";
@@ -30,9 +30,13 @@ export function AppointmentView({
   const [remaining, setRemaining] = useState(0);
   const [managing, setManaging] = useState(false);
   const [managementBusy, setManagementBusy] = useState(false);
+  const [rescheduled, setRescheduled] = useState<Appointment | null>(null);
   const manageTrigger = useRef<HTMLElement | null>(null);
-  const managementEntry = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (appointment.status !== "CONFIRMED") setManaging(false);
+  }, [appointment.status]);
   function openManagement() {
+    if (appointment.status !== "CONFIRMED") return;
     manageTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setManaging(true);
   }
@@ -128,7 +132,7 @@ export function AppointmentView({
       <DialogContent className="appointment-management-dialog" showCloseButton={false}
         onInteractOutside={event => event.preventDefault()}
         onEscapeKeyDown={event => { if (managementBusy) event.preventDefault(); }}
-        onCloseAutoFocus={event => { event.preventDefault(); (manageTrigger.current?.isConnected ? manageTrigger.current : managementEntry.current)?.focus(); }}>
+        onCloseAutoFocus={event => { event.preventDefault(); if (!rescheduled && manageTrigger.current?.isConnected) manageTrigger.current.focus(); }}>
         <DialogHeader className="appointment-management-header">
           <span className="appointment-management-icon" aria-hidden="true"><CalendarDays size={23} /></span>
           <div>
@@ -145,6 +149,7 @@ export function AppointmentView({
           </div>
           {managing && <AppointmentManagement key={appointment.bookingCode} appointment={appointment} token={token}
             onBusyChange={setManagementBusy}
+            onRescheduled={setRescheduled}
             onChange={(updated, newToken) => {
               clock.current = { received: performance.now(), server: Date.parse(updated.serverTime) };
               setAppointment(updated);
@@ -155,10 +160,33 @@ export function AppointmentView({
       </DialogContent>
     </Dialog>
   );
+  const rescheduleConfirmation = (
+    <Dialog open={Boolean(rescheduled)} onOpenChange={open => { if (!open) setRescheduled(null); }}>
+      <DialogContent className="appointment-change-success"
+        onCloseAutoFocus={event => {
+          event.preventDefault();
+          if (manageTrigger.current?.isConnected) manageTrigger.current.focus();
+        }}>
+        <DialogHeader>
+          <span className="appointment-change-success-icon" aria-hidden="true"><Check size={28} /></span>
+          <DialogTitle>Your appointment has been updated</DialogTitle>
+          <DialogDescription>Your changes are saved. We look forward to seeing you at your updated visit.</DialogDescription>
+        </DialogHeader>
+        {rescheduled && <div className="appointment-change-success-visit">
+          <span>YOUR UPDATED APPOINTMENT</span>
+          <strong>{date(rescheduled.startAt)}</strong>
+          <p>{time(rescheduled.startAt)} – {time(rescheduled.endAt)}</p>
+          <small>{rescheduled.timeZone} · {rescheduled.bookingCode}</small>
+        </div>}
+        <Button type="button" onClick={() => setRescheduled(null)}>Got it</Button>
+      </DialogContent>
+    </Dialog>
+  );
   if (appointment.status === "CONFIRMED")
     return <>
       <BookingConfirmation key={appointment.bookingCode} appointment={appointment} salon={salon} token={token} onManage={openManagement} />
       {managementDialog}
+      {rescheduleConfirmation}
     </>;
   return (
     <>
@@ -228,11 +256,6 @@ export function AppointmentView({
               Service charges are separate from the appointment fee.
             </p>
           </section>
-          <div className="reservation-card reservation-management">
-            <h3>Manage your appointment</h3>
-            <p>Review available changes and the policy for this booking.</p>
-            <Button ref={managementEntry} variant="outline" type="button" onClick={openManagement}>Manage appointment</Button>
-          </div>
         </div>
         <aside
           className="reservation-sidebar"
@@ -294,7 +317,7 @@ export function AppointmentView({
         </p>
       )}
     </section>
-    {managementDialog}
+    {rescheduleConfirmation}
     </>
   );
 }
