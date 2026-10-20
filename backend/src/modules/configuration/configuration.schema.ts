@@ -197,8 +197,10 @@ const imageUrl = z
   .url()
   .max(2048)
   .refine((value) => {
-    const url = new URL(value);
-    return url.protocol === "https:" && !url.username && !url.password;
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" && !url.username && !url.password;
+    } catch { return false; }
   }, "Use an HTTPS image URL without credentials.");
 export const staffPublicProfileSchema = z
   .object({
@@ -211,7 +213,7 @@ export const staffPublicProfileSchema = z
         z
           .object({
             title: z.string().trim().min(1).max(100),
-            imageUrl,
+            imageUrl: z.union([imageUrl, z.string().regex(/^\/api\/media\/staff-portfolio\/[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}\.(jpg|png|webp)$/)]),
             caption: z.string().trim().max(300),
           })
           .strict(),

@@ -6,7 +6,7 @@ import type { CatalogService } from "../../types/salon";
 
 export type BookingStaff = { id: string; firstName: string; lastName: string; serviceIds: string[]; publicProfile?: StaffPublicProfile | null; statistics?: { appointmentsCompleted: number; clientsServed: number } };
 type Selection = { key: number; serviceId: string; staffId: string };
-const tabs = ["Profile", "Portfolio", "Reviews"] as const;
+const tabs = ["Profile", "Portfolio"] as const;
 
 function Portrait({ person, large = false }: { person: BookingStaff; large?: boolean }) {
   const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
@@ -39,7 +39,6 @@ function Profile({ person, services, trigger, onClose, onSelect }: { person: Boo
       <div id="professional-tab-panel" className="professional-tab-panel" role="tabpanel" aria-labelledby={`profile-tab-${tab}`} tabIndex={0}>
         {tab === "Profile" && <><p className="profile-bio">{profile?.bio || "Meet your salon professional. Choose from their bookable services below."}</p><dl className="professional-facts"><div><dt>Appointments completed</dt><dd>{person.statistics?.appointmentsCompleted ?? 0}</dd></div><div><dt>Clients served</dt><dd>{person.statistics?.clientsServed ?? 0}</dd></div><div><dt>Languages</dt><dd>{profile?.languages.length ? profile.languages.join(", ") : "Not listed"}</dd></div></dl><h3>Bookable services</h3><div className="professional-specialties">{qualified.map(service => <span key={service.id}>{service.name}</span>)}</div></>}
         {tab === "Portfolio" && <><h3>A little inspiration</h3>{profile?.portfolio.length ? <div className="professional-portfolio">{profile.portfolio.map((item, i) => <article key={i}><PortfolioImage url={item.imageUrl} title={item.title} /><h4>{item.title}</h4>{item.caption && <p>{item.caption}</p>}</article>)}</div> : <p className="muted">Portfolio photos haven’t been added yet.</p>}</>}
-        {tab === "Reviews" && <><h3>Kind words</h3>{profile?.reviews.length ? <><p className="muted">Client testimonials shared by the salon.</p>{profile.reviews.map((review, i) => <div className="professional-review" key={i}><span aria-label={`${review.rating} out of 5 stars`}>{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</span><blockquote>“{review.text}”</blockquote><p>{review.author}</p></div>)}</> : <p className="muted">No client testimonials have been published yet.</p>}</>}
 
       </div>
 

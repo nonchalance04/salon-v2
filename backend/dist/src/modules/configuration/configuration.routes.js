@@ -1,17 +1,27 @@
-import { Router } from "express";
+import { Router, raw } from "express";
 import { z } from "zod";
 import { validateRequest } from "../../shared/http.js";
 import { createAuthMiddleware } from "../auth/auth.middleware.js";
 import { browserSecurity } from "../auth/auth.security.js";
 import { createConfigurationService } from "./configuration.service.js";
+import { createPortfolioImagesService, MAX_PORTFOLIO_IMAGE_BYTES } from "./portfolio-images.service.js";
 import { staffSkillsSchema, staffPublicProfileSchema, profileSchema, serviceSchema, staffSchema, staffUpdateSchema, qualificationSchema, hoursSchema, dayHoursSchema, days, scheduleSchema, closureRequestSchema, unavailabilitySchema, policySchema, recordId } from "./configuration.schema.js";
 export function createConfigurationRouter(prisma, config) {
     const router = Router();
     const service = createConfigurationService(prisma, config.SALON_TIMEZONE);
+    const images = createPortfolioImagesService(prisma, config.STAFF_PORTFOLIO_UPLOAD_DIR);
     const { authenticate, adminOnly } = createAuthMiddleware(prisma, config);
     router.get("/salon", async (_req, res) => res.json(await service.publicSalon()));
     router.get("/services", async (_req, res) => res.json({ services: await service.publicServices() }));
+    router.get("/media/staff-portfolio/:name", async (req, res) => {
+        const image = await images.read(req.params.name);
+        res.set({ "Content-Type": image.contentType, "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": "default-src 'none'; sandbox", "Cache-Control": "public, max-age=31536000, immutable" }).send(image.body);
+    });
     router.use("/configuration", browserSecurity(config.TRUSTED_ORIGINS), authenticate, adminOnly);
+    router.post("/configuration/staff/:id/portfolio-images", raw({ type: ["image/jpeg", "image/png", "image/webp"], limit: MAX_PORTFOLIO_IMAGE_BYTES, inflate: false }), validateRequest(z.object({ params: recordId })), async (req, res) => {
+        res.status(201).json(await images.upload(res.locals.user.id, res.locals.validated.params.id, req.body, req.get("Content-Type") ?? ""));
+    });
     router.get("/configuration", async (_req, res) => res.json(await service.snapshot()));
     router.put("/configuration/profile", validateRequest(z.object({ body: profileSchema })), async (_req, res) => {
         res.json({ record: await service.saveProfile(res.locals.user.id, res.locals.validated.body) });

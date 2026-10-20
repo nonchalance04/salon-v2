@@ -10,6 +10,18 @@ import { emptyStaffProfile, type StaffPublicProfile } from "../../utils/staff-pr
 
 import "./StaffProfileEditor.css";
 
+function PortfolioPreview({ file, imageUrl, title }: { file?: File | null; imageUrl: string; title: string }) {
+  const [preview, setPreview] = useState("");
+  useEffect(() => {
+    if (!file) { setPreview(""); return; }
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+  const source = file ? preview : imageUrl;
+  return source ? <img className="staff-portfolio-preview" src={source} alt={title || "Portfolio image preview"} referrerPolicy="no-referrer" /> : null;
+}
+
 export function StaffProfileEditor({ staffId, name, initial, busy, onBusy, onSaved, onClose, onRestoreFocus }: {
   onRestoreFocus: () => void;
   staffId: string; name: string; initial: StaffPublicProfile | null; busy: boolean;
@@ -17,6 +29,9 @@ export function StaffProfileEditor({ staffId, name, initial, busy, onBusy, onSav
 }) {
   const [profile, setProfile] = useState<StaffPublicProfile>(() => initial ?? emptyStaffProfile());
   const [languages, setLanguages] = useState(initial?.languages.join(", ") ?? "");
+  const [portfolioFiles, setPortfolioFiles] = useState<(File | null)[]>(() => (initial?.portfolio ?? []).map(() => null));
+  const [portfolioKeys, setPortfolioKeys] = useState(() => (initial?.portfolio ?? []).map((_, index) => index));
+  const nextPortfolioKey = useRef(initial?.portfolio.length ?? 0);
   const [error, setError] = useState("");
   const sending = useRef(false);
   const errorPanel = useRef<HTMLDivElement>(null);
@@ -26,7 +41,17 @@ export function StaffProfileEditor({ staffId, name, initial, busy, onBusy, onSav
     event.preventDefault(); if (sending.current) return;
     sending.current = true; onBusy(true); setError("");
     try {
-      const body = { ...profile, title: profile.title.trim(), bio: profile.bio.trim(), photoUrl: profile.photoUrl?.trim() || null,
+      const portfolio = [...profile.portfolio];
+      for (const [index, file] of portfolioFiles.entries()) {
+        if (!file || !portfolio[index]) continue;
+        const uploaded = await api<{ imageUrl: string }>(`/configuration/staff/${staffId}/portfolio-images`, {
+          method: "POST", headers: { "Content-Type": file.type }, body: file,
+        });
+        portfolio[index] = { ...portfolio[index], imageUrl: uploaded.imageUrl };
+        setProfile(current => ({ ...current, portfolio: current.portfolio.map((item, i) => i === index ? { ...item, imageUrl: uploaded.imageUrl } : item) }));
+        setPortfolioFiles(current => current.map((item, i) => i === index ? null : item));
+      }
+      const body = { ...profile, portfolio, title: profile.title.trim(), bio: profile.bio.trim(), photoUrl: profile.photoUrl?.trim() || null,
         languages: [...new Set(languages.split(",").map(value => value.trim()).filter(Boolean))] };
       const result = await api<{ record: { publicProfile: StaffPublicProfile } }>(`/configuration/staff/${staffId}/profile`, { method: "PUT", body: JSON.stringify(body) });
       onSaved(result.record.publicProfile);
@@ -48,13 +73,19 @@ export function StaffProfileEditor({ staffId, name, initial, busy, onBusy, onSav
             </div>
           </section>
           <section aria-label="Portfolio editor" className="staff-profile-section">
-            <div className="profile-section-heading"><span className="profile-section-icon"><Images size={18} aria-hidden="true" /></span><div><h3>Portfolio <span>{profile.portfolio.length}/8</span></h3><p>A selection of their work, shown to clients.</p></div><Button variant="outline" size="sm" type="button" disabled={profile.portfolio.length >= 8} onClick={() => update("portfolio", [...profile.portfolio, { title: "", imageUrl: "", caption: "" }])}><Plus size={14} aria-hidden="true" />Add portfolio item</Button></div>
+            <div className="profile-section-heading"><span className="profile-section-icon"><Images size={18} aria-hidden="true" /></span><div><h3>Portfolio <span>{profile.portfolio.length}/8</span></h3><p>A selection of their work, shown to clients.</p></div><Button variant="outline" size="sm" type="button" disabled={profile.portfolio.length >= 8} onClick={() => { update("portfolio", [...profile.portfolio, { title: "", imageUrl: "", caption: "" }]); setPortfolioFiles(current => [...current, null]); const key = nextPortfolioKey.current++; setPortfolioKeys(current => [...current, key]); }}><Plus size={14} aria-hidden="true" />Add portfolio item</Button></div>
             {!profile.portfolio.length && <div className="staff-profile-empty"><Images size={24} aria-hidden="true" /><strong>No portfolio items yet</strong><p>Add up to 8 examples to showcase their work.</p></div>}
-            {profile.portfolio.map((item, index) => <fieldset className="staff-profile-entry" key={index}><legend>Portfolio item {index + 1}</legend><div className="profile-form-grid">
+            {profile.portfolio.map((item, index) => <fieldset className="staff-profile-entry" key={portfolioKeys[index]}><legend>Portfolio item {index + 1}</legend><div className="profile-form-grid">
               <label>Title<Input required maxLength={100} value={item.title} onChange={e => update("portfolio", profile.portfolio.map((row, i) => i === index ? { ...row, title: e.target.value } : row))} placeholder="e.g. Soft balayage" /></label>
-              <label>Image URL<Input required type="url" maxLength={2048} value={item.imageUrl} onChange={e => update("portfolio", profile.portfolio.map((row, i) => i === index ? { ...row, imageUrl: e.target.value } : row))} placeholder="https://example.com/work.jpg" /></label>
+              <label>Portfolio photo<Input type="file" accept="image/jpeg,image/png,image/webp" required={!item.imageUrl && !portfolioFiles[index]} onChange={e => {
+                const file = e.target.files?.[0] ?? null;
+                if (file && (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024 || !file.size)) {
+                  setError("Choose a JPEG, PNG, or WebP image no larger than 5 MB."); e.target.value = ""; return;
+                }
+                setError(""); setPortfolioFiles(current => current.map((value, i) => i === index ? file : value));
+              }} /><small>JPEG, PNG, or WebP · Up to 5 MB. Choose a file to add or replace this photo.</small><PortfolioPreview file={portfolioFiles[index]} imageUrl={item.imageUrl} title={item.title} /></label>
               <label className="staff-profile-wide">Caption<Textarea rows={2} maxLength={300} value={item.caption} onChange={e => update("portfolio", profile.portfolio.map((row, i) => i === index ? { ...row, caption: e.target.value } : row))} placeholder="A few details about this look…" /></label></div>
-              <Button className="profile-remove" variant="ghost" size="sm" type="button" onClick={() => update("portfolio", profile.portfolio.filter((_, i) => i !== index))}>Remove portfolio item {index + 1}</Button></fieldset>)}
+              <Button className="profile-remove" variant="ghost" size="sm" type="button" onClick={() => { update("portfolio", profile.portfolio.filter((_, i) => i !== index)); setPortfolioFiles(current => current.filter((_, i) => i !== index)); setPortfolioKeys(current => current.filter((_, i) => i !== index)); }}>Remove portfolio item {index + 1}</Button></fieldset>)}
           </section>
           <section aria-label="Testimonials editor" className="staff-profile-section">
             <div className="profile-section-heading"><span className="profile-section-icon"><MessageSquareQuote size={18} aria-hidden="true" /></span><div><h3>Client testimonials <span>{profile.reviews.length}/10</span></h3><p>Share client feedback with their permission.</p></div><Button variant="outline" size="sm" type="button" disabled={profile.reviews.length >= 10} onClick={() => update("reviews", [...profile.reviews, { author: "", rating: 5, text: "" }])}><Plus size={14} aria-hidden="true" />Add testimonial</Button></div>

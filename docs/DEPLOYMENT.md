@@ -7,6 +7,16 @@ these example commands. Replace example names and verify paths on the selected h
 
 ## Build a release
 
+Staff portfolio uploads require a persistent backend-writable directory. Set
+`STAFF_PORTFOLIO_UPLOAD_DIR` to an absolute path on a persistent volume in production
+and include that directory in backups and restores alongside PostgreSQL. All
+backend instances must share this directory. The default development path is
+`uploads/staff-portfolio` relative to the backend working directory. The API serves
+photos under `/api/media/staff-portfolio/`; retain the existing `/api` reverse proxy
+for image requests, and allow request bodies of at least 5 MB for image uploads.
+Deployments that replace their filesystem on release must mount this directory
+outside the release checkout. Portfolio paths remain in staff profile JSON.
+
 Run backend checks, database regressions and frontend build first (README). Then:
 
 ```bash

@@ -41,8 +41,6 @@
 .customer-site .professional-portfolio{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:20px}
 .customer-site .portfolio-art{display:grid;place-items:center;aspect-ratio:1;border-radius:50% 50% 10px 10px;background:#e9dfcb;color:#8b7241;font-size:36px}.customer-site .portfolio-art-1{background:#e0e6dd;color:#6b7c62}.customer-site .portfolio-art-2{background:#eddfd6;color:#9b7562}
 .customer-site .professional-portfolio h4{font-size:11px;margin:10px 0 4px}.customer-site .professional-portfolio p{font-size:10px;color:#73756f;margin:0}
-.customer-site .professional-review{border:1px solid #e8e4d8;border-radius:12px;padding:16px;margin-top:12px;background:#fcfbf7}.customer-site .professional-review>span{color:#b28b16;letter-spacing:3px}
-.customer-site .professional-review blockquote{font-size:13px;margin:10px 0;line-height:1.7}.customer-site .professional-review p{font-size:10px;color:#73756f;margin:0}
 .customer-site .profile-sample-note{font-size:10px;line-height:1.7;color:#73756f;border-top:1px solid #e9e9e2;margin:24px 0 18px;padding-top:16px}
 .customer-site .profile-select{display:flex;justify-content:space-between;align-items:center;width:100%;padding:13px 18px;background:#292a28;color:white;border:0;border-radius:99px;font-size:13px}
 .customer-site .professional-empty{font-size:12px;color:#73756f;line-height:1.7;padding:12px}
@@ -52,4 +50,4 @@
 .customer-site .portfolio-photo{width:100%;aspect-ratio:1;object-fit:cover;display:block;border-radius:12px}
 .customer-site .portfolio-unavailable{font-size:11px;text-align:center;padding:12px;border-radius:12px}
 .customer-site .professional-dialog .profile-select{margin-top:24px}
-.customer-site .profile-bio,.customer-site .professional-review blockquote{white-space:pre-wrap;overflow-wrap:anywhere}
+.customer-site .profile-bio{white-space:pre-wrap;overflow-wrap:anywhere}
