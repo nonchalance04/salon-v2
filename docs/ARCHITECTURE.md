@@ -1484,3 +1484,8 @@ Neither browser JSON nor forwarding headers select a return destination.
 ## Independent staff usernames — 2026-10-19
 
 AuthService and PasswordResetService query the canonical `User.username` directly. Account schemas validate independent username/email fields; UsersService handles uniqueness conflicts. Recovery HMACs bind to the current username, email and password. The Accounts UI edits both fields. Development seeding requires SEED_ADMIN_USERNAME and SEED_CASHIER_USERNAME; production bootstrap requires BOOTSTRAP_ADMIN_USERNAME.
+
+
+### Service outcome recording lock
+
+The settlement service permits SCHEDULED services to transition to PERFORMED or NOT_PERFORMED once. Under existing reservation and appointment locks, validate the complete active service set and reject changes to recorded outcomes for both Admin and Cashier. Skip unchanged recorded rows to preserve timestamps and amounts. The shared workspace disables recorded controls and requires a confirmation modal reviewing outcomes before saving. Existing revision checks reject stale competing saves. Financial finalization timestamps remain tied to payment or no-service closure.

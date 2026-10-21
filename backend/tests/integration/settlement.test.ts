@@ -162,7 +162,7 @@ test("service settlement generates receipt references automatically for all meth
   assert.equal(references.size, 3);
 });
 
-test("outcome recording, corrections, stale review, full amount and role boundaries", async () => {
+test("outcome recording locks corrections and preserves stale review, amount and role boundaries", async () => {
   const f = await fixture(); const row = await settlement.lookup(cashierId, f.booking.bookingCode);
   const input = { bookingCode: row.bookingCode, revision: row.revision, services: row.services.map(s => ({ id: s.id, outcome: "PERFORMED" as const })) };
   await assert.rejects(settlement.settle(cashierId, pay(row)), (e: ApiError) => e.code === "OUTCOMES_REQUIRED");
@@ -171,10 +171,45 @@ test("outcome recording, corrections, stale review, full amount and role boundar
   await assert.rejects(settlement.settle(cashierId, { ...pay(saved), amount: "100.00" }), (e: ApiError) => e.code === "AMOUNT_MISMATCH");
   await assert.rejects(settlement.close(adminId, { bookingCode: saved.bookingCode, revision: saved.revision }));
   const change = { ...input, revision: saved.revision, services: input.services.map(s => ({ ...s, outcome: "NOT_PERFORMED" as const })) };
-  const corrected = await settlement.outcomes(cashierId, change);
-  await assert.rejects(settlement.settle(cashierId, pay(saved)), (e: ApiError) => e.code === "STALE_SETTLEMENT");
-  await assert.rejects(settlement.close(cashierId, { bookingCode: corrected.bookingCode, revision: corrected.revision }), (e: ApiError) => e.status === 403);
-  assert.equal((await settlement.close(adminId, { bookingCode: corrected.bookingCode, revision: corrected.revision })).status, "COMPLETED");
+  await assert.rejects(settlement.outcomes(cashierId, change), { code: "SERVICE_OUTCOME_LOCKED" });
+  await assert.rejects(settlement.settle(cashierId, pay(row)), { code: "STALE_SETTLEMENT" });
+  const other = await recorded("NOT_PERFORMED");
+  await assert.rejects(settlement.close(cashierId, { bookingCode: other.saved.bookingCode, revision: other.saved.revision }), (e: ApiError) => e.status === 403);
+  assert.equal((await settlement.close(adminId, { bookingCode: other.saved.bookingCode, revision: other.saved.revision })).status, "COMPLETED");
+});
+
+test("both roles lock both outcomes immediately and unchanged saves preserve stored history", async () => {
+  for (const recorder of [adminId, cashierId]) {
+    for (const outcome of ["PERFORMED", "NOT_PERFORMED"] as const) {
+      const f = await fixture();
+      const initial = await settlement.lookup(recorder, f.booking.bookingCode);
+      const input = { bookingCode: initial.bookingCode, revision: initial.revision, services: initial.services.map(s => ({ id: s.id, outcome })) };
+      const saved = await settlement.outcomes(recorder, input);
+      const history = await prisma.appointmentService.findMany({ where: { appointmentId: f.booking.id } });
+      for (const actor of [adminId, cashierId]) {
+        await assert.rejects(settlement.outcomes(actor, { ...input, revision: saved.revision, services: input.services.map(s => ({ ...s, outcome: outcome === "PERFORMED" ? "NOT_PERFORMED" : "PERFORMED" })) }), { code: "SERVICE_OUTCOME_LOCKED" });
+        const unchanged = await settlement.outcomes(actor, { ...input, revision: saved.revision });
+        assert.equal(unchanged.revision, saved.revision);
+      }
+      assert.deepEqual(await prisma.appointmentService.findMany({ where: { appointmentId: f.booking.id } }), history);
+      assert.equal((await settlement.lookup(recorder, saved.bookingCode)).status, "CONFIRMED");
+    }
+  }
+});
+
+test("competing Admin and Cashier saves keep the first recorded outcomes", async () => {
+  const f = await fixture();
+  const initial = await settlement.lookup(adminId, f.booking.bookingCode);
+  const results = await Promise.allSettled(([adminId, cashierId]).map((actor, index) => settlement.outcomes(actor, {
+    bookingCode: initial.bookingCode, revision: initial.revision,
+    services: initial.services.map(s => ({ id: s.id, outcome: index === 0 ? "PERFORMED" : "NOT_PERFORMED" })),
+  })));
+  const winners = results.filter(r => r.status === "fulfilled");
+  assert.equal(winners.length, 1);
+  const loser = results.find(r => r.status === "rejected");
+  assert.equal(loser?.reason.code, "STALE_SETTLEMENT");
+  const current = await settlement.lookup(adminId, initial.bookingCode);
+  assert.deepEqual(current.services, winners[0]!.value.services);
 });
 
 test("mixed outcomes exclude removed and not-performed rows; snapshots survive configuration changes", async () => {
@@ -284,7 +319,7 @@ test("persisted multi-service totals reconcile and receipt snapshots stay immuta
   assert.deepEqual((await prisma.receipt.findUniqueOrThrow({ where: { id: receipt.id } })).receiptSnapshot, receipt.receiptSnapshot);
 });
 
-test("no-service outbox failure rolls back closure and leaves outcomes editable by Admin", async () => {
+test("no-service outbox failure rolls back closure while saved outcomes remain locked by Admin", async () => {
   const f = await recorded("NOT_PERFORMED");
   await prisma.$executeRawUnsafe(`CREATE FUNCTION reject_phase8_close() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'test outbox failure'; END $$`);
   await prisma.$executeRawUnsafe(`CREATE TRIGGER reject_phase8_close BEFORE INSERT ON "NotificationQueue" FOR EACH ROW EXECUTE FUNCTION reject_phase8_close()`);
@@ -293,23 +328,25 @@ test("no-service outbox failure rolls back closure and leaves outcomes editable 
   assert.equal((await prisma.appointment.findUniqueOrThrow({ where: { id: f.booking.id } })).completionType, null);
   assert.equal((await prisma.appointmentService.findFirstOrThrow({ where: { appointmentId: f.booking.id } })).outcomeFinalizedAt, null);
   const row = await settlement.lookup(adminId, f.saved.bookingCode);
-  await settlement.outcomes(adminId, { bookingCode: row.bookingCode, revision: row.revision, services: row.services.map(s => ({ id: s.id, outcome: "PERFORMED" })) });
+  await assert.rejects(settlement.outcomes(adminId, { bookingCode: row.bookingCode, revision: row.revision, services: row.services.map(s => ({ id: s.id, outcome: "PERFORMED" })) }), { code: "SERVICE_OUTCOME_LOCKED" });
+  await settlement.close(adminId, { bookingCode: row.bookingCode, revision: row.revision });
 });
 
 
-test("Cashier records and corrects outcomes without audit writes and cannot edit finalized services", async () => {
+test("Cashier records outcomes without audit writes and neither role can change them", async () => {
   const f = await fixture();
   const initial = await settlement.lookup(cashierId, f.booking.bookingCode);
   const input = { bookingCode: initial.bookingCode, revision: initial.revision, services: initial.services.map(s => ({ id: s.id, outcome: "NOT_PERFORMED" as const })) };
   const saved = await settlement.outcomes(cashierId, input);
   assert.equal(saved.services[0]!.outcome, "NOT_PERFORMED");
-  const corrected = await settlement.outcomes(cashierId, { ...input, revision: saved.revision, services: input.services.map(s => ({ ...s, outcome: "PERFORMED" as const })) });
-  assert.equal(corrected.services[0]!.outcome, "PERFORMED");
-  assert.equal("commissions" in corrected, false);
+  for (const actor of [cashierId, adminId]) {
+    await assert.rejects(settlement.outcomes(actor, { ...input, revision: saved.revision, services: input.services.map(s => ({ ...s, outcome: "PERFORMED" as const })) }), { code: "SERVICE_OUTCOME_LOCKED" });
+  }
+  assert.equal("commissions" in saved, false);
   assert.equal(await prisma.auditLog.count({ where: { entityId: f.booking.id } }), 0);
   await assert.rejects(settlement.outcomes(cashierId, input), { code: "STALE_SETTLEMENT" });
-  await settlement.settle(cashierId, pay(corrected));
-  const completed = await settlement.lookup(cashierId, corrected.bookingCode);
+  await settlement.close(adminId, { bookingCode: saved.bookingCode, revision: saved.revision });
+  const completed = await settlement.lookup(cashierId, saved.bookingCode);
   await assert.rejects(settlement.outcomes(cashierId, { ...input, revision: completed.revision }));
 });
 

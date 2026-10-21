@@ -692,3 +692,8 @@ retry behavior. Do not renumber historical receipts or rewrite their snapshots.
 Old payments retain null system references and existing receipts display their
 original external reference. New snapshots include the system payment reference;
 PayMongo receipts also retain their provider reference.
+
+
+## 2026-10-21 — Lock service outcomes when recorded
+
+At the user's request, Admin and Cashier may record each active service outcome only once. PERFORMED and NOT_PERFORMED are immutable immediately after saving for both roles, including the original recorder. This supersedes previous pre-settlement correction permissions. The shared workspace requires a confirmation modal reviewing the booking and outcomes and explaining the permanent lock. Existing transaction locks and revision checks protect concurrent saves; unchanged recorded rows retain their amounts and timestamps. Payment and no-service closure remain separate finalization steps with existing permissions and financial rules. No migration is required.

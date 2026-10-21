@@ -26,12 +26,12 @@ visits cannot use ordinary check-in; eligible no-show corrections use the separa
 
 **Confirmed services** shows confirmed, uncompleted visits across all dates,
 including visits whose outcomes have not yet been recorded. Cashiers and Admins
-can record or correct outcomes before finalization. No-service closures remain
+can record outcomes once after confirming; saved outcomes cannot be changed by either role. No-service closures remain
 Admin-only.
 
 1. Choose **Review services** and review the customer, services and fee history.
    Record each service as performed or not performed and save outcomes. Existing
-   outcomes may be corrected until finalization; stale reviews must be refreshed.
+   outcomes are locked when saved; stale reviews must be refreshed.
 2. Choose **Continue to Payments** to open the same visit in the Payments view,
    or choose a visit from its **Ready for payment** list. Payments also provides
    booking-code lookup for receipts and **Open in Services** for corrections.
@@ -80,7 +80,7 @@ in the audit history. It does not move the visit or change financial records.
 - Browser check: as a Cashier find a confirmed visit for today, confirm physical
   arrival, and verify the arrival time and recording staff appear. As an Admin,
   verify the visit appears in the waiting queue.
-- Payment browser check: as a Cashier record and correct outcomes for a confirmed booking, then verify insufficient
+- Payment browser check: as a Cashier confirm and save outcomes for a confirmed booking, verify both roles cannot change them, then verify insufficient
   cash disables finalization, verify PHP 1,000 tendered for PHP 780.30 produces
   PHP 219.70 change, finalize in a test environment, and check the receipt and
   refreshed queue/collection totals. An existing PHP 100 appointment fee must

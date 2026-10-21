@@ -99,7 +99,7 @@ An Admin may:
 - Manage staff unavailable periods.
 - View appointments.
 - Mark eligible appointments as NO_SHOW.
-- Record and correct service outcomes before final post-service settlement or no-service closure.
+- Record service outcomes once before final post-service settlement or no-service closure.
 - Record customer arrival.
 - Finalize eligible zero-charge no-service closures.
 - Manage booking policies.
@@ -124,7 +124,7 @@ A Cashier may:
 
 - View appointments relevant to customer arrival and post-service settlement.
 - Record physical customer arrival for eligible confirmed appointments.
-- Record and correct service outcomes before finalization.
+- Record service outcomes once before finalization.
 - Correct eligible no-shows with a reason and confirmation of physical presence.
 - View booked services.
 - View customer information required for payment processing.
@@ -825,7 +825,7 @@ Each AppointmentService uses a final operational outcome:
 
 Before post-service settlement or no-service closure, an active Admin or Cashier records final service outcomes.
 
-An active Admin or Cashier may correct those outcomes before finalization.
+Once saved as PERFORMED or NOT_PERFORMED, each service outcome is immutable for both Admin and Cashier, including the original recorder, even before payment or no-service closure. A confirmation modal must review the selected outcomes and explain the permanent lock before saving. Concurrent requests must preserve the first saved outcomes.
 
 A CONFIRMED appointment may contain:
 
@@ -839,7 +839,7 @@ After either:
 - successful full SERVICE_PAYMENT settlement, or
 - successful zero-charge no-service closure,
 
-the service outcomes become immutable in the MVP.
+the appointment is finalized; its service outcomes remain immutable from when they were first recorded.
 
 Post-finalization correction, void, refund, or financial-adjustment workflows are outside the first MVP and require a later explicitly designed process.
 
@@ -1468,7 +1468,7 @@ The queue refreshes every 30 seconds while visible, on focus, after local arriva
 
 ## Cashier check-in and payment workspace (updated 2026-10-16)
 
-The cashier workspace handles customer check-in, service outcomes, eligible no-show corrections, service-payment collection and payment receipts. It lists confirmed, uncompleted visits across all dates, including pending outcomes; service collection requires every active outcome to be recorded and at least one positive performed-service charge. Booking-code lookup remains available for payment review and receipts; it cannot bypass settlement prerequisites. Cashiers may record arrival through the same validated check-in workflow as Admins. A separate customer check-in list shows today’s confirmed, uncompleted visits with active services and no recorded/finalized active outcomes, including already checked-in visits. Cashiers may record and correct service outcomes before finalization and correct eligible no-shows through the validated restoration workflow. The confirmed-services list includes visits with pending outcomes, and booking-code lookup opens no-shows for review and correction. Cashiers cannot finalize no-service closures, including through direct API calls; Admins close visits with no performed services. Existing payment amounts, receipt history, commission formulas, and transaction/concurrency rules remain authoritative. Manual appointment-fee payment APIs remain authorized payment operations; the separate cashier fee menu remains removed.
+The cashier workspace handles customer check-in, service outcomes, eligible no-show corrections, service-payment collection and payment receipts. It lists confirmed, uncompleted visits across all dates, including pending outcomes; service collection requires every active outcome to be recorded and at least one positive performed-service charge. Booking-code lookup remains available for payment review and receipts; it cannot bypass settlement prerequisites. Cashiers may record arrival through the same validated check-in workflow as Admins. A separate customer check-in list shows today’s confirmed, uncompleted visits with active services and no recorded/finalized active outcomes, including already checked-in visits. Cashiers may record service outcomes once, with confirmation; neither role may change saved outcomes. Cashiers may correct eligible no-shows through the validated restoration workflow. The confirmed-services list includes visits with pending outcomes, and booking-code lookup opens no-shows for review and correction. Cashiers cannot finalize no-service closures, including through direct API calls; Admins close visits with no performed services. Existing payment amounts, receipt history, commission formulas, and transaction/concurrency rules remain authoritative. Manual appointment-fee payment APIs remain authorized payment operations; the separate cashier fee menu remains removed.
 
 
 ## Automatic customer e-receipts (updated 2026-10-16)

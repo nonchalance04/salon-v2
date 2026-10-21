@@ -66,7 +66,11 @@ export function createSettlementService(prisma: PrismaClient) {
       return transact(async tx => {
         const row = await locked(tx, input.bookingCode); const actor = await authorize(tx, actorId); editable(row, input.revision);
         if (new Set(input.services.map(s => s.id)).size !== row.appointmentServices.length || input.services.length !== row.appointmentServices.length || input.services.some(s => !row.appointmentServices.some(r => r.id === s.id))) throw fail("INVALID_SERVICES", "Submit each active service exactly once.");
+        if (row.appointmentServices.some(s => s.outcome !== "SCHEDULED" && input.services.find(i => i.id === s.id)!.outcome !== s.outcome)) {
+          throw fail("SERVICE_OUTCOME_LOCKED", "Recorded service outcomes cannot be changed by an Admin or Cashier. Refresh to see the saved outcomes.");
+        }
         for (const s of row.appointmentServices) {
+          if (s.outcome !== "SCHEDULED") continue;
           const outcome = input.services.find(i => i.id === s.id)!.outcome;
           if (outcome === "PERFORMED" && !s.priceSnapshot.gt(0)) throw fail("INVALID_SERVICE_CHARGE", "Performed services must have a positive historical price.");
           await tx.appointmentService.update({ where: { id: s.id }, data: { outcome, actualChargedAmount: outcome === "PERFORMED" ? s.priceSnapshot : "0.00" } });

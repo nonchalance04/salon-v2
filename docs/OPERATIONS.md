@@ -30,7 +30,8 @@ to booking; the availability screen remains authoritative for available times.
   Verify collection and finalize once. Partial/split settlement is unavailable.
 - If all services were not performed, finalize no-service closure. No fake zero
   payment, service receipt or commission is created; existing fee history remains.
-- Use receipt controls for each stored receipt. Confirm the correct receipt and
+- Open a stored receipt with View receipt. Download PDF saves it directly without
+  a print dialog; Print receipt opens the browser print controls. Confirm the correct receipt and
   printer/page size in the print dialog. Report a printing/layout issue before
   issuing an incorrect receipt.
 - **Collections:** select inclusive salon-local dates. Net cash movement reflects
@@ -48,7 +49,7 @@ Development seed skills are configured in `backend/prisma/seed.ts` under `staffF
   transactional snapshots. Deactivate referenced records rather than deleting them.
 - Review appointments and mark no-show only after the start and salon procedure.
   Do not use no-show as a general cancellation override.
-- Review/correct saved outcomes before finalization. Cashiers perform settlement.
+- Review outcomes carefully before saving; saved outcomes cannot be changed by Admin or Cashier. Cashiers perform settlement.
 - Inspect finalized commissions, historical receipts, payment reconciliation and
   authorized reports. Carried credit is not a second payment.
 - Reconcile actual merchant captures with the source transaction identity. Never
