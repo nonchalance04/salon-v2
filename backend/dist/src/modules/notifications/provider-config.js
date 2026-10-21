@@ -1,5 +1,7 @@
+// Bring in the tools for customer notifications so this file can work with the rest of the application.
 import { createGmailProvider } from "./gmail-provider.js";
 import { createTextBeeProvider, createTestNotificationProvider } from "./notification-provider.js";
+// Choose the enabled message providers so delivery follows the server settings.
 export function configuredNotificationProviders(env) {
     const providers = {};
     // Test delivery logs only the queue identity and channel, never message/contact data.

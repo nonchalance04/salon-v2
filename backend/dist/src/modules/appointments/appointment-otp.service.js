@@ -1,22 +1,31 @@
+// Bring in the tools for appointment bookings so this file can work with the rest of the application.
 import { z } from "zod";
 import { renderSimpleEmailLayout } from "../notifications/simple-email-layout.js";
 import { createHmac, randomInt, randomUUID, timingSafeEqual } from "node:crypto";
 import { ApiError } from "../../shared/http.js";
 import { createGuestCredentials, tokenHash } from "./appointments.security.js";
 import { smsRecipient } from "../notifications/notification-provider.js";
+// Keep the shared values for appointment bookings together so later steps use the same definitions.
 export const OTP_TTL_MS = 5 * 60_000;
 export const GUEST_SESSION_MS = 2 * 60 * 60_000;
+// Keep the shared values for appointment bookings together so later steps use the same definitions.
 export const OTP_NOTICE = "If the booking details match, a verification code will arrive by your selected method. It expires in 5 minutes.";
+// Normalize the email address so verification compares contact details consistently.
 function email(value) { const normalized = value.trim().toLowerCase(); return z.email().safeParse(normalized).success ? normalized : null; }
+// Prepare the rejection for invalid details so the caller receives a consistent explanation.
 const invalid = () => new ApiError(400, "INVALID_OTP", "The code is incorrect or expired. Request a new code if needed.");
+// Prepare the request-limit response so repeated attempts receive a consistent explanation.
 const limited = () => new ApiError(429, "OTP_LIMIT", "Please wait before requesting or checking another code.");
+// Turn a verification code into a protected comparison value so the original code need not be stored.
 export function otpDigest(secret, purpose, value) {
     return createHmac("sha256", secret).update(`${purpose}:${value}`).digest("hex");
 }
+// Compare protected values without revealing where they differ so secret checks reveal less information.
 function sameHash(a, b) {
     const left = Buffer.from(a, "hex"), right = Buffer.from(b, "hex");
     return left.length === right.length && timingSafeEqual(left, right);
 }
+// Normalize the phone number so verification uses one consistent contact format.
 function phone(value) { try {
     return smsRecipient(value);
 }
@@ -32,8 +41,10 @@ async function rate(tx, key, limit, now) {
     RETURNING count`;
     return rows[0].count <= limit;
 }
+// Manage appointment verification and remembered access so customers can open only their own booking.
 export function createAppointmentOtpService(prisma, secret, provider, emailProvider) {
     return {
+        // Check the booking contact and request limits before sending a code so appointment access can be verified.
         async request(bookingCode, contact, ip, channel = "SMS") {
             const sender = channel === "EMAIL" ? emailProvider : provider;
             if (!sender)
@@ -55,7 +66,9 @@ export function createAppointmentOtpService(prisma, secret, provider, emailProvi
                 const appointment = await tx.appointment.findUnique({ where: { bookingCode }, include: { customer: true } });
                 const recorded = appointment ? (channel === "EMAIL" ? email(appointment.customer.email ?? "") : phone(appointment.customer.phone ?? "")) : null;
                 const matches = normalized && appointment && recorded === normalized;
+                // Update the saved verification challenge records so the code can be checked with its expiry and attempt limits.
                 await tx.appointmentOtpChallenge.updateMany({ where: { identityKey, consumedAt: null }, data: { consumedAt: now } });
+                // Save the new verification challenge record so the code can be checked with its expiry and attempt limits.
                 await tx.appointmentOtpChallenge.create({ data: { id, identityKey, appointmentId: matches ? appointment.id : null,
                         codeHash: otpDigest(secret, id, code), expiresAt: new Date(+now + OTP_TTL_MS) } });
                 return { recipient: matches ? normalized : null };
@@ -77,6 +90,7 @@ export function createAppointmentOtpService(prisma, secret, provider, emailProvi
             // Do not expose whether the booking/contact exists or delivery was accepted.
             return { challengeId: id, message: OTP_NOTICE, retryAfterSeconds: 60 };
         },
+        // Check the code and its expiry before granting appointment access so only a valid verification succeeds.
         async verify(id, code, ip) {
             if (!provider && !emailProvider)
                 throw new ApiError(503, "OTP_DISABLED", "Appointment verification is unavailable.");
@@ -89,12 +103,14 @@ export function createAppointmentOtpService(prisma, secret, provider, emailProvi
                 if (!challenge || challenge.consumedAt || challenge.expiresAt <= now || challenge.attempts >= 5)
                     return null;
                 const valid = sameHash(challenge.codeHash, otpDigest(secret, id, code));
+                // Update the saved verification challenge record so the code can be checked with its expiry and attempt limits.
                 await tx.appointmentOtpChallenge.update({ where: { id }, data: { attempts: { increment: 1 },
                         ...(valid || challenge.attempts === 4 ? { consumedAt: now } : {}) } });
                 if (!valid || !challenge.appointmentId)
                     return null;
                 const appointment = await tx.appointment.findUniqueOrThrow({ where: { id: challenge.appointmentId } });
                 const session = createGuestCredentials();
+                // Save the new verified appointment access record so the verified customer can return to their booking.
                 await tx.appointmentGuestSession.create({ data: { tokenHash: session.hash, appointmentId: appointment.id, expiresAt: new Date(+now + GUEST_SESSION_MS) } });
                 return { bookingCode: appointment.bookingCode, token: session.token };
             });
@@ -104,15 +120,18 @@ export function createAppointmentOtpService(prisma, secret, provider, emailProvi
                 throw limited();
             return result;
         },
+        // Check the remembered appointment session so only current verified access is accepted.
         async session(token) {
             const row = await prisma.appointmentGuestSession.findUnique({ where: { tokenHash: tokenHash(token) }, include: { appointment: { select: { bookingCode: true } } } });
             return row && row.expiresAt > new Date() ? row.appointment.bookingCode : null;
         },
+        // Revoke the appointment session so the browser no longer has verified booking access.
         async logout(token) {
             await prisma.appointmentGuestSession.deleteMany({ where: { tokenHash: tokenHash(token) } });
         },
     };
 }
+// Remove expired appointment-access records so old verification details do not accumulate.
 export async function pruneAppointmentAccess(prisma) {
     const now = new Date();
     // Retain challenge records briefly for operational diagnosis; none contain raw codes.

@@ -749,6 +749,7 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
                   key={bookingCode ?? "settlement"}
                   admin={admin}
                   mode="services"
+                  onOpenPayments={(code) => navigate("payments", code)}
                   initialCode={bookingCode}
                   onNavigationStateChange={setCashierNavigation}
                   onBack={

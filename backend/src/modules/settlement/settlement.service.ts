@@ -6,18 +6,18 @@ import { ApiError } from "../../shared/http.js";
 import { freshTime, lockStaff } from "../scheduling/coordination.js";
 import { reservationTransaction, RestartReservation } from "../appointments/appointments.service.js";
 import { allocateCommissions } from "./commissions.js";
-import { booking, outcomesSchema, revision as revisionSchema, settlementSchema, type OutcomesInput, type SettlementInput } from "./settlement.schema.js";
+import { booking, outcomesSchema, performerSchema, revision as revisionSchema, settlementSchema, type OutcomesInput, type PerformerInput, type SettlementInput } from "./settlement.schema.js";
 // Describe the information used by visit settlement so different parts of the application agree on its contents.
 type Tx = Prisma.TransactionClient;
 // Choose the related records to read together so later checks have the full visit details.
-const include = { customer: true, appointmentServices: { where: { membershipStatus: "ACTIVE" as const }, orderBy: { sequenceNo: "asc" as const }, include: { staff: true } },
+const include = { customer: true, appointmentServices: { where: { membershipStatus: "ACTIVE" as const }, orderBy: { sequenceNo: "asc" as const }, include: { staff: true, performerAssignments: { orderBy: { sequence: "desc" as const }, take: 1, include: { recordedBy: { select: { firstName: true, lastName: true, role: true } } } } } },
   payments: { include: { receipt: true } }, commissionRecords: true };
 // Describe the information used by visit settlement so different parts of the application agree on its contents.
 type Row = Prisma.AppointmentGetPayload<{ include: typeof include }>;
 // Prepare a clear error so the caller can explain why the action could not finish.
 const fail = (code: string, message: string) => new ApiError(409, code, message);
 // Build a fingerprint of the saved visit so a later update can detect changes made by someone else.
-function revision(row: Row) { return createHash("sha256").update(JSON.stringify([row.status, row.updatedAt, row.appointmentServices.map(s => [s.id, s.updatedAt, s.outcome, s.actualChargedAmount, s.staffId])])).digest("hex"); }
+function revision(row: Row) { return createHash("sha256").update(JSON.stringify([row.status, row.updatedAt, row.appointmentServices.map(s => [s.id, s.updatedAt, s.outcome, s.actualChargedAmount, s.staffId, s.performerAssignments?.[0]?.id ?? null])])).digest("hex"); }
 // Check the acting staff account and any required role so only permitted staff can proceed.
 async function authorize(tx: Tx, id: string, requiredRole?: "ADMIN" | "CASHIER") {
   await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${id}::uuid FOR SHARE`;
@@ -52,12 +52,29 @@ async function eligibleFee(tx: Tx, row: Row) {
 }
 // Prepare the allowed record details so the caller receives a usable response.
 async function view(tx: Tx, row: Row, admin: boolean) {
+  const editablePerformers = row.status === "CONFIRMED" && !row.completedAt && !row.completionType &&
+    !row.payments.some(p => p.type === "SERVICE_PAYMENT" && p.status === "SUCCEEDED");
+  const qualifications = editablePerformers ? await tx.staffService.findMany({
+    where: { serviceId: { in: row.appointmentServices.filter(s => s.outcome === "PERFORMED").map(s => s.serviceId) }, isActive: true, staff: { isActive: true } },
+    select: { serviceId: true, staff: { select: { id: true, firstName: true, lastName: true } } },
+    orderBy: { staffId: "asc" },
+  }) : [];
   return { bookingCode: row.bookingCode, status: row.status, revision: revision(row), startAt: row.startAt, completionType: row.completionType, completedAt: row.completedAt,
     customer: { firstName: row.customer.firstName, lastName: row.customer.lastName },
     eligibleAppointmentFee: (await eligibleFee(tx, row)).toFixed(2), carriedFee: Boolean(row.carriedAppointmentFeePaymentId),
     amountDue: row.appointmentServices.filter(s => s.outcome === "PERFORMED").reduce((n, s) => n.plus(s.actualChargedAmount ?? 0), new Prisma.Decimal(0)).toFixed(2),
-    services: row.appointmentServices.map(s => ({ id: s.id, name: s.serviceNameSnapshot, staff: `${s.staff?.firstName ?? s.staffFirstNameSnapshot} ${s.staff?.lastName ?? s.staffLastNameSnapshot}`.trim() || "Former staff", outcome: s.outcome,
-      price: s.priceSnapshot.toFixed(2), actualChargedAmount: s.actualChargedAmount?.toFixed(2) ?? null })),
+    services: row.appointmentServices.map(s => {
+      const assignment = s.performerAssignments?.[0];
+      const bookedStaff = `${s.staffFirstNameSnapshot} ${s.staffLastNameSnapshot}`.trim() || "Former staff";
+      return { id: s.id, name: s.serviceNameSnapshot, staff: `${s.staff?.firstName ?? s.staffFirstNameSnapshot} ${s.staff?.lastName ?? s.staffLastNameSnapshot}`.trim() || "Former staff", outcome: s.outcome,
+        bookedStaff, bookedStaffId: s.staffId,
+        performedBy: assignment ? `${assignment.staffFirstNameSnapshot} ${assignment.staffLastNameSnapshot}`.trim() : bookedStaff,
+        performedByStaffId: assignment?.staffId ?? s.staffId,
+        performerAssignment: assignment ? { reason: assignment.reason, customerAgreed: assignment.customerAgreed, recordedAt: assignment.recordedAt, recordedByUserId: assignment.recordedByUserId,
+          recordedByName: `${assignment.recordedBy.firstName} ${assignment.recordedBy.lastName}`.trim(), recordedByRole: assignment.recordedBy.role } : null,
+        performerOptions: qualifications.filter(q => q.serviceId === s.serviceId).map(q => ({ id: q.staff.id, name: `${q.staff.firstName} ${q.staff.lastName}`.trim() })),
+        price: s.priceSnapshot.toFixed(2), actualChargedAmount: s.actualChargedAmount?.toFixed(2) ?? null };
+    }),
     payments: row.payments.map(p => ({ id: p.id, paymentReference: p.paymentReference, type: p.type, status: p.status, amount: p.amount.toFixed(2), receipt: p.receipt ? { receiptNumber: p.receipt.receiptNumber, receiptSnapshot: p.receipt.receiptSnapshot } : null })),
     ...(admin ? { commissions: row.commissionRecords.map(c => ({ appointmentServiceId: c.appointmentServiceId, staffId: c.staffId,
       serviceAmount: c.serviceAmount.toFixed(2), allocatedAppointmentFee: c.allocatedAppointmentFee.toFixed(2), commissionBase: c.commissionBase.toFixed(2), commissionRate: c.commissionRate.toFixed(4), commissionAmount: c.commissionAmount.toFixed(2) })) } : {}) };
@@ -101,6 +118,28 @@ export function createSettlementService(prisma: PrismaClient) {
         return view(tx, await tx.appointment.findUniqueOrThrow({ where: { id: row.id }, include }), actor.role === "ADMIN");
       });
     },
+    // Record the actual performer without changing the original reservation or saved outcome.
+    async assignPerformer(actorId: string, raw: PerformerInput) {
+      const input = performerSchema.parse(raw);
+      return transact(async tx => {
+        const row = await locked(tx, input.bookingCode);
+        const actor = await authorize(tx, actorId);
+        editable(row, input.revision);
+        const service = row.appointmentServices.find(s => s.id === input.appointmentServiceId);
+        if (!service || service.outcome !== "PERFORMED") throw fail("PERFORMER_NOT_ALLOWED", "Only a performed active service can have a replacement performer.");
+        const currentStaffId = service.performerAssignments?.[0]?.staffId ?? service.staffId;
+        if (currentStaffId === input.staffId) throw fail("PERFORMER_UNCHANGED", "Choose a different performing staff member.");
+        const qualification = await tx.staffService.findUnique({ where: { staffId_serviceId: { staffId: input.staffId, serviceId: service.serviceId } }, include: { staff: true } });
+        if (!qualification?.isActive || !qualification.staff.isActive) throw fail("PERFORMER_NOT_QUALIFIED", "Choose an active staff member qualified for this service.");
+        await tx.servicePerformerAssignment.create({ data: {
+          appointmentServiceId: service.id, staffId: qualification.staffId, staffRecordId: qualification.staffId,
+          staffFirstNameSnapshot: qualification.staff.firstName, staffLastNameSnapshot: qualification.staff.lastName,
+          commissionRateSnapshot: qualification.commissionRate, reason: input.reason, customerAgreed: input.customerAgreed,
+          recordedByUserId: actor.id, recordedAt: await freshTime(tx),
+        } });
+        return view(tx, await tx.appointment.findUniqueOrThrow({ where: { id: row.id }, include }), actor.role === "ADMIN");
+      });
+    },
     // Check the payment against the visit and save the related updates together so settlement stays consistent.
     async settle(actorId: string, raw: SettlementInput) {
       // Check the submitted details before continuing so invalid input cannot reach the saved records.
@@ -123,7 +162,10 @@ export function createSettlementService(prisma: PrismaClient) {
         // Collect performed services and allocate the eligible appointment fee so final charges and commissions use the recorded work.
         const performed = row.appointmentServices.filter(s => s.outcome === "PERFORMED");
         const fee = await eligibleFee(tx, row);
-        const commissions = allocateCommissions(performed, fee);
+        const commissions = allocateCommissions(performed.map(s => ({ ...s,
+          staffId: s.performerAssignments[0]?.staffId ?? s.staffId,
+          commissionRateSnapshot: s.performerAssignments[0]?.commissionRateSnapshot ?? s.commissionRateSnapshot,
+        })), fee);
         const amount = commissions.reduce((n, c) => n.plus(c.serviceAmount), new Prisma.Decimal(0));
         // Require the payment to match the calculated service total so settlement cannot save an incorrect charge.
         if (!amount.equals(input.amount)) throw fail("AMOUNT_MISMATCH", "The payment must equal the full performed-service charge.");
@@ -137,7 +179,10 @@ export function createSettlementService(prisma: PrismaClient) {
           receiptSnapshot: { schemaVersion: 1, bookingCode: row.bookingCode, paymentId: payment.id, type: "SERVICE_PAYMENT", amount: amount.toFixed(2), currency: "PHP", method: input.method,
             paymentReference: payment.paymentReference, externalReference: reference, paidAt: now.toISOString(), customerName: `${row.customer.firstName} ${row.customer.lastName}`,
             salon: salon ? { name: salon.name, address: salon.address, phone: salon.phone } : null,
-            services: performed.map(s => ({ name: s.serviceNameSnapshot, amount: s.actualChargedAmount!.toFixed(2) })) } } });
+            services: performed.map(s => ({ name: s.serviceNameSnapshot, amount: s.actualChargedAmount!.toFixed(2),
+              bookedStaff: `${s.staffFirstNameSnapshot} ${s.staffLastNameSnapshot}`.trim(),
+              performedBy: s.performerAssignments[0] ? `${s.performerAssignments[0].staffFirstNameSnapshot} ${s.performerAssignments[0].staffLastNameSnapshot}`.trim() : `${s.staffFirstNameSnapshot} ${s.staffLastNameSnapshot}`.trim(),
+            })) } } });
         // Save the new commission records so staff earnings are preserved with the completed visit.
         await tx.commissionRecord.createMany({ data: commissions.map(c => ({ ...c, appointmentId: row.id, sourcePaymentId: payment.id, finalizedByUserId: actor.id, finalizedAt: now })) });
 

@@ -1,3 +1,4 @@
+// Bring in the tools for booking payments so this file can work with the rest of the application.
 import { GUEST_SESSION_COOKIE, guestSessionCredentials } from "../appointments/appointment-otp.routes.js";
 import { GUEST_SESSION_MS } from "../appointments/appointment-otp.service.js";
 import { Router } from "express";
@@ -9,6 +10,7 @@ import { configuredPaymentProvider } from "./provider-config.js";
 import { guestAccessSchema } from "../appointments/appointments.schema.js";
 import { createPaymentsService } from "./payments.service.js";
 import { checkoutSchema, listSchema, manualPaymentSchema, receiptSchema, testCaptureSchema } from "./payments.schema.js";
+// Connect payment requests to validation and access checks so payment actions use the supported workflow.
 export function createPaymentsRouter(prisma, config, provider = configuredPaymentProvider(config)) {
     const router = Router();
     const service = createPaymentsService(prisma, provider, config.SALON_TIMEZONE);

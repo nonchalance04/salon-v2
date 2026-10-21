@@ -1,3 +1,4 @@
+// Bring in the tools for appointment bookings so this file can work with the rest of the application.
 import { createGmailProvider } from "../notifications/gmail-provider.js";
 import { Router } from "express";
 import { z } from "zod";
@@ -8,8 +9,10 @@ import { createAppointmentOtpService, GUEST_SESSION_MS } from "./appointment-otp
 import { createAppointmentsService } from "./appointments.service.js";
 import { tokenHash } from "./appointments.security.js";
 import { guestAccessSchema } from "./appointments.schema.js";
+// Keep the shared values for appointment bookings together so later steps use the same definitions.
 export const GUEST_SESSION_COOKIE = "salon_appointment_session";
 const COOKIE = GUEST_SESSION_COOKIE;
+// Prepare the appointment-access cookie so the browser can remember a verified customer.
 export function guestSessionCookie(header) {
     const values = (header ?? "").split(";").map(v => v.trim()).filter(v => v.startsWith(`${COOKIE}=`));
     if (values.length !== 1)
@@ -31,6 +34,7 @@ export function guestSessionCredentials(prisma) {
         next();
     };
 }
+// Connect appointment verification requests to their checks so customers can securely recover booking access.
 export function createAppointmentOtpRouter(prisma, config, provider, emailProvider) {
     const router = Router();
     const enabled = config.APPOINTMENT_OTP_PROVIDER === "textbee";

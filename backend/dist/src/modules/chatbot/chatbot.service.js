@@ -11,6 +11,7 @@ export function chatbotLanguage(message, history = []) {
     }
     return "en";
 }
+// Identify the salon topic so the question can use the matching guidance.
 export function chatbotTopic(message) {
     const text = message.toLowerCase();
     if (/\b(cancel|cancellation|kanselahin|ikansela|kanselasyon)\b/.test(text))

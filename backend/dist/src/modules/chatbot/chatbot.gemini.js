@@ -1,6 +1,8 @@
+// Bring in the tools for the salon assistant so this file can work with the rest of the application.
 import { open } from "node:fs/promises";
 import { z } from "zod";
 import { chatbotLanguage, createChatbotService } from "./chatbot.service.js";
+// Keep the shared values for the salon assistant together so later steps use the same definitions.
 const decisionSchema = z.object({
     intent: z.enum(["consultation", "unclear", "services", "salon", "policy", "booking", "availability", "manage", "cancel", "reschedule"]),
     answer: z.string().trim().min(1).max(3000),
@@ -42,6 +44,7 @@ export async function loadChatbotGuidelines() {
         await file.close();
     }
 }
+// Prepare the optional AI answer service so salon questions can use the configured assistant.
 export function createGeminiChatbotService(source, config, deps = {}) {
     if (!config.GEMINI_API_KEY || !config.GEMINI_MODEL)
         throw new Error("Gemini configuration is required.");
@@ -50,6 +53,7 @@ export function createGeminiChatbotService(source, config, deps = {}) {
     const onFallback = deps.onFallback ?? (() => console.warn(JSON.stringify({ event: "chatbot_guided_fallback" })));
     const guided = createChatbotService(source);
     let inFlight = 0;
+    // Use the built-in salon answer when needed so the customer still receives a reply.
     async function fallback(message, history) {
         onFallback();
         return { ...await guided.answer(message, history), recommendations: [] };

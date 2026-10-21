@@ -1,6 +1,7 @@
 // Bring in the tools for the settlement workspace view so this file can work with the rest of the application.
 import { CheckCircle2 } from "lucide-react";
 import { SettlementQueue } from "./SettlementQueue";
+import { PaymentPerformers, type PerformerService } from "./PaymentPerformers";
 import "./SettlementWorkspace.css";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -37,14 +38,14 @@ type Appointment = {
   eligibleAppointmentFee: string;
   carriedFee: boolean;
   amountDue: string;
-  services: {
+  services: (PerformerService & {
     id: string;
     name: string;
     staff: string;
     price: string;
     outcome: Outcome;
     actualChargedAmount: string | null;
-  }[];
+  })[];
   payments: {
     id: string;
     type: string;
@@ -92,6 +93,7 @@ export function SettlementWorkspace({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [performerEditing, setPerformerEditing] = useState(false);
   const [correctionNavigation, setCorrectionNavigation] = useState({
     busy: false,
     dirty: false,
@@ -141,7 +143,7 @@ export function SettlementWorkspace({
   }
   // Load the information this view needs when its inputs change so the displayed results stay current.
   useEffect(() => {
-    if (!simplified) return;
+    if (!simplified && mode !== "payments") return;
     let active = true;
     void api<{ timeZone: string }>("/salon")
       .then((salon) => {
@@ -151,7 +153,7 @@ export function SettlementWorkspace({
     return () => {
       active = false;
     };
-  }, [simplified]);
+  }, [simplified, mode]);
   // Keep this view in step with its current inputs so changes are reflected on screen.
   useEffect(() => {
     if (initialCode) void act(() => lookup(initialCode));
@@ -189,22 +191,23 @@ export function SettlementWorkspace({
   const ready = row?.services.every((s) => s.outcome !== "SCHEDULED");
   const performed = row?.services.some((s) => s.outcome === "PERFORMED");
   const dirty = row?.services.some((s) => outcomes[s.id] !== s.outcome);
+  const canGoToPayments = mode === "services" && ready && !dirty && performed && Boolean(onOpenPayments);
   const change = row ? cashChange(tendered, row.amountDue) : null;
   const manageServices = mode !== "payments";
   const collectPayments = mode !== "services";
-  const paymentLayout = admin && mode === "payments";
+  const paymentLayout = mode === "payments";
   const backLabel = mode === "combined" ? "appointments" : mode;
   // Keep this view in step with its current inputs so changes are reflected on screen.
   useEffect(() => {
     onNavigationStateChange?.({
       busy: busy || correctionNavigation.busy,
-      dirty: Boolean(dirty || tendered || correctionNavigation.dirty),
+      dirty: Boolean(dirty || tendered || correctionNavigation.dirty || performerEditing),
     });
-  }, [busy, dirty, tendered, correctionNavigation, onNavigationStateChange]);
+  }, [busy, dirty, tendered, correctionNavigation, performerEditing, onNavigationStateChange]);
   return (
     <section
       className={
-        admin
+        admin || paymentLayout
           ? `outcomes-workspace tw:max-w-[1320px] tw:mx-auto tw:min-w-0 ${simplified ? " admin-settlement tw:workspace-main:grid tw:workspace-main:grid-cols-[minmax(240px,.85fr)_minmax(0,2fr)] tw:workspace-main:gap-5.5 tw:workspace-main:[align-items:start] tw:workspace-main:max-w-none tw:[&_>_.error]:[grid-column:2] tw:[&_>_.error]:m-0 tw:down-1200:workspace-main:grid-cols-[240px_minmax(0,1fr)] tw:down-1200:workspace-main:gap-4 tw:down-900:workspace-main:grid-cols-[minmax(0,1fr)] tw:workspace-main:text-[16px] tw:workspace-main:text-[#242027] tw:workspace-main:[&_input]:text-[16px] tw:workspace-main:[&_select]:text-[16px] tw:workspace-main:[&_input]:min-h-12 tw:workspace-main:[&_select]:min-h-12 tw:workspace-main:[&_small]:text-[#514b57] tw:workspace-main:leading-[1.6] tw:workspace-main:[&_input]:leading-[1.5] tw:workspace-main:[&_select]:leading-[1.5] " : ""}${mode === "payments" ? " admin-payment-detail tw:[.admin-payments_&_>_button]:mb-5 " : ""}`
           : undefined
       }
@@ -267,7 +270,7 @@ export function SettlementWorkspace({
           Loading appointment…
         </p>
       )}
-      {!simplified && !(admin && mode === "payments" && initialCode) && (
+      {!simplified && !(paymentLayout && initialCode) && (
         <div className="outcomes-page-heading tw:[.outcomes-workspace_&]:mb-6 tw:[.outcomes-workspace_&]:max-w-[78ch]">
           <p className="eyebrow public:text-[12px] public:tracking-[0.17em] public:font-bold public:text-[#987b1f]
           public:down-639:text-[11px] tw:text-[11px] tw:tracking-[.18em] tw:font-bold tw:mb-5 tw:[.cashier-main>&]:mb-2.5">
@@ -610,16 +613,18 @@ export function SettlementWorkspace({
                       </span>
                     )}
                     <Button
+                      type={canGoToPayments ? "button" : "submit"}
+                      onClick={canGoToPayments ? () => onOpenPayments?.(row.bookingCode) : undefined}
                       variant="default"
                       className="primary tw:[background:#203c34] tw:text-[white] tw:[border-color:#203c34] tw:hover:[background:#31584c]
           tw:[.login-card_&]:w-full tw:[.login-card_&]:mt-1.5"
                       disabled={
                         busy ||
-                        !dirty ||
-                        Object.values(outcomes).some((o) => o === "SCHEDULED")
+                        (!canGoToPayments && (!dirty ||
+                        Object.values(outcomes).some((o) => o === "SCHEDULED")))
                       }
                     >
-                      Save outcomes
+                      {canGoToPayments ? "Go to payments" : "Save outcomes"}
                     </Button>
                   </div>
                 )}
@@ -810,22 +815,6 @@ export function SettlementWorkspace({
               </section>
             )}
             {mode === "services" &&
-              row.status === "CONFIRMED" &&
-              ready &&
-              !dirty &&
-              performed &&
-              onOpenPayments && (
-                <Button
-                  variant="default"
-                  className="primary tw:[background:#203c34] tw:text-[white] tw:[border-color:#203c34] tw:hover:[background:#31584c]
-          tw:[.login-card_&]:w-full tw:[.login-card_&]:mt-1.5"
-                  disabled={busy}
-                  onClick={() => onOpenPayments(row.bookingCode)}
-                >
-                  Continue to Payments
-                </Button>
-              )}
-            {mode === "services" &&
               row.status === "COMPLETED" &&
               onOpenPayments && (
                 <Button
@@ -845,6 +834,22 @@ export function SettlementWorkspace({
                 Open in Services
               </Button>
             )} */}
+            {mode === "payments" && <PaymentPerformers
+              key={`${row.bookingCode}-${row.revision}`}
+              services={row.services}
+              editable={row.status === "CONFIRMED" && !row.completionType && !row.payments.some(payment => payment.type === "SERVICE_PAYMENT" && payment.status === "SUCCEEDED")}
+              busy={busy}
+              error={error}
+              timeZone={timeZone}
+              onEditingChange={setPerformerEditing}
+              onSave={input => void act(async () => {
+                const result = await api<{ appointment: Appointment }>("/settlement/performer", {
+                  method: "POST", body: JSON.stringify({ bookingCode: row.bookingCode, revision: row.revision, ...input }),
+                });
+                accept(result.appointment);
+                setNotice("Performing staff saved. Commission will be credited to the recorded performer when payment is finalized.");
+              })}
+            />}
             {row.status === "CONFIRMED" &&
               collectPayments &&
               ready &&
@@ -862,6 +867,7 @@ export function SettlementWorkspace({
                   key={row.bookingCode}
                   onSubmit={(event) => {
                     event.preventDefault();
+                    if (busy || performerEditing) return;
                     if (method === "CASH" && change === null) {
                       setError(
                         "Enter cash tendered covering the full service amount.",
@@ -870,7 +876,7 @@ export function SettlementWorkspace({
                     }
                     if (
                       !window.confirm(
-                        `Finalize service payment of PHP ${row.amountDue}? Outcomes and commissions will become final.`,
+                        `Finalize service payment of PHP ${row.amountDue}? Outcomes and commissions will become final.\n\nCommission recipients:\n${row.services.filter(service => service.outcome === "PERFORMED").map(service => `${service.name}: ${service.performedBy ?? service.staff}`).join("\n")}`,
                       )
                     )
                       return;
@@ -901,7 +907,7 @@ export function SettlementWorkspace({
                     });
                   }}
                 >
-                  <fieldset disabled={busy}>
+                  <fieldset disabled={busy || performerEditing}>
                     <legend>
                       {simplified || paymentLayout
                         ? "Collect payment"

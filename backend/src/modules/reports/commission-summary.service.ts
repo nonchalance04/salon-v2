@@ -49,8 +49,14 @@ export async function readCommissionSummary(tx: Prisma.TransactionClient, q: Com
     orderBy: [{ finalizedAt: "desc" }, { id: "desc" }], select: {
       id: true, staffId: true, staffFirstNameSnapshot: true, staffLastNameSnapshot: true, finalizedAt: true,
       commissionBase: true, commissionRate: true, commissionAmount: true,
-      appointment: { select: { bookingCode: true } }, appointmentService: { select: { serviceNameSnapshot: true } },
-      sourcePayment: { select: { currency: true } },
+      appointment: { select: { bookingCode: true } }, appointmentService: { select: {
+        staffId: true, serviceNameSnapshot: true, staffFirstNameSnapshot: true, staffLastNameSnapshot: true,
+        performerAssignments: { orderBy: { sequence: "desc" }, take: 1, select: {
+          reason: true, customerAgreed: true, recordedAt: true, recordedByUserId: true,
+          recordedBy: { select: { firstName: true, lastName: true, role: true } },
+        } },
+      } },
+      sourcePayment: { select: { currency: true, recordedBy: { select: { id: true, firstName: true, lastName: true, role: true } } } },
     } });
   return {
     from: q.from, to: q.to, timeZone, staffOptions,
@@ -59,12 +65,25 @@ export async function readCommissionSummary(tx: Prisma.TransactionClient, q: Com
       commissionBase: row.commissionBase.toFixed(2), commissionAmount: row.commissionAmount.toFixed(2) })),
     totals: [...totals.values()].sort((a, b) => a.currency.localeCompare(b.currency)).map(row => ({ ...row,
       commissionBase: row.commissionBase.toFixed(2), commissionAmount: row.commissionAmount.toFixed(2) })),
-    details: details.map(row => ({ id: row.id, staffId: row.staffId,
+    details: details.map(row => {
+      const assignment = row.appointmentService.performerAssignments[0];
+      const paymentRecorder = row.sourcePayment.recordedBy;
+      return { id: row.id, staffId: row.staffId,
       name: fullName(row.staffFirstNameSnapshot, row.staffLastNameSnapshot) || options.get(row.staffId)?.name || "Former staff",
       state: options.get(row.staffId)?.state ?? "Former staff", finalizedAt: row.finalizedAt,
       bookingCode: row.appointment.bookingCode, serviceName: row.appointmentService.serviceNameSnapshot,
+      bookedStaffId: row.appointmentService.staffId,
+      bookedStaffName: fullName(row.appointmentService.staffFirstNameSnapshot, row.appointmentService.staffLastNameSnapshot) || "Former staff",
+      paymentRecordedBy: paymentRecorder ? { id: paymentRecorder.id, name: fullName(paymentRecorder.firstName, paymentRecorder.lastName), role: paymentRecorder.role } : null,
+      replacement: assignment ? {
+        reason: assignment.reason, customerAgreed: assignment.customerAgreed,
+        recordedAt: assignment.recordedAt, recordedByUserId: assignment.recordedByUserId,
+        recordedByName: fullName(assignment.recordedBy.firstName, assignment.recordedBy.lastName),
+        recordedByRole: assignment.recordedBy.role,
+      } : null,
       currency: row.sourcePayment.currency, commissionBase: row.commissionBase.toFixed(2),
-      commissionRate: row.commissionRate.mul(100).toFixed(2), commissionAmount: row.commissionAmount.toFixed(2) })),
+      commissionRate: row.commissionRate.mul(100).toFixed(2), commissionAmount: row.commissionAmount.toFixed(2) };
+    }),
     total: rows.reduce((count, row) => count + row.serviceCount, 0), page: q.page, pageSize: q.pageSize,
   };
 }

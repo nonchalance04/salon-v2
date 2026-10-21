@@ -1,6 +1,9 @@
+// Bring in the tools for salon reports so this file can work with the rest of the application.
 import { Prisma } from "../../../generated/prisma/client.js";
 import { reportPeriod } from "./reports.schema.js";
+// Keep the shared values for salon reports together so later steps use the same definitions.
 const moneyFields = ["appointmentFees", "servicePayments", "collected", "returned", "netCollections"];
+// Convert report amounts and dates into response values so the browser can display them consistently.
 function serialize(row) {
     return { ...row, appointmentFees: row.appointmentFees.toFixed(2), servicePayments: row.servicePayments.toFixed(2),
         collected: row.collected.toFixed(2), returned: row.returned.toFixed(2), netCollections: row.netCollections.toFixed(2) };

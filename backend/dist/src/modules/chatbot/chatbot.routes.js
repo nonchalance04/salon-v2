@@ -1,3 +1,4 @@
+// Bring in the tools for the salon assistant so this file can work with the rest of the application.
 import { Router } from "express";
 import { z } from "zod";
 import { validateRequest } from "../../shared/http.js";
@@ -6,6 +7,7 @@ import { chatbotSchema } from "./chatbot.schema.js";
 import { createChatbotService } from "./chatbot.service.js";
 import { createGeminiChatbotService } from "./chatbot.gemini.js";
 import { createChatbotLimiter } from "./chatbot.limit.js";
+// Connect validated chat messages to the salon assistant so customers can ask supported questions.
 export function createChatbotRouter(prisma, config, dependencies) {
     const router = Router();
     const source = createConfigurationService(prisma, config.SALON_TIMEZONE);

@@ -1,5 +1,7 @@
+// Bring in the tools for booking payments so this file can work with the rest of the application.
 import { z } from "zod";
 import { guestAccessSchema } from "../appointments/appointments.schema.js";
+// Define the accepted booking payments details so unexpected or incomplete input can be rejected.
 export const money = z.string().regex(/^(0|[1-9]\d{0,9})\.\d{2}$/);
 export const checkoutSchema = guestAccessSchema.extend({ idempotencyKey: z.uuid() }).strict();
 export const testCaptureSchema = guestAccessSchema.extend({ paymentId: z.uuid(), outcome: z.enum(["SUCCEEDED", "FAILED"]) }).strict();
@@ -8,6 +10,7 @@ export const manualPaymentSchema = z.object({
     currency: z.literal("PHP"), method: z.enum(["CASH", "GCASH", "OTHER"]),
     externalReference: z.string().trim().min(1).max(120).optional(),
 }).strict();
+// Define the accepted booking payments details so unexpected or incomplete input can be rejected.
 export const receiptSchema = z.object({ paymentId: z.uuid() }).strict();
 export const listSchema = z.object({ cursor: z.uuid().optional(), reconciliationOnly: z.enum(["true", "false"]).default("true") }).strict();
 //# sourceMappingURL=payments.schema.js.map

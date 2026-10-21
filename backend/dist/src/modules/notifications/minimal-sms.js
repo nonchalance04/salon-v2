@@ -1,4 +1,5 @@
 import { smsRecipient } from "./notification-provider.js";
+// Decide which routine text messages to omit so SMS follows the configured notification approach.
 export function suppressRoutineSms(row) {
     if (row.channel !== "SMS")
         return false;
@@ -7,6 +8,7 @@ export function suppressRoutineSms(row) {
     // Financial exceptions still need a separate notice; they must never claim confirmation.
     return row.eventType === "PAYMENT_RECEIVED" && !(row.payload && typeof row.payload === "object" && !Array.isArray(row.payload) && row.payload.reconciliationRequired === true);
 }
+// Compose a short booking confirmation so the customer receives the key visit details by text.
 export function confirmationSms(row, appointment, timeZone) {
     const date = new Intl.DateTimeFormat("en-US", { timeZone, month: "long", day: "numeric", year: "numeric" }).format(appointment.startAt);
     const time = new Intl.DateTimeFormat("en-US", { timeZone, hour: "numeric", minute: "2-digit", hour12: true });

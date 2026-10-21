@@ -9,7 +9,13 @@ import { api } from "../../lib/api";
 type Filters = { from: string; to: string; staffId: string };
 type Staff = { staffId: string; name: string; state: string };
 type Totals = { currency: string; serviceCount: number; commissionBase: string; commissionAmount: string };
-type Detail = Staff & { id: string; finalizedAt: string; bookingCode: string; serviceName: string; currency: string; commissionBase: string; commissionRate: string; commissionAmount: string };
+type Detail = Staff & {
+  id: string; finalizedAt: string; bookingCode: string; serviceName: string; currency: string;
+  commissionBase: string; commissionRate: string; commissionAmount: string;
+  bookedStaffId: string; bookedStaffName: string;
+  paymentRecordedBy: { id: string; name: string; role: "ADMIN" | "CASHIER" } | null;
+  replacement: { reason: string; customerAgreed: boolean; recordedAt: string; recordedByUserId: string; recordedByName: string; recordedByRole: string } | null;
+};
 type Report = {
   from: string; to: string; timeZone: string; staffOptions: Staff[]; rows: (Staff & Totals)[]; totals: Totals[];
   details: Detail[]; total: number; page: number; pageSize: number;
@@ -38,7 +44,7 @@ export function StaffCommissionReport() {
   const [salonRetry, setSalonRetry] = useState(0);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
-  const [showDetails, setShowDetails] = useState(false);
+  const [showDetails, setShowDetails] = useState(true);
   // Load the information this view needs when its inputs change so the displayed results stay current.
   useEffect(() => {
     let active = true;
@@ -74,6 +80,9 @@ export function StaffCommissionReport() {
     setPage(1); setApplied({ ...draft });
   }
   const pendingFilters = applied && (draft.from !== applied.from || draft.to !== applied.to || draft.staffId !== applied.staffId);
+  function dateTime(value: string) {
+    return new Intl.DateTimeFormat("en-PH", { timeZone: report?.timeZone || timeZone, year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value));
+  }
   // Choose a readable staff label so commission rows identify the right professional.
   function staffLabel(staff: Staff) {
     const duplicate = staffOptions.some(other => other.staffId !== staff.staffId && other.name === staff.name);
@@ -88,7 +97,7 @@ export function StaffCommissionReport() {
   return <section className="reports tw:min-w-0 tw:[&_>_.account-form_label]:mb-0 tw:[&_>_.account-form_>_button]:mt-4.5
           tw:down-640:[&_>_.account-form]:p-4.5 commission-report" aria-busy={busy}>
     <div className="appointment-report-heading tw:flex tw:items-center tw:justify-between tw:gap-5 tw:mb-6 tw:[&_h2]:my-1.5
-          tw:[&_h2]:mx-0 tw:[&_p]:m-0 tw:[&_p]:text-[#686868] tw:[&_p]:text-[14px] tw:down-640:items-start"><div><h2>Staff Commission Report</h2><p>Review finalized commissions by staff member.</p></div>
+          tw:[&_h2]:mx-0 tw:[&_p]:m-0 tw:[&_p]:text-[#686868] tw:[&_p]:text-[14px] tw:down-640:items-start"><div><h2>Staff Commission Report</h2><p>Review finalized commissions credited to the staff who performed each service.</p></div>
     </div>
     {/* Group the entry fields and submit action so the user can complete this step in one place. */}
     <form className="appointment-report-filters tw:flex tw:items-end tw:flex-wrap tw:gap-4.5 tw:p-5 tw:[border:1px_solid_#e4dfd3]
@@ -147,8 +156,28 @@ export function StaffCommissionReport() {
           tw:[&_tfoot]:[background:#f5f3eb] tw:[&_tfoot]:font-bold tw:[.sales-payment-details_&_th]:text-left
           tw:[.sales-payment-details_&_td]:text-left commission-details-table
           tw:[.sales-payment-details_&]:min-w-[1100px]"><caption className="sr-only tw:absolute tw:w-[1px] tw:h-[1px] tw:overflow-hidden">Individual finalized service commissions</caption>
-              <thead><tr>{["Finalized date / time", "Booking code", "Staff member", "Service", "Commission base", "Rate", "Commission amount"].map(header => <th scope="col" key={header}>{header}</th>)}</tr></thead>
-              <tbody>{report.details.map(row => <tr key={row.id}><td>{new Intl.DateTimeFormat("en-PH", { timeZone: report.timeZone, year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(row.finalizedAt))}</td><th scope="row">{row.bookingCode}</th><td>{staffLabel(row)}</td><td>{row.serviceName}</td><td>{money(row.commissionBase, row.currency)}</td><td>{row.commissionRate}%</td><td>{money(row.commissionAmount, row.currency)}</td></tr>)}</tbody>
+              <thead><tr>{["Finalized date / time", "Booking code", "Performed by / Commission recipient", "Service", "Commission base", "Rate", "Commission amount", "Performer details"].map(header => <th scope="col" key={header}>{header}</th>)}</tr></thead>
+              <tbody>{report.details.map(row => <tr key={row.id}>
+                <td>{dateTime(row.finalizedAt)}</td><th scope="row">{row.bookingCode}</th>
+                <td><strong>{staffLabel(row)}</strong></td><td>{row.serviceName}</td>
+                <td>{money(row.commissionBase, row.currency)}</td><td>{row.commissionRate}%</td><td>{money(row.commissionAmount, row.currency)}</td>
+                <td>
+                  <details open className="tw:min-w-56 tw:max-w-80 tw:whitespace-normal tw:text-left tw:[overflow-wrap:anywhere]">
+                    <summary className="tw:relative tw:cursor-pointer tw:font-semibold tw:text-[#75601e] tw:focus-visible:outline-2 tw:focus-visible:outline-offset-4">Performer details<span className="sr-only"> for {row.bookingCode} · {row.serviceName}</span></summary>
+                    <dl className="tw:mb-0 tw:mt-3 tw:grid tw:gap-3 tw:rounded-lg tw:bg-[#f5f3eb] tw:p-3 tw:text-xs tw:[&_dt]:font-semibold tw:[&_dd]:m-0 tw:[&_dd]:mt-1">
+                      <div><dt>Booked stylist</dt><dd>{row.bookedStaffName || "Not recorded"}</dd></div>
+                      <div><dt>Performed by / Commission recipient</dt><dd>{row.name}</dd></div>
+                      <div><dt>Payment recorded by</dt><dd>{row.paymentRecordedBy ? `${row.paymentRecordedBy.role === "CASHIER" ? "Cashier" : "Admin"} · ${row.paymentRecordedBy.name}` : "Not recorded"}</dd></div>
+                      {row.replacement ? <>
+                        <div><dt>Replacement reason</dt><dd>{row.replacement.reason}</dd></div>
+                        <div><dt>Customer agreement</dt><dd>{row.replacement.customerAgreed ? "Confirmed" : "Not recorded"}</dd></div>
+                        <div><dt>Replacement recorded by</dt><dd>{row.replacement.recordedByName} · {row.replacement.recordedByRole === "ADMIN" ? "Admin" : "Cashier"}</dd></div>
+                        <div><dt>Replacement recorded at</dt><dd>{dateTime(row.replacement.recordedAt)} · {report.timeZone}</dd></div>
+                      </> : <div><dt>Replacement</dt><dd>No replacement recorded.</dd></div>}
+                    </dl>
+                  </details>
+                </td>
+              </tr>)}</tbody>
             </table>
           </div>
           <div className="actions tw:flex tw:gap-3 report-pagination tw:[.reports_&]:items-center tw:[.reports_&]:justify-end

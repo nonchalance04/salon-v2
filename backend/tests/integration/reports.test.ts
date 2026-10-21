@@ -162,6 +162,8 @@ test("staff commission summary preserves finalized values, former staff and per-
   const filtered = await reports.commissionSummary(admin.id, { ...query, staffId: former.id, pageSize: 100 });
   assert.equal(filtered.total, 3); assert.equal(filtered.rows.length, 2);
   assert.ok(filtered.details.every(row => row.staffId === former.id && row.name === "Jordan Lee" && row.serviceName === "Original service" && row.commissionRate === "40.00"));
+  assert.ok(filtered.details.every(row => row.bookedStaffId === former.id && row.bookedStaffName === "Jordan Lee" && row.replacement === null));
+  assert.ok(filtered.details.every(row => row.paymentRecordedBy === null));
   const inactiveOnly = await reports.commissionSummary(admin.id, { ...query, staffId: inactive.id });
   assert.equal(inactiveOnly.total, 1); assert.equal(inactiveOnly.details[0]!.commissionRate, "20.00");
   const empty = await reports.commissionSummary(admin.id, { ...query, from: "2027-02-01", to: "2027-02-01", staffId: former.id });

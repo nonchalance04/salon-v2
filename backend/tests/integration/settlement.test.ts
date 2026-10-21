@@ -77,6 +77,7 @@ async function fixture(status: "CONFIRMED" | "PENDING_PAYMENT" = "CONFIRMED", ho
   return { staff, item, qualification, schedule, weekday, policy, booking, startAt, endAt, reservedUntilAt };
 }
 import { createSettlementService } from "../../src/modules/settlement/settlement.service.js";
+import { createReportsService } from "../../src/modules/reports/reports.service.js";
 import { createTokenService } from "../../src/modules/auth/auth.token.js";
 const settlement = createSettlementService(prisma);
 async function recorded(outcome: "PERFORMED" | "NOT_PERFORMED" = "PERFORMED") {
@@ -85,7 +86,142 @@ async function recorded(outcome: "PERFORMED" | "NOT_PERFORMED" = "PERFORMED") {
   return { ...f, saved };
 }
 function pay(row: { bookingCode: string; revision: string; amountDue: string }) { return { bookingCode: row.bookingCode, revision: row.revision, idempotencyKey: randomUUID(), amount: row.amountDue, currency: "PHP" as const, method: "CASH" as const, externalReference: randomUUID() }; }
+
+async function replacement(serviceId: string, rate = "0.6000") {
+  return prisma.staff.create({ data: { firstName: "Replacement", lastName: randomUUID(),
+    staffServices: { create: { serviceId, commissionRate: rate } } } });
+}
+
+test("both roles record actual performers, preserving booked staff and crediting the replacement in commission reports", async () => {
+  for (const actorId of [adminId, cashierId]) {
+    const f = await recorded();
+    await fee(f.booking.id);
+    const substitute = await replacement(f.item.id);
+    const before = await prisma.appointmentService.findUniqueOrThrow({ where: { id: f.saved.services[0]!.id } });
+    const input = { bookingCode: f.saved.bookingCode, revision: f.saved.revision, appointmentServiceId: before.id,
+      staffId: substitute.id, reason: "Booked stylist absent; customer agreed verbally.", customerAgreed: true as const };
+    const updated = await settlement.assignPerformer(actorId, input);
+    assert.equal(updated.services[0]!.performedByStaffId, substitute.id);
+    assert.equal(updated.services[0]!.bookedStaffId, f.staff.id);
+    assert.equal(updated.services[0]!.performerAssignment!.recordedByUserId, actorId);
+    assert.notEqual(updated.revision, f.saved.revision);
+    assert.deepEqual(await prisma.appointmentService.findUniqueOrThrow({ where: { id: before.id } }), before);
+    if (actorId === cashierId) {
+      assert.equal(updated.commissions, undefined);
+      assert.equal(JSON.stringify(updated.services).includes("commissionRate"), false);
+    }
+    await assert.rejects(settlement.settle(actorId, pay(f.saved)), { code: "STALE_SETTLEMENT" });
+    // Later configuration changes must not rewrite the agreed replacement rate.
+    await prisma.staffService.update({ where: { staffId_serviceId: { staffId: substitute.id, serviceId: f.item.id } }, data: { commissionRate: "0.9000" } });
+    await prisma.staff.update({ where: { id: substitute.id }, data: { firstName: "Renamed" } });
+    const paymentInput = pay(updated);
+    const settled = await settlement.settle(actorId, paymentInput);
+    await settlement.settle(actorId, paymentInput);
+    const commission = await prisma.commissionRecord.findUniqueOrThrow({ where: { appointmentServiceId: before.id } });
+    assert.equal(commission.staffId, substitute.id);
+    assert.equal(commission.staffFirstNameSnapshot, "Replacement");
+    assert.equal(commission.commissionRate.toFixed(4), "0.6000");
+    assert.equal(commission.commissionAmount.toFixed(2), "132.00");
+    assert.equal(await prisma.commissionRecord.count({ where: { appointmentId: f.booking.id, staffId: f.staff.id } }), 0);
+    await assert.rejects(settlement.assignPerformer(actorId, { ...input, revision: settled.revision, staffId: f.staff.id }), { code: "SETTLEMENT_NOT_ALLOWED" });
+    const receipt = await prisma.receipt.findFirstOrThrow({ where: { payment: { appointmentId: f.booking.id, type: "SERVICE_PAYMENT" } } });
+    const snapshot = receipt.receiptSnapshot as { services: { performedBy: string; bookedStaff: string }[] };
+    assert.equal(snapshot.services[0]!.performedBy, `${substitute.firstName} ${substitute.lastName}`);
+    assert.equal(snapshot.services[0]!.bookedStaff, `${f.staff.firstName} ${f.staff.lastName}`);
+    const today = Temporal.Now.plainDateISO("Asia/Manila").toString();
+    const report = await createReportsService(prisma, "Asia/Manila").commissionSummary(adminId, { from: today, to: today, page: 1, pageSize: 25, staffId: substitute.id });
+    assert.equal(report.rows[0]!.staffId, substitute.id);
+    assert.equal(report.rows[0]!.commissionAmount, "132.00");
+    assert.equal(report.details[0]!.name, `${substitute.firstName} ${substitute.lastName}`);
+    const detail = report.details[0]!;
+    assert.equal(detail.bookedStaffId, f.staff.id);
+    assert.equal(detail.bookedStaffName, `${f.staff.firstName} ${f.staff.lastName}`);
+    assert.equal(detail.replacement!.reason, input.reason);
+    assert.equal(detail.replacement!.customerAgreed, true);
+    assert.equal(detail.replacement!.recordedByUserId, actorId);
+    assert.equal(detail.replacement!.recordedByRole, actorId === adminId ? "ADMIN" : "CASHIER");
+    const recorder = await prisma.user.findUniqueOrThrow({ where: { id: actorId } });
+    assert.equal(detail.replacement!.recordedByName, `${recorder.firstName} ${recorder.lastName}`);
+    assert.deepEqual(detail.paymentRecordedBy, { id: actorId, name: `${recorder.firstName} ${recorder.lastName}`, role: recorder.role });
+    const assignment = await prisma.servicePerformerAssignment.findFirstOrThrow({ where: { appointmentServiceId: before.id } });
+    assert.equal(detail.replacement!.recordedAt.getTime(), assignment.recordedAt.getTime());
+    const originalReport = await createReportsService(prisma, "Asia/Manila").commissionSummary(adminId, { from: today, to: today, page: 1, pageSize: 25, staffId: f.staff.id });
+    assert.equal(originalReport.rows.length, 0);
+    await assert.rejects(createReportsService(prisma, "Asia/Manila").commissionSummary(cashierId, { from: today, to: today, page: 1, pageSize: 25 }), { code: "FORBIDDEN" });
+    assert.equal(await prisma.servicePerformerAssignment.count({ where: { appointmentServiceId: before.id } }), 1);
+  }
+});
+
+test("performer changes require qualification, an active account, customer agreement, a reason and an unfinalized performed service", async () => {
+  const f = await recorded();
+  const substitute = await replacement(f.item.id);
+  const input = { bookingCode: f.saved.bookingCode, revision: f.saved.revision, appointmentServiceId: f.saved.services[0]!.id,
+    staffId: substitute.id, reason: "Unexpected absence", customerAgreed: true as const };
+  await assert.rejects(settlement.assignPerformer(cashierId, { ...input, customerAgreed: false } as never));
+  await assert.rejects(settlement.assignPerformer(adminId, { ...input, reason: " " }));
+  await assert.rejects(settlement.assignPerformer(adminId, { ...input, appointmentServiceId: randomUUID() }), { code: "PERFORMER_NOT_ALLOWED" });
+  await assert.rejects(settlement.assignPerformer(adminId, { ...input, staffId: f.staff.id }), { code: "PERFORMER_UNCHANGED" });
+  await prisma.staff.update({ where: { id: substitute.id }, data: { isActive: false } });
+  await assert.rejects(settlement.assignPerformer(cashierId, input), { code: "PERFORMER_NOT_QUALIFIED" });
+  await prisma.staff.update({ where: { id: substitute.id }, data: { isActive: true } });
+  await prisma.staffService.update({ where: { staffId_serviceId: { staffId: substitute.id, serviceId: f.item.id } }, data: { isActive: false } });
+  await assert.rejects(settlement.assignPerformer(cashierId, input), { code: "PERFORMER_NOT_QUALIFIED" });
+  await prisma.staffService.update({ where: { staffId_serviceId: { staffId: substitute.id, serviceId: f.item.id } }, data: { isActive: true } });
+  await prisma.user.update({ where: { id: cashierId }, data: { isActive: false } });
+  try { await assert.rejects(settlement.assignPerformer(cashierId, input), { code: "UNAUTHORIZED" }); }
+  finally { await prisma.user.update({ where: { id: cashierId }, data: { isActive: true } }); }
+  const results = await Promise.allSettled([settlement.assignPerformer(adminId, input), settlement.assignPerformer(cashierId, input)]);
+  assert.equal(results.filter(result => result.status === "fulfilled").length, 1);
+  assert.equal(results.filter(result => result.status === "rejected" && (result.reason as ApiError).code === "STALE_SETTLEMENT").length, 1);
+  const current = await settlement.lookup(adminId, f.saved.bookingCode);
+  await settlement.assignPerformer(cashierId, { ...input, revision: current.revision, staffId: f.staff.id, reason: "Original stylist performed the service; customer confirmed." });
+  const history = await prisma.servicePerformerAssignment.findMany({ where: { appointmentServiceId: input.appointmentServiceId }, orderBy: { sequence: "asc" } });
+  assert.equal(history.length, 2);
+  assert.equal(history[0]!.staffId, substitute.id);
+  assert.equal(history[1]!.staffId, f.staff.id);
+  const unperformed = await recorded("NOT_PERFORMED");
+  await assert.rejects(settlement.assignPerformer(adminId, { ...input, bookingCode: unperformed.saved.bookingCode, revision: unperformed.saved.revision, appointmentServiceId: unperformed.saved.services[0]!.id }), { code: "PERFORMER_NOT_ALLOWED" });
+});
 async function fee(appointmentId: string, amount = "100.00", extra = {}) { return prisma.payment.create({ data: { appointmentId, type: "APPOINTMENT_FEE", status: "SUCCEEDED", satisfiesObligation: true, amount, method: "CASH", provider: "manual", idempotencyKey: randomUUID(), externalReference: randomUUID(), paidAt: new Date(), ...extra } }); }
+
+test("replacement attribution affects only its service and competing payment cannot use a stale performer", async () => {
+  const f = await fixture();
+  const { id, ...copy } = f.booking.appointmentServices[0]!;
+  const second = await prisma.appointmentService.create({ data: { ...copy, sequenceNo: 2 } });
+  const initial = await settlement.lookup(adminId, f.booking.bookingCode);
+  const saved = await settlement.outcomes(adminId, { bookingCode: initial.bookingCode, revision: initial.revision,
+    services: initial.services.map(s => ({ id: s.id, outcome: "PERFORMED" })) });
+  const substitute = await replacement(f.item.id);
+  const updated = await settlement.assignPerformer(adminId, { bookingCode: saved.bookingCode, revision: saved.revision,
+    appointmentServiceId: id, staffId: substitute.id, reason: "Customer agreed to replacement for the first service", customerAgreed: true });
+  await fee(f.booking.id);
+  await settlement.settle(cashierId, pay(updated));
+  const records = await prisma.commissionRecord.findMany({ where: { appointmentId: f.booking.id } });
+  assert.equal(records.find(c => c.appointmentServiceId === id)!.staffId, substitute.id);
+  assert.equal(records.find(c => c.appointmentServiceId === id)!.commissionAmount.toFixed(2), "102.00");
+  assert.equal(records.find(c => c.appointmentServiceId === second.id)!.staffId, f.staff.id);
+  assert.equal(records.find(c => c.appointmentServiceId === second.id)!.commissionAmount.toFixed(2), "68.00");
+  const today = Temporal.Now.plainDateISO("Asia/Manila").toString();
+  const report = await createReportsService(prisma, "Asia/Manila").commissionSummary(adminId, { from: today, to: today, page: 1, pageSize: 25, staffId: substitute.id });
+  assert.equal(report.details[0]!.replacement!.recordedByRole, "ADMIN");
+  assert.equal(report.details[0]!.paymentRecordedBy!.role, "CASHIER");
+  assert.equal(report.details[0]!.paymentRecordedBy!.id, cashierId);
+
+  const competing = await recorded();
+  const other = await replacement(competing.item.id);
+  const results = await Promise.allSettled([
+    settlement.assignPerformer(adminId, { bookingCode: competing.saved.bookingCode, revision: competing.saved.revision,
+      appointmentServiceId: competing.saved.services[0]!.id, staffId: other.id, reason: "Customer agreed", customerAgreed: true }),
+    settlement.settle(cashierId, pay(competing.saved)),
+  ]);
+  assert.equal(results.filter(result => result.status === "fulfilled").length, 1);
+  const current = await settlement.lookup(adminId, competing.saved.bookingCode);
+  if (current.status !== "COMPLETED") await settlement.settle(cashierId, pay(current));
+  const commission = await prisma.commissionRecord.findUniqueOrThrow({ where: { appointmentServiceId: competing.saved.services[0]!.id } });
+  const assignment = await prisma.servicePerformerAssignment.findFirst({ where: { appointmentServiceId: competing.saved.services[0]!.id } });
+  assert.equal(commission.staffId, assignment?.staffId ?? competing.staff.id);
+  assert.equal(await prisma.payment.count({ where: { appointmentId: competing.booking.id, type: "SERVICE_PAYMENT" } }), 1);
+});
 
 test("database numbering is unique under concurrency and preserves historical receipts", async () => {
   const f = await fixture();
@@ -128,6 +264,11 @@ test("settlement retries atomically create one payment, receipt, commissions and
   await assert.rejects(settlement.settle(cashierId, pay(f.saved)), (e: ApiError) => e.code === "SETTLEMENT_NOT_ALLOWED");
   await assert.rejects(settlement.outcomes(adminId, { bookingCode: f.saved.bookingCode, revision: results[0].revision, services: f.saved.services.map(s => ({ id: s.id, outcome: "NOT_PERFORMED" })) }));
   const view = await settlement.lookup(adminId, f.saved.bookingCode); assert.equal(view.commissions?.length, 1);
+  const today = Temporal.Now.plainDateISO("Asia/Manila").toString();
+  const report = await createReportsService(prisma, "Asia/Manila").commissionSummary(adminId, { from: today, to: today, page: 1, pageSize: 25, staffId: f.staff.id });
+  assert.equal(report.details[0]!.replacement, null);
+  assert.equal(report.details[0]!.paymentRecordedBy!.role, "CASHIER");
+  assert.equal(report.details[0]!.paymentRecordedBy!.id, cashierId);
   assert.equal((await settlement.lookup(cashierId, f.saved.bookingCode)).commissions, undefined);
 });
 
@@ -277,6 +418,19 @@ test("HTTP authentication, CSRF, role enforcement, and deactivated accounts prot
     return fetch(`http://127.0.0.1:${port}/api/settlement/${path}`, { method: "POST", headers: { "Content-Type": "application/json", Origin: origin, ...(token ? { Cookie: `salon_session=${token}` } : {}) }, body: JSON.stringify(body) });
   }
   try {
+    const substitute = await replacement(f.item.id);
+    const performerInput = { bookingCode: f.saved.bookingCode, revision: f.saved.revision,
+      appointmentServiceId: f.saved.services[0]!.id, staffId: substitute.id, reason: "Customer agreed to replacement", customerAgreed: true };
+    assert.equal((await request("performer", performerInput)).status, 401);
+    assert.equal((await request("performer", performerInput, cashierToken, "https://evil.test")).status, 403);
+    assert.equal((await request("performer", { ...performerInput, customerAgreed: false }, cashierToken)).status, 400);
+    assert.equal((await request("performer", { ...performerInput, commissionRate: "1.0000" }, cashierToken)).status, 400);
+    const reassigned = await request("performer", performerInput, cashierToken);
+    assert.equal(reassigned.status, 200);
+    const assignedBody = await reassigned.json();
+    assert.equal(assignedBody.appointment.commissions, undefined);
+    assert.equal(JSON.stringify(assignedBody.appointment.services).includes("commissionRate"), false);
+    f.saved = assignedBody.appointment;
     assert.equal((await request("lookup", { bookingCode: f.saved.bookingCode })).status, 401);
     assert.equal((await request("lookup", { bookingCode: f.saved.bookingCode }, cashierToken, "https://evil.test")).status, 403);
     const adminVisit = await recorded();

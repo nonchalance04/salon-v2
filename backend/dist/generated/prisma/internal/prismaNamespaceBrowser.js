@@ -52,6 +52,7 @@ export const ModelName = {
     BookingPolicyVersion: 'BookingPolicyVersion',
     Appointment: 'Appointment',
     AppointmentService: 'AppointmentService',
+    ServicePerformerAssignment: 'ServicePerformerAssignment',
     AppointmentRescheduleHistory: 'AppointmentRescheduleHistory',
     Payment: 'Payment',
     Receipt: 'Receipt',
@@ -247,6 +248,20 @@ export const AppointmentServiceScalarFieldEnum = {
     removedAt: 'removedAt',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
+};
+export const ServicePerformerAssignmentScalarFieldEnum = {
+    id: 'id',
+    sequence: 'sequence',
+    appointmentServiceId: 'appointmentServiceId',
+    staffId: 'staffId',
+    staffRecordId: 'staffRecordId',
+    staffFirstNameSnapshot: 'staffFirstNameSnapshot',
+    staffLastNameSnapshot: 'staffLastNameSnapshot',
+    commissionRateSnapshot: 'commissionRateSnapshot',
+    reason: 'reason',
+    customerAgreed: 'customerAgreed',
+    recordedByUserId: 'recordedByUserId',
+    recordedAt: 'recordedAt'
 };
 export const AppointmentRescheduleHistoryScalarFieldEnum = {
     id: 'id',

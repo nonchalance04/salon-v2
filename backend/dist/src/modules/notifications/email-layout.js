@@ -1,3 +1,4 @@
+// Make supplied text safe to place in an email so it appears as text rather than page instructions.
 function escapeHtml(value) {
     return value.replace(/[&<>"']/g, (character) => ({
         "&": "&amp;",
@@ -10,6 +11,7 @@ function escapeHtml(value) {
 /** Inline styles and presentation tables keep the website's look in mail clients. */
 export function renderEmailLayout(options) {
     const { title, text, bookingCode, when, verificationCode, appointmentUrl } = options;
+    // Format one email detail so the customer can read the label and its value together.
     const detail = (label, value) => `<tr><td style="padding:0 0 6px;font-size:11px;font-weight:700;letter-spacing:1.5px;color:#73756f;text-transform:uppercase;">${label}</td></tr><tr><td style="padding:0 0 20px;font-size:17px;font-weight:700;line-height:1.5;overflow-wrap:anywhere;">${escapeHtml(value)}</td></tr>`;
     const details = bookingCode || when
         ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:24px;background:#f3f3f1;border:1px solid #ddddd7;border-radius:16px;"><tr><td style="padding:22px 22px 2px;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0">${bookingCode ? detail("Booking reference", bookingCode) : ""}${when ? detail("Appointment time", when) : ""}</table></td></tr></table>`

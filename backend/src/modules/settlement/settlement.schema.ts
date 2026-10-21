@@ -10,6 +10,11 @@ export const outcomesSchema = revision.extend({ services: z.array(z.object({
 export const settlementSchema = revision.extend({ idempotencyKey: z.uuid(), amount: money,
   currency: z.literal("PHP"), method: z.enum(["CASH", "GCASH", "OTHER"]), externalReference: z.string().trim().min(1).max(120).optional(),
 }).strict();
+export const performerSchema = revision.extend({
+  appointmentServiceId: z.uuid(), staffId: z.uuid(),
+  reason: z.string().trim().min(1).max(500), customerAgreed: z.literal(true),
+}).strict();
+export type PerformerInput = z.infer<typeof performerSchema>;
 // Describe the information used by visit settlement so different parts of the application agree on its contents.
 export type OutcomesInput = z.infer<typeof outcomesSchema>;
 export type SettlementInput = z.infer<typeof settlementSchema>;

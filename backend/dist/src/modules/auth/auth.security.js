@@ -1,8 +1,11 @@
 import { ApiError } from "../../shared/http.js";
+// Keep the shared values for staff sign-in together so later steps use the same definitions.
 export const COOKIE_NAME = "salon_session";
+// Choose how the browser stores sign-in details so access follows the configured security settings.
 export function cookieOptions(config) {
     return { httpOnly: true, secure: config.NODE_ENV === "production", sameSite: config.COOKIE_SAME_SITE, path: "/api" };
 }
+// Prepare the sign-in cookie so the browser can identify the staff session on later requests.
 export function sessionCookie(header) {
     const values = (header ?? "").split(";").map(part => part.trim()).filter(part => part.startsWith(`${COOKIE_NAME}=`));
     if (values.length !== 1)
@@ -14,6 +17,7 @@ export function sessionCookie(header) {
         return undefined;
     }
 }
+// Check where browser requests came from so unapproved websites cannot submit protected actions.
 export function browserSecurity(origins) {
     return (req, res, next) => {
         const origin = req.get("origin");

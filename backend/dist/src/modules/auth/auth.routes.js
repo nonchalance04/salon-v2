@@ -1,3 +1,4 @@
+// Bring in the tools for staff sign-in so this file can work with the rest of the application.
 import { createAuthMiddleware } from "./auth.middleware.js";
 import { Router } from "express";
 import { validateRequest } from "../../shared/http.js";
@@ -8,6 +9,7 @@ import { createGmailProvider } from "../notifications/gmail-provider.js";
 import { createUsersService } from "../users/users.service.js";
 import { loginSchema, createAccountSchema, updateAccountSchema, forgotPasswordSchema, resetPasswordSchema, } from "./auth.schema.js";
 import { browserSecurity, COOKIE_NAME, cookieOptions, } from "./auth.security.js";
+// Connect sign-in, sign-out and recovery requests so staff can manage their access.
 export function createAuthRouter(prisma, config, resetEmailProvider) {
     const router = Router();
     const service = createAuthService(prisma);

@@ -1,5 +1,7 @@
+// Bring in the tools for salon settings so this file can work with the rest of the application.
 import { z } from "zod";
 import { Prisma } from "../../../generated/prisma/client.js";
+// Define the accepted salon settings details so unexpected or incomplete input can be rejected.
 const text = z.string().trim().min(1).max(200);
 const optionalText = z.string().trim().max(2000).nullable();
 const integer = z.number().int().min(0).max(2_147_483_647);
@@ -71,6 +73,7 @@ export const staffSkillsSchema = z
     .strict()
     .refine((input) => new Set(input.services.map((row) => row.serviceId)).size ===
     input.services.length, "Select each service only once.");
+// Define the accepted salon settings details so unexpected or incomplete input can be rejected.
 export const hoursSchema = z
     .object({
     dayOfWeek: z.enum(days),
@@ -98,6 +101,7 @@ export const dayHoursSchema = z
     .refine((v) => (v.isOpen ? v.periods.length > 0 : v.periods.length === 0), "Open days need opening hours; closed days must have no active hours.")
     .refine((v) => new Set(v.periods.flatMap((p) => (p.id ? [p.id] : []))).size ===
     v.periods.filter((p) => p.id).length, "Each opening period can appear only once.");
+// Define the accepted salon settings details so unexpected or incomplete input can be rejected.
 export const scheduleSchema = z
     .object({
     staffId: z.uuid(),
@@ -131,6 +135,7 @@ export const closureRequestSchema = z.union([
     allDayClosureSchema,
     closureSchema,
 ]);
+// Define the accepted salon settings details so unexpected or incomplete input can be rejected.
 export const unavailabilitySchema = z
     .object({ ...intervalFields, staffId: z.uuid() })
     .strict()
@@ -151,6 +156,7 @@ export const policySchema = z
 })
     .strict();
 export const recordId = z.object({ id: z.uuid() });
+// Define the accepted salon settings details so unexpected or incomplete input can be rejected.
 const imageUrl = z
     .url()
     .max(2048)

@@ -1,7 +1,9 @@
+// Bring in the tools for customer notifications so this file can work with the rest of the application.
 import { confirmationSms, suppressRoutineSms, } from "./minimal-sms.js";
 import { Prisma, } from "../../../generated/prisma/client.js";
 import { NotificationFailure, } from "./notification-provider.js";
 import { notificationPayload, renderNotification } from "./templates.js";
+// Manage queued messages and delivery attempts so notifications can run reliably in the background.
 export function createNotificationsService(db, options) {
     if (!Number.isInteger(options.maxAttempts) ||
         options.maxAttempts < 1 ||
@@ -17,6 +19,7 @@ export function createNotificationsService(db, options) {
         throw new Error("Invalid notification worker options.");
     const minimalSms = options.smsPolicy !== "all";
     const channels = Object.keys(options.providers).filter((channel) => options.providers[channel]);
+    // Reserve queued messages for this worker so the same work is not claimed by competing workers.
     async function claim() {
         if (!channels.length)
             return null;
@@ -61,6 +64,7 @@ export function createNotificationsService(db, options) {
             return row;
         });
     }
+    // Record the failed delivery and decide whether to retry so temporary problems follow the configured limits.
     async function fail(row, error) {
         const known = error instanceof NotificationFailure;
         const retry = !(minimalSms && row.channel === "SMS") &&
@@ -75,6 +79,7 @@ export function createNotificationsService(db, options) {
       WHERE "id" = ${row.id}::uuid AND "status" = 'PROCESSING' AND "attemptCount" = ${row.attemptCount}
     `;
     }
+    // Mark a message as skipped when its conditions no longer apply so an outdated notice is not delivered.
     async function skip(row, reason) {
         await db.notificationQueue.updateMany({
             where: {
@@ -85,6 +90,7 @@ export function createNotificationsService(db, options) {
             data: { status: "SKIPPED", lastError: reason },
         });
     }
+    // Attempt delivery and record its outcome so failed messages can follow the retry rules.
     async function deliver(row) {
         // A delayed caller must not start delivery for a claim already reclaimed.
         const live = await db.$queryRaw `SELECT "id" FROM "NotificationQueue"
@@ -185,12 +191,14 @@ export function createNotificationsService(db, options) {
             clearTimeout(timer);
         }
     }
+    // Add reminders for eligible upcoming visits so customers can be notified before their appointments.
     async function enqueueReminders(limit = 100) {
         if (!Number.isInteger(limit) || limit < 1 || limit > 1000)
             throw new Error("Invalid reminder batch size.");
         // Email appointment details are included in confirmation; only full-policy SMS uses reminders.
         if (!options.reminderHours || minimalSms || !options.providers.SMS)
             return 0;
+        // Keep the related database changes together so a failure leaves the earlier records intact.
         return db.$transaction(async (tx) => {
             // The appointment lock serializes reminder creation with other scanners and
             // appointment changes. Existing rows, including SENT/FAILED, deduplicate a
@@ -241,6 +249,7 @@ export function createNotificationsService(db, options) {
                     },
                 }))
                     continue;
+                // Save the new customer notification record so the customer can receive the saved appointment update.
                 await tx.notificationQueue.create({
                     data: {
                         appointmentId: id,
@@ -262,6 +271,7 @@ export function createNotificationsService(db, options) {
         claim,
         deliver,
         enqueueReminders,
+        // Process the next queued message so pending notifications continue toward delivery.
         async processNext() {
             const row = await claim();
             if (!row)

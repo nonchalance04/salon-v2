@@ -3,15 +3,18 @@
 export class NotificationFailure extends Error {
     code;
     retryable;
+    // function Object() { [native code] }
     constructor(code, retryable = true) {
         super(code);
         this.code = code;
         this.retryable = retryable;
     }
 }
+// Provide a controllable message sender so notification behavior can be checked without live delivery.
 export function createTestNotificationProvider(onSend = () => { }) {
     return { async send(message) { onSend(message); } };
 }
+// Normalize the SMS destination so the message provider receives a supported phone number.
 export function smsRecipient(value) {
     const normalized = value.replace(/[\s()-]/g, "");
     const international = /^09\d{9}$/.test(normalized) ? `+63${normalized.slice(1)}` : normalized;
@@ -19,6 +22,7 @@ export function smsRecipient(value) {
         throw new NotificationFailure("INVALID_RECIPIENT", false);
     return international;
 }
+// Prepare the TextBee message sender so queued salon texts can reach customer phones.
 export function createTextBeeProvider(apiKey, deviceId, request = fetch) {
     return { async send(message, signal) {
             if (message.channel !== "SMS")

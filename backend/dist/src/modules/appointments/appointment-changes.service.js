@@ -1,3 +1,4 @@
+// Bring in the tools for appointment bookings so this file can work with the rest of the application.
 import { notificationRecipients } from "../notifications/notification-recipients.js";
 import { coversReservation, overlaps } from "../scheduling/coverage.js";
 import { noShowCorrectionSchema } from "./appointments.schema.js";
@@ -74,7 +75,9 @@ function pristine(row) {
         throw conflict("The customer has checked in or service outcomes have already been recorded. Please contact the salon.");
     }
 }
+// Keep the shared values for appointment bookings together so later steps use the same definitions.
 export const NO_SHOW_ARRIVAL_GRACE_MS = 15 * 60_000;
+// Check whether an unattended booking has passed its grace period so it can be marked as missed.
 export function eligibleForAutomaticNoShow(row, now) {
     return row.status === "CONFIRMED" && !row.checkedInAt && !row.completedAt && !row.completionType &&
         +now >= +row.startAt + NO_SHOW_ARRIVAL_GRACE_MS &&
@@ -110,6 +113,7 @@ async function admin(tx, actorId, allowCashier = false) {
  */
 async function lockAppointment(tx, bookingCode, token) {
     const lockedIds = (await tx.staff.findMany({ select: { id: true } })).map((s) => s.id);
+    // Coordinate access to the affected staff so another booking cannot change their reserved time during this step.
     await lockStaff(tx, lockedIds);
     await tx.$queryRaw `SELECT id FROM "Appointment" WHERE "bookingCode" = ${bookingCode} FOR UPDATE`;
     const row = await tx.appointment.findUnique({
@@ -169,6 +173,7 @@ function snapshot(row) {
  */
 async function notify(tx, row, eventType, now) {
     for (const contact of notificationRecipients(row.customer)) {
+        // Save the new customer notification record so the customer can receive the saved appointment update.
         await tx.notificationQueue.create({
             data: {
                 appointmentId: row.id,
@@ -276,6 +281,7 @@ export function createAppointmentChangesService(prisma, timeZone) {
          * 3. Calculates and returns available time slots for the chosen date.
          */
         async search(input) {
+            // Keep the related database changes together so a failure leaves the earlier records intact.
             return reservationTransaction(prisma, async (tx) => {
                 const { row, lockedIds } = await lockAppointment(tx, input.bookingCode, input.token);
                 const prepared = await prepare(tx, row, lockedIds, input, timeZone, await freshTime(tx));
@@ -310,6 +316,7 @@ export function createAppointmentChangesService(prisma, timeZone) {
          * - Perform a final pre-commit double-check against current time to eliminate race conditions.
          */
         async change(input) {
+            // Keep the related database changes together so a failure leaves the earlier records intact.
             return reservationTransaction(prisma, async (tx) => {
                 const credentials = createGuestCredentials();
                 const { row, lockedIds } = await lockAppointment(tx, input.bookingCode, input.token);
@@ -374,6 +381,7 @@ export function createAppointmentChangesService(prisma, timeZone) {
                         where: { appointmentId: row.id, membershipStatus: "ACTIVE" },
                         data: { membershipStatus: "REMOVED", removedAt: now },
                     });
+                    // Update the saved appointment record so the visit status and reserved details stay current.
                     await tx.appointment.update({
                         where: { id: row.id },
                         data: {
@@ -405,6 +413,7 @@ export function createAppointmentChangesService(prisma, timeZone) {
                         // Create fresh line item snapshotting current service catalog values
                         const item = prepared.data.services.find((s) => s.id === part.serviceId);
                         const q = prepared.data.qualifications.find((q) => q.staffId === part.staffId && q.serviceId === part.serviceId);
+                        // Save the new service outcome record so the visit reflects the recorded service result.
                         await tx.appointmentService.create({
                             data: {
                                 ...timing,
@@ -480,10 +489,12 @@ export function createAppointmentChangesService(prisma, timeZone) {
          * - Updates status to `CANCELLED` and enqueues cancellation notification.
          */
         async cancel(bookingCode, token, reason) {
+            // Keep the related database changes together so a failure leaves the earlier records intact.
             return reservationTransaction(prisma, async (tx) => {
                 const { row } = await lockAppointment(tx, bookingCode, token);
                 if (row.status === "CANCELLED")
                     return { cancelled: true };
+                // Check the current appointment conditions so later actions use an up-to-date result.
                 const check = (now) => {
                     if (row.status !== "CONFIRMED" ||
                         +now >
@@ -495,6 +506,7 @@ export function createAppointmentChangesService(prisma, timeZone) {
                 };
                 const now = await freshTime(tx);
                 check(now);
+                // Update the saved appointment record so the visit status and reserved details stay current.
                 const updated = await tx.appointment.update({
                     where: { id: row.id },
                     data: { status: "CANCELLED", cancelledAt: now },
@@ -505,6 +517,7 @@ export function createAppointmentChangesService(prisma, timeZone) {
                 return { cancelled: true };
             });
         },
+        // Find confirmed visits that passed the arrival deadline so missed appointments are updated automatically.
         async markOverdueNoShows(limit = 100) {
             // Filter protected visits before limiting so they cannot starve eligible bookings.
             const candidates = await prisma.$queryRaw `
@@ -527,6 +540,7 @@ export function createAppointmentChangesService(prisma, timeZone) {
                     const now = await freshTime(tx);
                     if (!eligibleForAutomaticNoShow(row, now))
                         return 0;
+                    // Update the saved appointment record so the visit status and reserved details stay current.
                     await tx.appointment.update({ where: { id: row.id }, data: {
                             status: "NO_SHOW", noShowAt: now,
                             noShowGraceExpiresAt: new Date(+row.startAt + row.bookingPolicyVersion.noShowGraceHours * 3_600_000),
@@ -536,8 +550,11 @@ export function createAppointmentChangesService(prisma, timeZone) {
             }
             return marked;
         },
+        // Check and correct a missed-visit record so an eligible customer who arrived can still be served.
         async correctNoShow(actorId, raw) {
+            // Check the submitted details before continuing so invalid input cannot reach the saved records.
             const input = noShowCorrectionSchema.parse(raw);
+            // Keep the related database changes together so a failure leaves the earlier records intact.
             return reservationTransaction(prisma, async (tx) => {
                 await admin(tx, actorId, true);
                 const { row } = await lockAppointment(tx, input.bookingCode);
@@ -552,6 +569,7 @@ export function createAppointmentChangesService(prisma, timeZone) {
                 const services = row.appointmentServices.filter(s => s.membershipStatus === "ACTIVE");
                 if (!services.length)
                     throw conflict("This appointment has no active services to restore.");
+                // Load current hours, skills and reservations so the proposed visit is checked against the real schedule.
                 const data = await loadAvailabilityData(tx, { date, services: services.map(s => ({
                         serviceId: s.serviceId, assignmentMode: "SPECIFIC", staffId: s.staffId,
                     })) }, timeZone, now, row.bookingPolicyVersion, {
@@ -571,6 +589,7 @@ export function createAppointmentChangesService(prisma, timeZone) {
                 const checkedInAt = await freshTime(tx);
                 if (row.endAt <= checkedInAt)
                     throw conflict("The original visit has ended. Arrange a new available booking instead.");
+                // Update the saved appointment record so the visit status and reserved details stay current.
                 await tx.appointment.update({ where: { id: row.id }, data: {
                         status: "CONFIRMED", checkedInAt, checkedInByUserId: actorId,
                         noShowAt: null, noShowGraceExpiresAt: null,
@@ -578,7 +597,9 @@ export function createAppointmentChangesService(prisma, timeZone) {
                 return { corrected: true, checkedInAt };
             });
         },
+        // Record the customer arrival so staff can see that the appointment is ready to be served.
         async checkIn(actorId, bookingCode) {
+            // Keep the related database changes together so a failure leaves the earlier records intact.
             return reservationTransaction(prisma, async (tx) => {
                 // Authorize under a lock so a concurrent account deactivation cannot race arrival recording.
                 await tx.$queryRaw `SELECT id FROM "User" WHERE id = ${actorId}::uuid FOR SHARE`;
@@ -593,10 +614,12 @@ export function createAppointmentChangesService(prisma, timeZone) {
                 if (row.checkedInAt)
                     return { checkedInAt: row.checkedInAt, checkedInByUserId: row.checkedInByUserId };
                 const now = await freshTime(tx);
+                // Convert the date to the format needed here so the selected salon day can be handled consistently.
                 const date = (value) => Temporal.Instant.fromEpochMilliseconds(+value).toZonedDateTimeISO(timeZone).toPlainDate().toString();
                 if (date(now) !== date(row.startAt))
                     throw conflict("Check-in is available only on the scheduled salon date.");
                 pristine(row);
+                // Update the saved appointment record so the visit status and reserved details stay current.
                 await tx.appointment.update({ where: { id: row.id }, data: { checkedInAt: now, checkedInByUserId: actorId } });
                 return { checkedInAt: now, checkedInByUserId: actorId };
             });
@@ -611,6 +634,7 @@ export function createAppointmentChangesService(prisma, timeZone) {
          * - Idempotent: If already `NO_SHOW`, returns `{ marked: true }`.
          */
         async markNoShow(actorId, bookingCode) {
+            // Keep the related database changes together so a failure leaves the earlier records intact.
             return reservationTransaction(prisma, async (tx) => {
                 await admin(tx, actorId);
                 const { row } = await lockAppointment(tx, bookingCode);
@@ -621,6 +645,7 @@ export function createAppointmentChangesService(prisma, timeZone) {
                     throw conflict("Only a confirmed appointment whose start time has arrived may be marked as a no-show.");
                 }
                 pristine(row);
+                // Update the saved appointment record so the visit status and reserved details stay current.
                 await tx.appointment.update({
                     where: { id: row.id },
                     data: {
@@ -648,6 +673,7 @@ export function createAppointmentChangesService(prisma, timeZone) {
          * @returns Array of 50 sanitized appointment views and an optional `nextCursor` for the next page.
          */
         async list(actorId, cursor, filters = {}) {
+            // Keep the related database changes together so a failure leaves the earlier records intact.
             return prisma.$transaction(async (tx) => {
                 await admin(tx, actorId);
                 const now = await freshTime(tx);

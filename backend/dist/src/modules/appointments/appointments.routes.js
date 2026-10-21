@@ -1,3 +1,4 @@
+// Bring in the tools for appointment bookings so this file can work with the rest of the application.
 import { guestSessionCredentials } from "../appointments/appointment-otp.routes.js";
 import { Router } from "express";
 import { z } from "zod";
@@ -7,6 +8,7 @@ import { noShowCorrectionSchema, appointmentListQuery, bookingSchema, guestAcces
 import { createAppointmentsService } from "./appointments.service.js";
 import { createAppointmentChangesService } from "./appointment-changes.service.js";
 import { createAuthMiddleware } from "../auth/auth.middleware.js";
+// Connect booking requests to validation and appointment handling so customers and staff use the supported actions.
 export function createAppointmentsRouter(prisma, config) {
     const router = Router();
     const service = createAppointmentsService(prisma, config.SALON_TIMEZONE);

@@ -25,10 +25,10 @@ export function CashierDashboard({ admin = false, mode, bookingCode, onNavigate,
   }
   // Open the selected appointment so its settlement details can be reviewed.
   const select = (code: string) => onNavigate(mode, code);
-  const adminPayments = admin && mode === "payments";
+  const paymentDesk = mode === "payments";
   return (
-    <section className={adminPayments ? "admin-payments tw:max-w-[1320px] tw:mx-auto tw:min-w-0 " : undefined} aria-labelledby="cashier-title">
-      {adminPayments ? <header className="payment-page-heading tw:[.admin-payments_&]:flex tw:[.admin-payments_&]:items-center
+    <section className={paymentDesk ? "admin-payments tw:max-w-[1320px] tw:mx-auto tw:min-w-0 tw:[&_.primary]:border-[#d9b437] tw:[&_.primary:hover]:border-[#c5a02a] " : undefined} aria-labelledby="cashier-title">
+      {paymentDesk ? <header className="payment-page-heading tw:[.admin-payments_&]:flex tw:[.admin-payments_&]:items-center
           tw:[.admin-payments_&]:justify-between tw:[.admin-payments_&]:gap-6 tw:[.admin-payments_&]:mb-7
           tw:[.admin-payments_&_h2]:mb-2.5 tw:[.admin-payments_&_h2]:text-[30px]
           tw:down-600:[.admin-payments_&_h2]:text-[25px]"><div><p className="eyebrow public:text-[12px] public:tracking-[0.17em] public:font-bold public:text-[#987b1f]
@@ -56,7 +56,7 @@ export function CashierDashboard({ admin = false, mode, bookingCode, onNavigate,
         />
       ) : (
         <>
-          {adminPayments && <form className="payment-lookup tw:[.admin-payments_&]:flex tw:[.admin-payments_&]:items-center tw:[.admin-payments_&]:gap-4.5
+          {paymentDesk && <form className="payment-lookup tw:[.admin-payments_&]:flex tw:[.admin-payments_&]:items-center tw:[.admin-payments_&]:gap-4.5
           tw:[.admin-payments_&]:p-6 tw:[.admin-payments_&]:[background:white] tw:[.admin-payments_&]:rounded-[14px]
           tw:[.admin-payments_&]:mb-7 tw:[&_>_div]:flex-1 tw:[&_h3]:text-[16px] tw:[&_h3]:[margin:0_0_4px]
           tw:[&_p]:text-[13px] tw:[&_p]:m-0 tw:[.admin-payments_&_label]:flex-1
@@ -71,8 +71,8 @@ export function CashierDashboard({ admin = false, mode, bookingCode, onNavigate,
           tw:[.admin-payments_&_input]:h-10.5"><Search size={17} aria-hidden="true" /><Input name="code" required maxLength={100} placeholder="Enter booking code" /></span></label><Button variant="outline">Find booking </Button></form>}
           {mode === "services" && <ConfirmedServices admin={admin} arrivalOnly onSelect={select} />}
           {/* Show confirmed service rows so staff can review the scheduled work and recorded outcomes. */}
-          <ConfirmedServices paymentDesk={adminPayments} key={mode} admin={admin && mode !== "payments"} manageOutcomes={mode === "services"} onSelect={select} />
-          {!adminPayments && <details>
+          <ConfirmedServices paymentDesk={paymentDesk} key={mode} admin={admin && mode !== "payments"} manageOutcomes={mode === "services"} onSelect={select} />
+          {!paymentDesk && <details>
             <summary>{mode === "services" ? "Find an appointment or correct a no-show by booking code" : "Find a payment or receipt by booking code"}</summary>
             {/* Group the entry fields and submit action so the user can complete this step in one place. */}
             <form className="account-form tw:[border:1px_solid_#dce0d8] tw:[background:white] tw:p-7 tw:rounded-[10px] tw:mb-[25px]

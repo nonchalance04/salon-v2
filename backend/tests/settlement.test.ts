@@ -20,6 +20,7 @@ function outcomeFixture(role: "ADMIN" | "CASHIER", outcome: "SCHEDULED" | "PERFO
   const tx = {
     $executeRaw: async () => 0, $queryRaw: async () => [],
     staff: { findMany: async () => [{ id: "staff" }] },
+    staffService: { findMany: async () => [] },
     user: { findUnique: async () => ({ id: role, role, isActive: true }) },
     appointment: { findUnique: async () => row, findUniqueOrThrow: async () => row },
     payment: { findMany: async () => [] },

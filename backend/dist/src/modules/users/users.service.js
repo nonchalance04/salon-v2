@@ -1,6 +1,8 @@
+// Bring in the tools for staff accounts so this file can work with the rest of the application.
 import bcrypt from "bcrypt";
 import { publicUserSelect } from "../auth/auth.service.js";
 import { ApiError } from "../../shared/http.js";
+// Require an active administrator so account changes remain restricted to authorized staff.
 async function requireAdmin(tx, id) {
     const user = await tx.user.findUnique({ where: { id } });
     if (!user?.isActive)
@@ -8,16 +10,20 @@ async function requireAdmin(tx, id) {
     if (user.role !== "ADMIN")
         throw new ApiError(403, "FORBIDDEN", "Administrator access is required.");
 }
+// Manage staff accounts with administrator checks so sign-in access can be maintained safely.
 export function createUsersService(prisma) {
     return {
+        // Find the records matching the request so the caller can display the relevant results.
         async list(actorId) {
             await requireAdmin(prisma, actorId);
             return prisma.user.findMany({ select: publicUserSelect, orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
         },
+        // Validate and save the staff account so access changes follow the administrator rules.
         async save(actorId, input, id) {
             const { password, ...fields } = input;
             const passwordHash = password ? await bcrypt.hash(password, 12) : undefined;
             try {
+                // Keep the related database changes together so a failure leaves the earlier records intact.
                 return await prisma.$transaction(async (tx) => {
                     // Lock actor and edited account in a stable order; recheck privileges
                     // after waiting so concurrent deactivation/demotion cannot authorize a write.

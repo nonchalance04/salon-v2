@@ -1,4 +1,6 @@
+// Bring in the tools for server settings so this file can work with the rest of the application.
 import { z } from "zod";
+// Define the accepted server settings details so unexpected or incomplete input can be rejected.
 export const envSchema = z.object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     PORT: z.coerce.number().int().min(1).max(65535).default(3000),
@@ -121,6 +123,7 @@ export const envSchema = z.object({
         context.addIssue({ code: "custom", path: ["TRUSTED_ORIGINS"], message: "Production requires explicit HTTPS origins." });
     }
 });
+// Check the server settings at startup so missing or invalid setup is reported before serving customers.
 export function parseEnv(input) {
     const result = envSchema.safeParse(input);
     if (!result.success) {

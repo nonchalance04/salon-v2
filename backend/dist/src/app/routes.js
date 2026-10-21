@@ -1,3 +1,4 @@
+// Bring in the tools for application setup so this file can work with the rest of the application.
 import { createAppointmentOtpRouter } from "../modules/appointments/appointment-otp.routes.js";
 import { Router } from "express";
 import { createAuthRouter } from "../modules/auth/auth.routes.js";
@@ -8,6 +9,7 @@ import { createPaymentsRouter } from "../modules/payments/payments.routes.js";
 import { createSettlementRouter } from "../modules/settlement/settlement.routes.js";
 import { createReportsRouter } from "../modules/reports/reports.routes.js";
 import { createChatbotRouter } from "../modules/chatbot/chatbot.routes.js";
+// Connect the salon features to their web addresses so requests reach the right part of the system.
 export function createApiRouter(prisma, config) {
     const router = Router();
     router.get("/ready", async (_req, res) => {

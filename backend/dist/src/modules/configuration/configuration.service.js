@@ -1,22 +1,31 @@
+// Bring in the tools for salon settings so this file can work with the rest of the application.
 import { closurePeriod } from "./closure-period.js";
 import { Prisma } from "../../../generated/prisma/client.js";
 import { ApiError } from "../../shared/http.js";
 import { lockSalon, lockStaff, freshTime } from "../scheduling/coordination.js";
 import { coversReservation, overlaps } from "../scheduling/coverage.js";
+// Convert the time to the format needed here so salon schedule values are handled consistently.
 const time = (value) => new Date(`1970-01-01T${value.length === 5 ? `${value}:00` : value}Z`);
+// Convert the date to the format needed here so the selected salon day can be handled consistently.
 const date = (value) => value ? new Date(`${value}T00:00:00Z`) : null;
+// Prepare the value for the response so saved settings can be read by the browser.
 const json = (value) => JSON.parse(JSON.stringify(value));
+// Require the requested record to exist so later work does not continue with missing details.
 const required = (value) => {
     if (value === null)
         throw new ApiError(404, "NOT_FOUND", "Configuration record not found.");
     return value;
 };
+// Manage salon settings through shared checks so changes respect existing appointments.
 export function createConfigurationService(prisma, timeZone) {
+    // Apply a settings change with coordinated database access so bookings cannot use partly updated settings.
     async function write(actorId, mode, staffIds, operation) {
         try {
+            // Keep the related database changes together so a failure leaves the earlier records intact.
             return await prisma.$transaction(async (tx) => {
                 await tx.$executeRaw `SET LOCAL lock_timeout = '5s'`;
                 await lockSalon(tx, mode);
+                // Coordinate access to the affected staff so another booking cannot change their reserved time during this step.
                 await lockStaff(tx, staffIds);
                 await tx.$queryRaw `SELECT id FROM "User" WHERE id = ${actorId}::uuid FOR SHARE`;
                 const actor = await tx.user.findUnique({ where: { id: actorId } });
@@ -81,6 +90,7 @@ export function createConfigurationService(prisma, timeZone) {
             throw new ApiError(409, "RESERVATION_CONFLICT", "This change would invalidate existing reservations. Resolve the listed appointments first.", { appointments: conflicts });
     }
     return {
+        // Collect the saved details together so the caller can work with a consistent picture.
         async snapshot() {
             const [profile, services, staff, qualifications, hours, closures, schedules, unavailability, policies,] = await prisma.$transaction([
                 prisma.salonProfile.findFirst(),
@@ -110,6 +120,7 @@ export function createConfigurationService(prisma, timeZone) {
                 policies,
             };
         },
+        // Select the public booking rules so customers can see the conditions that apply.
         publicPolicy() {
             return prisma.bookingPolicyVersion.findFirst({
                 where: { effectiveFrom: { lte: new Date() } },
@@ -128,6 +139,7 @@ export function createConfigurationService(prisma, timeZone) {
                 },
             });
         },
+        // Return public salon details so customer pages can show the current business information.
         async publicSalon() {
             const [profile, hours, closures] = await Promise.all([
                 prisma.salonProfile.findFirst({
@@ -146,6 +158,7 @@ export function createConfigurationService(prisma, timeZone) {
             ]);
             return { profile, timeZone, hours, closures };
         },
+        // Return the active service menu so customers can choose currently offered services.
         publicServices() {
             return prisma.service.findMany({
                 where: { isActive: true },
@@ -160,7 +173,9 @@ export function createConfigurationService(prisma, timeZone) {
                 orderBy: [{ name: "asc" }, { id: "asc" }],
             });
         },
+        // Save salon contact and profile details so public pages show the latest information.
         saveProfile(actorId, input) {
+            // Keep the related database changes together so a failure leaves the earlier records intact.
             return write(actorId, "exclusive", [], async (tx) => {
                 const profiles = await tx.salonProfile.findMany();
                 if (profiles.length > 1)
@@ -175,7 +190,9 @@ export function createConfigurationService(prisma, timeZone) {
                 return row;
             });
         },
+        // Validate and save the service details so the menu reflects the approved offering.
         saveService(actorId, input, id) {
+            // Keep the related database changes together so a failure leaves the earlier records intact.
             return write(actorId, "exclusive", [], async (tx) => {
                 const before = id
                     ? required(await tx.service.findUnique({ where: { id } }))
@@ -188,7 +205,9 @@ export function createConfigurationService(prisma, timeZone) {
                 return row;
             });
         },
+        // Validate and save staff details so the salon can maintain its team records.
         saveStaff(actorId, input, id) {
+            // Keep the related database changes together so a failure leaves the earlier records intact.
             return write(actorId, "shared", id ? [id] : [], async (tx) => {
                 const before = id
                     ? required(await tx.staff.findUnique({ where: { id } }))
@@ -201,7 +220,9 @@ export function createConfigurationService(prisma, timeZone) {
                 return row;
             });
         },
+        // Handle staff removal with the existing history protections so past appointments remain readable.
         removeStaff(actorId, id) {
+            // Keep the related database changes together so a failure leaves the earlier records intact.
             return write(actorId, "shared", [id], async (tx) => {
                 const before = required(await tx.staff.findUnique({ where: { id } }));
                 if (!before.isActive)
@@ -213,7 +234,9 @@ export function createConfigurationService(prisma, timeZone) {
                 });
             });
         },
+        // Save the public staff profile so customers can review the professional when booking.
         saveStaffPublicProfile(actorId, id, input) {
+            // Keep the related database changes together so a failure leaves the earlier records intact.
             return write(actorId, "shared", [id], async (tx) => {
                 required(await tx.staff.findUnique({ where: { id } }));
                 const row = await tx.staff.update({
@@ -223,7 +246,9 @@ export function createConfigurationService(prisma, timeZone) {
                 return row;
             });
         },
+        // Save the staff service qualification so bookings use the correct skills and commission rate.
         saveQualification(actorId, input, id) {
+            // Keep the related database changes together so a failure leaves the earlier records intact.
             return write(actorId, "shared", [input.staffId], async (tx) => {
                 const before = id
                     ? required(await tx.staffService.findUnique({ where: { id } }))
@@ -241,7 +266,9 @@ export function createConfigurationService(prisma, timeZone) {
                 return row;
             });
         },
+        // Update the staff skill selection together so service assignments use a consistent set of qualifications.
         saveStaffSkills(actorId, staffId, input) {
+            // Keep the related database changes together so a failure leaves the earlier records intact.
             return write(actorId, "shared", [staffId], async (tx) => {
                 required(await tx.staff.findUnique({ where: { id: staffId } }));
                 const existing = await tx.staffService.findMany({ where: { staffId } });
@@ -282,7 +309,9 @@ export function createConfigurationService(prisma, timeZone) {
                 });
             });
         },
+        // Save an opening-hours period after checking reservations so scheduled visits keep their required coverage.
         saveHours(actorId, input, id) {
+            // Keep the related database changes together so a failure leaves the earlier records intact.
             return write(actorId, "exclusive", [], async (tx) => {
                 const before = id
                     ? required(await tx.salonOperatingHour.findUnique({ where: { id } }))
@@ -308,7 +337,9 @@ export function createConfigurationService(prisma, timeZone) {
                 return row;
             });
         },
+        // Save the whole day of opening hours together so its open and closed periods remain consistent.
         saveDayHours(actorId, dayOfWeek, input) {
+            // Keep the related database changes together so a failure leaves the earlier records intact.
             return write(actorId, "exclusive", [], async (tx) => {
                 const existing = await tx.salonOperatingHour.findMany({
                     where: { dayOfWeek },
@@ -376,7 +407,9 @@ export function createConfigurationService(prisma, timeZone) {
                 });
             });
         },
+        // Save the staff work period after checking reservations so existing visits still fit the schedule.
         saveSchedule(actorId, input, id) {
+            // Keep the related database changes together so a failure leaves the earlier records intact.
             return write(actorId, "shared", [input.staffId], async (tx) => {
                 const before = id
                     ? required(await tx.staffSchedule.findUnique({ where: { id } }))
@@ -401,7 +434,9 @@ export function createConfigurationService(prisma, timeZone) {
                 return row;
             });
         },
+        // Save the salon closure after checking conflicts so customers are not booked during closed time.
         saveClosure(actorId, input, id) {
+            // Keep the related database changes together so a failure leaves the earlier records intact.
             return write(actorId, "exclusive", [], async (tx) => {
                 if (id)
                     required(await tx.salonClosure.findUnique({ where: { id } }));
@@ -418,7 +453,9 @@ export function createConfigurationService(prisma, timeZone) {
                 return row;
             });
         },
+        // Save staff time off after checking conflicts so existing visits keep an available professional.
         saveUnavailability(actorId, input, id) {
+            // Keep the related database changes together so a failure leaves the earlier records intact.
             return write(actorId, "shared", [input.staffId], async (tx) => {
                 const before = id
                     ? required(await tx.staffUnavailability.findUnique({ where: { id } }))
@@ -438,22 +475,28 @@ export function createConfigurationService(prisma, timeZone) {
                 return row;
             });
         },
+        // Deactivate the closure so its time can reopen while the saved record remains available.
         removeClosure(actorId, id) {
+            // Keep the related database changes together so a failure leaves the earlier records intact.
             return write(actorId, "exclusive", [], async (tx) => {
                 required(await tx.salonClosure.findUnique({ where: { id } }));
                 await tx.salonClosure.delete({ where: { id } });
             });
         },
+        // Deactivate the time-off record so the staff member can become available again.
         async removeUnavailability(actorId, id) {
             // Staff assignment is immutable, so this preliminary lookup determines the
             // ordered lock set safely; the row is reloaded after locking.
             const preliminary = required(await prisma.staffUnavailability.findUnique({ where: { id } }));
+            // Keep the related database changes together so a failure leaves the earlier records intact.
             return write(actorId, "shared", [preliminary.staffId], async (tx) => {
                 required(await tx.staffUnavailability.findUnique({ where: { id } }));
                 await tx.staffUnavailability.delete({ where: { id } });
             });
         },
+        // Save a new version of the booking rules so earlier appointments retain the rules they used.
         createPolicy(actorId, input) {
+            // Keep the related database changes together so a failure leaves the earlier records intact.
             return write(actorId, "exclusive", [], async (tx) => {
                 const now = await freshTime(tx);
                 if (input.effectiveFrom && input.effectiveFrom < now)

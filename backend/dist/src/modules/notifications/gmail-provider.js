@@ -1,8 +1,10 @@
+// Bring in the tools for customer notifications so this file can work with the rest of the application.
 import { createHash } from "node:crypto";
 import SMTPConnection from "nodemailer/lib/smtp-connection/index.js";
 import MailComposer from "nodemailer/lib/mail-composer/index.js";
 import { z } from "zod";
 import { NotificationFailure } from "./notification-provider.js";
+// Translate the email delivery failure so retry handling can distinguish its cause.
 function smtpFailure(error) {
     const value = error;
     const status = value?.responseCode;
@@ -16,6 +18,7 @@ function smtpFailure(error) {
         return new NotificationFailure("PROVIDER_TIMEOUT");
     return new NotificationFailure("PROVIDER_UNAVAILABLE");
 }
+// Prepare the configured email connection so salon messages can be sent through Gmail.
 export function createGmailProvider(user, password, from, timeoutMs, createConnection = options => new SMTPConnection(options)) {
     return { async send(message, signal) {
             if (message.channel !== "EMAIL")
@@ -44,6 +47,7 @@ export function createGmailProvider(user, password, from, timeoutMs, createConne
                     logger: false, debug: false,
                 });
                 let finished = false;
+                // Finish the delivery attempt and release its resources so the email request can settle cleanly.
                 const finish = (error) => {
                     if (finished)
                         return;
@@ -56,6 +60,7 @@ export function createGmailProvider(user, password, from, timeoutMs, createConne
                     else
                         resolve();
                 };
+                // Stop the unfinished delivery attempt so a cancelled request can release its resources.
                 const abort = () => finish(new NotificationFailure("PROVIDER_TIMEOUT"));
                 const timer = setTimeout(abort, timeoutMs);
                 connection.on("error", error => finish(smtpFailure(error)));

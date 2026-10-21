@@ -13,6 +13,7 @@ const hints = {
     ENOTFOUND: "Database hostname could not be resolved.",
     EPERM: "Database access was blocked by process permissions.",
 };
+// Prepare a safe worker error summary so delivery problems can be investigated.
 export function notificationWorkerError(error) {
     const code = error && typeof error === "object" && "code" in error ? error.code : undefined;
     if (typeof code === "string" && Object.hasOwn(hints, code)) {

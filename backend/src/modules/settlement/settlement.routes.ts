@@ -5,7 +5,7 @@ import type { PrismaClient } from "../../../generated/prisma/client.js";
 import { validateRequest } from "../../shared/http.js";
 import { browserSecurity, type AuthConfig } from "../auth/auth.security.js";
 import { createAuthMiddleware } from "../auth/auth.middleware.js";
-import { booking, outcomesSchema, revision, settlementSchema } from "./settlement.schema.js";
+import { booking, outcomesSchema, performerSchema, revision, settlementSchema } from "./settlement.schema.js";
 import { createSettlementService } from "./settlement.service.js";
 // Connect settlement requests to staff checks so visit outcomes and final payments use the approved actions.
 export function createSettlementRouter(prisma: PrismaClient, config: AuthConfig) {
@@ -14,6 +14,7 @@ export function createSettlementRouter(prisma: PrismaClient, config: AuthConfig)
   router.post("/settlement/lookup", validateRequest(z.object({ body: booking })), async (_req, res) => res.json({ appointment: await service.lookup(res.locals.user.id, res.locals.validated.body.bookingCode) }));
   router.post("/settlement/outcomes", validateRequest(z.object({ body: outcomesSchema })), async (_req, res) => res.json({ appointment: await service.outcomes(res.locals.user.id, res.locals.validated.body) }));
   router.post("/settlement/pay", validateRequest(z.object({ body: settlementSchema })), async (_req, res) => res.json({ appointment: await service.settle(res.locals.user.id, res.locals.validated.body) }));
+  router.post("/settlement/performer", validateRequest(z.object({ body: performerSchema })), async (_req, res) => res.json({ appointment: await service.assignPerformer(res.locals.user.id, res.locals.validated.body) }));
   router.post("/settlement/close", auth.adminOnly, validateRequest(z.object({ body: revision.strict() })), async (_req, res) => res.json({ appointment: await service.close(res.locals.user.id, res.locals.validated.body) }));
   return router;
 }

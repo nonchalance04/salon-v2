@@ -1,13 +1,20 @@
+// Bring in the tools for staff sign-in so this file can work with the rest of the application.
 import { createHmac, randomInt, randomUUID, timingSafeEqual } from "node:crypto";
 import bcrypt from "bcrypt";
 import { ApiError } from "../../shared/http.js";
 import { renderSimpleEmailLayout } from "../notifications/simple-email-layout.js";
+// Keep the shared values for staff sign-in together so later steps use the same definitions.
 export const PASSWORD_RESET_NOTICE = "If your username matches an active account, a code will be sent to its email. The code expires in 10 minutes.";
+// Prepare the rejection for invalid details so the caller receives a consistent explanation.
 const invalid = () => new ApiError(400, "INVALID_RESET_CODE", "The code is incorrect or expired. Request a new code if needed.");
+// Prepare the request-limit response so repeated attempts receive a consistent explanation.
 const limited = () => new ApiError(429, "PASSWORD_RESET_LIMIT", "Please wait before requesting another code.");
+// Manage password recovery limits, codes and updates so staff can securely regain account access.
 export function createPasswordResetService(prisma, secret, provider) {
+    // Bind the recovery code to the account details so changes to the account invalidate an older code.
     const digest = (...parts) => createHmac("sha256", secret).update(JSON.stringify(["staff-password-reset", ...parts])).digest("hex");
     return {
+        // Check recovery limits and send a code when eligible so staff can regain access without revealing account existence.
         async request(username, ip) {
             if (!provider)
                 throw new ApiError(503, "PASSWORD_RESET_DISABLED", "Password recovery is unavailable. Contact your salon administrator.");
@@ -52,6 +59,7 @@ export function createPasswordResetService(prisma, secret, provider) {
                 } : null,
             };
         },
+        // Deliver the recovery email so the staff member can use the code to reset their password.
         async deliver(message, invalidateOnFailure = false) {
             if (!message || !provider)
                 return;
@@ -66,6 +74,7 @@ export function createPasswordResetService(prisma, secret, provider) {
                 console.error(JSON.stringify({ event: "password_reset_email_failed" }));
             }
         },
+        // Replace the password after checking recovery proof so the account can be accessed with the new password.
         async reset(challengeId, code, password) {
             if (!provider)
                 throw new ApiError(503, "PASSWORD_RESET_DISABLED", "Password recovery is unavailable. Contact your salon administrator.");
@@ -89,6 +98,7 @@ export function createPasswordResetService(prisma, secret, provider) {
                     } });
                 if (!valid || !user)
                     return null;
+                // Update the saved staff account record so account access reflects the approved update.
                 await tx.user.update({ where: { id: user.id }, data: { passwordHash, sessionVersion: { increment: 1 } } });
                 await tx.passwordResetChallenge.updateMany({ where: { userId: user.id, consumedAt: null }, data: { consumedAt: now } });
                 return user.email;

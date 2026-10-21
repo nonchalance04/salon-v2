@@ -939,6 +939,14 @@ The commission rate is sourced from the applicable StaffService configuration wh
 
 That rate is stored as `commissionRateSnapshot`.
 
+### Actual performer replacement during payment processing (2026-10-22)
+
+An active Admin or Cashier may record a replacement performer per active PERFORMED service in Process Payments before successful service-payment finalization. Require an active staff member with an active qualification for that service, a nonblank reason, and explicit confirmation that the customer agreed and the replacement performed the work. This attributes completed work rather than rescheduling a booking: preserve booked staff, scheduled intervals, saved outcomes, historical prices, and the original commission snapshot. Do not apply booking availability checks retroactively.
+
+Append a ServicePerformerAssignment containing the replacement identity, name and current applicable qualification-rate snapshots, reason, agreement, recording user and time. Keep earlier assignments. The latest assignment controls that service's commission recipient and rate. If no replacement is recorded, use the original booked staff and commission snapshot. This is an explicit exception to the original-rate rule below; never accept a manually supplied rate or commission amount.
+
+Use the existing staff/appointment locks, active-account checks and revision guard. Payment finalization and performer changes must serialize; reject a stale payment review. After successful payment or no-service closure, replacement attribution is locked. Finalized CommissionRecords, service-payment receipt snapshots and Admin Staff Commission Reports use the actual performer. Cashier may record the replacement while processing payment but receives no commission rates, amounts, or commission-report access. Existing finalized records are not rewritten.
+
 For retained AppointmentServices during ordinary rescheduling, the original commission-rate snapshot remains unchanged.
 
 Newly added AppointmentServices use the current applicable StaffService rate at the time they are added.

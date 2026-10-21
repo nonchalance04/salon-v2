@@ -1,3 +1,4 @@
+// Bring in the tools for salon reports so this file can work with the rest of the application.
 import { freshTime } from "../scheduling/coordination.js";
 import { Prisma } from "../../../generated/prisma/client.js";
 import { Temporal } from "@js-temporal/polyfill";
@@ -5,6 +6,7 @@ import { ApiError } from "../../shared/http.js";
 import { reportPeriod } from "./reports.schema.js";
 import { readSalesSummary } from "./sales-summary.service.js";
 import { readCommissionSummary } from "./commission-summary.service.js";
+// Convert the stored amount to a display value so reports present money consistently.
 const amount = (n) => (n ?? new Prisma.Decimal(0)).toFixed(2);
 const booking = { select: { bookingCode: true } };
 // Match a booking code or every word in the customer's name, in any order.
@@ -24,8 +26,11 @@ function customerSearch(search) {
         ],
     };
 }
+// Gather report queries so staff can review the salon using saved appointment and payment records.
 export function createReportsService(prisma, timeZone) {
+    // Read the requested saved records so the caller can present their current details.
     async function read(actorId, admin, operation) {
+        // Keep the related database changes together so a failure leaves the earlier records intact.
         return prisma.$transaction(async (tx) => {
             const actor = await tx.user.findUnique({ where: { id: actorId }, select: { role: true, isActive: true } });
             if (!actor?.isActive)
@@ -36,12 +41,15 @@ export function createReportsService(prisma, timeZone) {
         }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
     }
     return {
+        // Collect the sales totals for the selected period so staff can review the recorded business activity.
         salesSummary(actorId, q) {
             return read(actorId, true, tx => readSalesSummary(tx, q, timeZone));
         },
+        // Collect the commission totals for the selected period so administrators can review staff earnings.
         commissionSummary(actorId, q) {
             return read(actorId, true, tx => readCommissionSummary(tx, q, timeZone));
         },
+        // Group received payments into collection totals so staff can review how money was collected.
         collections(actorId, q) {
             return read(actorId, false, async (tx) => {
                 const period = reportPeriod(q, timeZone);
@@ -53,6 +61,7 @@ export function createReportsService(prisma, timeZone) {
                 return { from: q.from, to: q.to, timeZone, basis: "Collections use capture time. Net movement reflects recorded payment adjustments. Dates are inclusive in salon time. Carried credits are not new collections.",
                     totals: currencies.map(currency => {
                         const rows = captures.filter(r => r.currency === currency);
+                        // Add the matching recorded amounts so the report can show their combined total.
                         const sum = (selected) => selected.reduce((n, r) => n.plus(r._sum.amount ?? 0), new Prisma.Decimal(0));
                         const gross = sum(rows);
                         const refunded = refunds.filter(r => r.currency === currency).reduce((n, r) => n.plus(r._sum.amount ?? 0), new Prisma.Decimal(0));
@@ -73,6 +82,7 @@ export function createReportsService(prisma, timeZone) {
                     breakdown: captures.map(({ _sum, _count, ...row }) => ({ ...row, amount: amount(_sum.amount), count: _count._all })), };
             });
         },
+        // Find the visits waiting for service so staff can see the current customer queue.
         waitingQueue(actorId, q) {
             return read(actorId, false, async (tx) => {
                 const now = await freshTime(tx);
@@ -102,6 +112,7 @@ export function createReportsService(prisma, timeZone) {
                         needsReview: row.endAt <= now, })) };
             });
         },
+        // Find the confirmed service records so staff can review scheduled and recorded service outcomes.
         confirmedServices(actorId, q) {
             return read(actorId, false, async (tx) => {
                 const today = q.arrivalToday === "true"
@@ -142,6 +153,7 @@ export function createReportsService(prisma, timeZone) {
                             priceSnapshot: service.priceSnapshot.toFixed(2) })) })) };
             });
         },
+        // Find the appointments relevant to settlement so the cashier can choose the next visit to handle.
         cashierQueue(actorId, q) {
             return read(actorId, false, async (tx) => {
                 const where = { startAt: reportPeriod(q, timeZone), status: { in: ["CONFIRMED", "COMPLETED"] } };
@@ -161,6 +173,7 @@ export function createReportsService(prisma, timeZone) {
                     completed: counts.find(r => r.status === "COMPLETED")?._count._all ?? 0, rows };
             });
         },
+        // Collect the overview figures so staff can see the current salon activity at a glance.
         dashboard(actorId, q) {
             return read(actorId, true, async (tx) => {
                 const period = reportPeriod(q, timeZone);
@@ -181,6 +194,7 @@ export function createReportsService(prisma, timeZone) {
                     attention: { pendingFees, unsettled, reconciliation }, scheduling: { until, closures, absences } };
             });
         },
+        // Find the records matching the request so the caller can display the relevant results.
         list(actorId, kind, q) {
             return read(actorId, true, async (tx) => {
                 const period = reportPeriod(q, timeZone);

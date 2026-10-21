@@ -1,10 +1,12 @@
+// Bring in the tools for visit settlement so this file can work with the rest of the application.
 import { Router } from "express";
 import { z } from "zod";
 import { validateRequest } from "../../shared/http.js";
 import { browserSecurity } from "../auth/auth.security.js";
 import { createAuthMiddleware } from "../auth/auth.middleware.js";
-import { booking, outcomesSchema, revision, settlementSchema } from "./settlement.schema.js";
+import { booking, outcomesSchema, performerSchema, revision, settlementSchema } from "./settlement.schema.js";
 import { createSettlementService } from "./settlement.service.js";
+// Connect settlement requests to staff checks so visit outcomes and final payments use the approved actions.
 export function createSettlementRouter(prisma, config) {
     const router = Router();
     const service = createSettlementService(prisma);
@@ -13,6 +15,7 @@ export function createSettlementRouter(prisma, config) {
     router.post("/settlement/lookup", validateRequest(z.object({ body: booking })), async (_req, res) => res.json({ appointment: await service.lookup(res.locals.user.id, res.locals.validated.body.bookingCode) }));
     router.post("/settlement/outcomes", validateRequest(z.object({ body: outcomesSchema })), async (_req, res) => res.json({ appointment: await service.outcomes(res.locals.user.id, res.locals.validated.body) }));
     router.post("/settlement/pay", validateRequest(z.object({ body: settlementSchema })), async (_req, res) => res.json({ appointment: await service.settle(res.locals.user.id, res.locals.validated.body) }));
+    router.post("/settlement/performer", validateRequest(z.object({ body: performerSchema })), async (_req, res) => res.json({ appointment: await service.assignPerformer(res.locals.user.id, res.locals.validated.body) }));
     router.post("/settlement/close", auth.adminOnly, validateRequest(z.object({ body: revision.strict() })), async (_req, res) => res.json({ appointment: await service.close(res.locals.user.id, res.locals.validated.body) }));
     return router;
 }

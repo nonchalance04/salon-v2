@@ -1,6 +1,9 @@
+// Bring in the tools for visit settlement so this file can work with the rest of the application.
 import { Prisma } from "../../../generated/prisma/client.js";
 import { ApiError } from "../../shared/http.js";
+// Keep the shared values for visit settlement together so later steps use the same definitions.
 const D = Prisma.Decimal;
+// Share the appointment fee and calculate commissions so each performed service receives its correct allocation.
 export function allocateCommissions(services, fee) {
     if (!services.length || fee.isNegative() || !fee.equals(fee.toDecimalPlaces(2)))
         throw new ApiError(409, "INVALID_COMMISSION_INPUT", "Invalid commission inputs.");

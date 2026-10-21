@@ -903,6 +903,14 @@ The original Payment itself is not moved, copied, or rewritten.
 
 # 16. AppointmentService
 
+## Actual performer attribution (2026-10-22)
+
+AppointmentService remains the booked scheduling record. Its booked staff and original commission snapshot are not overwritten when another stylist performs the work.
+
+ServicePerformerAssignment is append-only history linked to one AppointmentService and the recording User. It stores a UUID, unique increasing sequence, preserved staff UUID, optional live Staff relation (ON DELETE SET NULL), staff name snapshots, Decimal(5,4) commission-rate snapshot, nonblank reason (at most 500 characters), customerAgreed=true, recording User and timestamp. AppointmentService and User deletion are restricted while referenced. The greatest sequence per service selects the effective performer deterministically; earlier replacements remain historical. Index (appointmentServiceId, sequence).
+
+Only active qualified staff may be newly selected for a PERFORMED active service before finalization. Assignments are saved under settlement staff/appointment locks and the revision guard. Finalized CommissionRecords copy the effective performer's preserved identity/name and snapshotted rate; without an assignment they retain original booked staff/rate behavior. The commission snapshot database trigger enforces the effective identity. No existing commission or receipt is backfilled or rewritten.
+
 Represents one service belonging to an Appointment.
 
 `AppointmentService` is the authoritative staff scheduling unit.
