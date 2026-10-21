@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { api } from "../../lib/api";
-import { ReceiptPrintButton } from "../ReceiptPrintButton";
+import { ReceiptDownloadButton } from "../ReceiptDownloadButton/ReceiptDownloadButton";
 import { paymentStatusLabel, visibleReportEntries } from "../../utils/payment-presentation";
 
 import "./Reports.css";
@@ -108,7 +108,7 @@ function receiptCell(column: string, row: Record<string, unknown>) {
   if (column !== "receiptSnapshot") return undefined;
   if (typeof row.receiptNumber !== "string" || !snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) return <>—</>;
   // Show the prepared content and actions so the user can review the information and continue.
-  return <ReceiptPrintButton label="Print / Save PDF" receipt={{ receiptNumber: row.receiptNumber, receiptSnapshot: snapshot as Record<string, unknown> }} />;
+  return <ReceiptDownloadButton receipt={{ receiptNumber: row.receiptNumber, receiptSnapshot: snapshot as Record<string, unknown> }} />;
 }
 // Show the available reporting areas so staff can open the information they need.
 export function Reports({ admin, initialKind = "appointments" }: { admin: boolean; initialKind?: string }) {
@@ -178,7 +178,7 @@ function TransactionReports({ admin, initialKind = "appointments" }: { admin: bo
     {error && <p role="alert" className="error tw:[background:#fff0ed] tw:[border:1px_solid_#ecc5ba] tw:text-[#963923] tw:py-3 tw:px-4 tw:rounded-[6px]
           tw:text-[14px]">{error}</p>}
     {collections && <><h3>Collections</h3><p>{collections.basis} Timezone: {collections.timeZone}.</p><DataTable rows={collections.totals} title="Collections" /><p>Successful applied and unapplied amounts describe current payment status. Reconciliation required is a subset, not an additional collection.</p><h3>Collections by payment method</h3><DataTable rows={collections.methodTotals} title="Collections by method" /><h3>Appointment fees & service payment captures</h3><DataTable rows={collections.typeTotals} title="Collections by payment type" /><details><summary>Collection breakdown by payment type and method</summary><DataTable rows={collections.breakdown} title="Collection breakdown" /></details></>}
-    {report && <><h3>{label(kind)}</h3><p>{report.total} records · Date basis: {report.dateBasis}. Timestamps in details use ISO format with UTC offsets.</p>{kind === "receipts" && <p>Use Print / Save PDF to open the formatted receipt, then choose Save as PDF in the print destination.</p>}<DataTable rows={report.rows} title={label(kind)} renderCell={kind === "receipts" ? receiptCell : undefined} /><div className="actions tw:flex tw:gap-3 report-pagination tw:[.reports_&]:items-center tw:[.reports_&]:justify-end
+    {report && <><h3>{label(kind)}</h3><p>{report.total} records · Date basis: {report.dateBasis}. Timestamps in details use ISO format with UTC offsets.</p>{kind === "receipts" && <p>Use Download PDF to save a copy of the receipt.</p>}<DataTable rows={report.rows} title={label(kind)} renderCell={kind === "receipts" ? receiptCell : undefined} /><div className="actions tw:flex tw:gap-3 report-pagination tw:[.reports_&]:items-center tw:[.reports_&]:justify-end
           tw:[.reports_&]:gap-4 tw:[.reports_&]:my-5 tw:[.reports_&]:mx-0 tw:[.reports_&_span]:text-[13px]
           tw:[.reports_&_span]:text-[#686868] tw:down-640:[.reports_&]:justify-between tw:down-640:[.reports_&]:flex-wrap
           tw:down-640:[.reports_&]:gap-2.5 tw:down-640:[.reports_&_button]:py-[9px] tw:down-640:[.reports_&_button]:px-3"><Button variant="outline" disabled={busy || report.page <= 1} onClick={() => void load(report.page - 1)}>Previous</Button><span>Page {report.page} of {Math.max(1, Math.ceil(report.total / report.pageSize))}</span><Button variant="outline" disabled={busy || report.page * report.pageSize >= report.total} onClick={() => void load(report.page + 1)}>Next</Button></div></>}

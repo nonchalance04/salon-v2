@@ -1,4 +1,7 @@
 import "dotenv/config";
+import { execFile } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 
 import bcrypt from "bcrypt";
 import { parseSeedCredentials } from "./seed-credentials.js";
@@ -332,6 +335,25 @@ async function main() {
 
   const { adminUsername, cashierUsername, adminEmail, cashierEmail, adminPassword, cashierPassword } =
     parseSeedCredentials(process.env);
+
+  // A fresh database needs its tables before the appointment safety check can run.
+  // Deploy only checked-in migrations; never reset the database or push the schema.
+  console.log("Applying pending database migrations...");
+  try {
+    await promisify(execFile)(process.execPath, [
+      fileURLToPath(new URL("../node_modules/prisma/build/index.js", import.meta.url)),
+      "migrate", "deploy", "--config", "prisma7.config.ts",
+    ], {
+      cwd: fileURLToPath(new URL("../", import.meta.url)),
+      env: process.env,
+      timeout: 60_000,
+    });
+  } catch {
+    throw new Error(
+      "Seed aborted: database migrations could not be applied. " +
+      "Run npm run db:migrate from backend/ to diagnose the migration failure, then retry npm run db:seed.",
+    );
+  }
 
   // Hash before starting the database transaction.
   const [adminPasswordHash, cashierPasswordHash] = await Promise.all([

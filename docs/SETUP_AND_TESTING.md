@@ -133,6 +133,10 @@ npm run db:seed
 Expected: schema validation succeeds, Prisma Client generates, checked-in migrations
 apply, migration status is current, and the development seed completes.
 
+The development seed also applies pending checked-in migrations before inserting
+data, so it can initialize a fresh database without missing-table errors. If that
+step fails, run `npm run db:migrate` for migration diagnostics and retry the seed.
+
 **Existing database:** apply pending migrations, but skip `db:seed` if it is already
 configured or contains appointments. Seeding refreshes fixture credentials and
 configuration and refuses to proceed once appointments exist. Do not reset a

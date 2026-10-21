@@ -47,7 +47,6 @@ const seed = () => cli(["--import", "tsx", "prisma/seed.ts"]);
 before(async () => {
   await admin.query(`CREATE DATABASE "${databaseName}"`);
   created = true;
-  await cli(["node_modules/prisma/build/index.js", "migrate", "deploy", "--config", "prisma7.config.ts"]);
   await seed();
 }, { timeout: 90_000 });
 
@@ -73,7 +72,7 @@ async function appointment() {
   } });
 }
 
-test("migrations apply and development seeding is repeatable with hashed passwords", async () => {
+test("seed migrates a fresh database and is repeatable with hashed passwords", async () => {
   await seed();
   assert.deepEqual(await Promise.all([
     prisma.user.count(), prisma.salonProfile.count(), prisma.bookingPolicyVersion.count(),
