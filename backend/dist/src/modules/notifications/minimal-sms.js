@@ -1,9 +1,6 @@
 import { smsRecipient } from "./notification-provider.js";
-<<<<<<< HEAD
-// Decide which routine text messages to omit so SMS follows the configured notification approach.
-=======
 import { singleSegmentSms, smsSchedule } from "./sms-format.js";
->>>>>>> 6dc780e (TNC application in notifications)
+// Decide which routine text messages to omit so SMS follows the configured notification approach.
 export function suppressRoutineSms(row) {
     if (row.channel !== "SMS")
         return false;

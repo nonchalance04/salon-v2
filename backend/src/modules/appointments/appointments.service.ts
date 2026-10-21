@@ -12,7 +12,6 @@ import { bookingSchema, type BookingInput } from "./appointments.schema.js";
 
 // Identify a booking attempt that needs a fresh start so scheduling can retry with current information.
 export class RestartReservation extends Error {}
-<<<<<<< HEAD
 // Prepare a retry message so a temporary scheduling conflict is explained clearly.
 const busy = () => new ApiError(409, "BOOKING_BUSY", "The salon schedule is changing. Please try again.");
 // Keep booking changes together and retry permitted conflicts so competing reservations stay consistent.
@@ -25,31 +24,6 @@ export async function reservationTransaction<T>(prisma: PrismaClient, work: (tx:
         await lockSalon(tx, "shared");
         return work(tx);
       }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, timeout: 20_000 });
-=======
-const busy = () =>
-  new ApiError(
-    409,
-    "BOOKING_BUSY",
-    "The salon schedule is changing. Please try again.",
-  );
-export async function reservationTransaction<T>(
-  prisma: PrismaClient,
-  work: (tx: Prisma.TransactionClient) => Promise<T>,
-): Promise<T> {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      return await prisma.$transaction(
-        async (tx) => {
-          await tx.$executeRaw`SET LOCAL lock_timeout = '5s'`;
-          await lockSalon(tx, "shared");
-          return work(tx);
-        },
-        {
-          isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
-          timeout: 20_000,
-        },
-      );
->>>>>>> 6dc780e (TNC application in notifications)
     } catch (error) {
       if (error instanceof RestartReservation) continue;
       // Retry short-reference collisions with fresh credentials after rollback.
@@ -156,30 +130,10 @@ export const guestSelect = {
     },
   },
 } satisfies Prisma.AppointmentSelect;
-<<<<<<< HEAD
 // Prepare the customer-facing appointment details so private internal fields stay out of the response.
 export function guestView(row: Prisma.AppointmentGetPayload<{ select: typeof guestSelect }>, now: Date, timeZone: string) {
   return { ...row, status: row.status === "PENDING_PAYMENT" && row.holdExpiresAt && row.holdExpiresAt < now ? "EXPIRED" : row.status,
     payments: row.payments.map(payment => ({ ...payment, amount: payment.amount.toFixed(2) })),
-=======
-export function guestView(
-  row: Prisma.AppointmentGetPayload<{ select: typeof guestSelect }>,
-  now: Date,
-  timeZone: string,
-) {
-  return {
-    ...row,
-    status:
-      row.status === "PENDING_PAYMENT" &&
-      row.holdExpiresAt &&
-      row.holdExpiresAt < now
-        ? "EXPIRED"
-        : row.status,
-    payments: row.payments.map((payment) => ({
-      ...payment,
-      amount: payment.amount.toFixed(2),
-    })),
->>>>>>> 6dc780e (TNC application in notifications)
     appointmentFeeAmount: row.appointmentFeeAmount.toFixed(2),
     appointmentServices: row.appointmentServices.map((s) => ({
       ...s,
@@ -189,15 +143,8 @@ export function guestView(
     timeZone,
   };
 }
-<<<<<<< HEAD
 // Manage booking creation and retrieval so appointments follow the shared reservation rules.
 export function createAppointmentsService(prisma: PrismaClient, timeZone: string) {
-=======
-export function createAppointmentsService(
-  prisma: PrismaClient,
-  timeZone: string,
-) {
->>>>>>> 6dc780e (TNC application in notifications)
   return {
     // Recheck availability and save a temporary booking hold so the customer has time to pay the appointment fee.
     async book(input: BookingInput) {
@@ -206,7 +153,6 @@ export function createAppointmentsService(
       // Check that the chosen start falls on the selected salon day so mismatched dates are rejected.
       const day = localDay(input.date, timeZone);
       const start = new Date(input.startAt);
-<<<<<<< HEAD
       if (start < day.start || start >= day.end) throw new ApiError(400, "INVALID_DATE", "The starting time must fall on the selected salon-local date.");
       // Keep the related database changes together so a failure leaves the earlier records intact.
       return reservationTransaction(prisma, async tx => {
@@ -215,43 +161,17 @@ export function createAppointmentsService(
         // workload comparisons and configuration writes use the same protection.
         const lockedIds = (await tx.staff.findMany({ select: { id: true } })).map(s => s.id);
         // Coordinate access to the affected staff so another booking cannot change their reserved time during this step.
-=======
-      if (start < day.start || start >= day.end)
-        throw new ApiError(
-          400,
-          "INVALID_DATE",
-          "The starting time must fall on the selected salon-local date.",
-        );
-      return reservationTransaction(prisma, async (tx) => {
-        const credentials = createGuestCredentials();
-        // The small-salon lock set includes all existing staff, so ANY_AVAILABLE
-        // workload comparisons and configuration writes use the same protection.
-        const lockedIds = (
-          await tx.staff.findMany({ select: { id: true } })
-        ).map((s) => s.id);
->>>>>>> 6dc780e (TNC application in notifications)
         await lockStaff(tx, lockedIds);
         const now = await freshTime(tx);
         // Read the active booking rules so this visit uses the current fee and deadlines.
         const policy = await currentPolicy(tx, now);
-<<<<<<< HEAD
         // Load current hours, skills and reservations so the proposed visit is checked against the real schedule.
         const data = await loadAvailabilityData(tx, input, timeZone, now, policy);
-=======
-        const data = await loadAvailabilityData(
-          tx,
-          input,
-          timeZone,
-          now,
-          policy,
-        );
->>>>>>> 6dc780e (TNC application in notifications)
         // Staff can be created while SHARED coordination is held. Never acquire
         // a newly discovered staff lock out of order: roll back and rebuild.
         if (data.staff.some((s) => !lockedIds.includes(s.id)))
           throw new RestartReservation();
         const validationTime = await freshTime(tx);
-<<<<<<< HEAD
         if ((await currentPolicy(tx, validationTime)).id !== policy.id) throw new RestartReservation();
         // Recheck the proposed service times and staff so an unavailable visit is rejected before saving.
         const plan = planAt(input, start, { ...data, now: validationTime });
@@ -278,66 +198,6 @@ export function createAppointmentsService(
         // BOOKING_CONFIRMED and PAYMENT_RECEIVED belong to Phase 6's transaction.
         const row = await tx.appointment.findUniqueOrThrow({ where: { id: appointment.id }, select: guestSelect });
         // Recheck the deadline and current booking rules before finishing so a delayed request cannot save an expired plan.
-=======
-        if ((await currentPolicy(tx, validationTime)).id !== policy.id)
-          throw new RestartReservation();
-        const plan = planAt(input, start, { ...data, now: validationTime });
-        if (!plan)
-          throw new ApiError(
-            409,
-            "SLOT_UNAVAILABLE",
-            "This visit is no longer available. Please search for another time.",
-          );
-        const holdExpiresAt = new Date(
-          validationTime.getTime() + policy.bookingHoldMinutes * 60_000,
-        );
-        const appointment = await tx.appointment.create({
-          data: {
-            bookingCode: credentials.bookingCode,
-            guestAccessTokenHash: credentials.hash,
-            customer: { create: input.customer },
-            bookingPolicyVersion: { connect: { id: policy.id } },
-            status: "PENDING_PAYMENT",
-            startAt: start,
-            endAt: new Date(plan.endAt),
-            appointmentFeeAmount: policy.appointmentFeeAmount,
-            holdExpiresAt,
-            appointmentServices: {
-              create: plan.services.map((part) => {
-                const item = data.services.find(
-                  (s) => s.id === part.serviceId,
-                )!;
-                const qualification = data.qualifications.find(
-                  (q) =>
-                    q.staffId === part.staffId &&
-                    q.serviceId === part.serviceId,
-                )!;
-                return {
-                  serviceId: part.serviceId,
-                  staffId: part.staffId,
-                  assignmentMode: part.assignmentMode,
-                  sequenceNo: part.sequenceNo,
-                  serviceNameSnapshot: item.name,
-                  priceSnapshot: item.price,
-                  durationMinutesSnapshot: part.durationMinutes,
-                  bufferMinutesSnapshot: part.bufferMinutes,
-                  commissionRateSnapshot: qualification.commissionRate,
-                  scheduledStartAt: new Date(part.startAt),
-                  scheduledEndAt: new Date(part.endAt),
-                  reservedUntilAt: new Date(part.reservedUntilAt),
-                };
-              }),
-            },
-          },
-        });
-
-        // No approved outbox event represents an unpaid hold or its expiration.
-        // BOOKING_CONFIRMED and PAYMENT_RECEIVED belong to Phase 6's transaction.
-        const row = await tx.appointment.findUniqueOrThrow({
-          where: { id: appointment.id },
-          select: guestSelect,
-        });
->>>>>>> 6dc780e (TNC application in notifications)
         const finalTime = await freshTime(tx);
         if ((await currentPolicy(tx, finalTime)).id !== policy.id)
           throw new RestartReservation();
@@ -366,17 +226,9 @@ export function createAppointmentsService(
     },
     // Check booking access and return the appointment so customers can review their own visit.
     async retrieve(bookingCode: string, token: string) {
-<<<<<<< HEAD
       // Keep the related database changes together so a failure leaves the earlier records intact.
       return prisma.$transaction(async tx => {
         const record = await tx.appointment.findUnique({ where: { bookingCode }, select: { ...guestSelect, guestAccessTokenHash: true } });
-=======
-      return prisma.$transaction(async (tx) => {
-        const record = await tx.appointment.findUnique({
-          where: { bookingCode },
-          select: { ...guestSelect, guestAccessTokenHash: true },
-        });
->>>>>>> 6dc780e (TNC application in notifications)
         // Use the same response for missing appointments and incorrect credentials.
         const valid = await validGuestAccess(tx, token, record);
         if (!record || !valid)
@@ -398,19 +250,10 @@ export function createAppointmentsService(
       `;
       let expired = 0;
       for (const candidate of candidates) {
-<<<<<<< HEAD
         expired += await reservationTransaction(prisma, async tx => {
           const reservations = await tx.appointmentService.findMany({ where: { appointmentId: candidate.id, membershipStatus: "ACTIVE" }, select: { staffId: true } });
           const staffIds = reservations.map(s => s.staffId);
           // Coordinate access to the affected staff so another booking cannot change their reserved time during this step.
-=======
-        expired += await reservationTransaction(prisma, async (tx) => {
-          const reservations = await tx.appointmentService.findMany({
-            where: { appointmentId: candidate.id, membershipStatus: "ACTIVE" },
-            select: { staffId: true },
-          });
-          const staffIds = reservations.map((s) => s.staffId);
->>>>>>> 6dc780e (TNC application in notifications)
           await lockStaff(tx, staffIds);
           await tx.$queryRaw`SELECT id FROM "Appointment" WHERE id = ${candidate.id}::uuid FOR UPDATE`;
           const currentReservations = await tx.appointmentService.findMany({
@@ -420,26 +263,10 @@ export function createAppointmentsService(
           if (currentReservations.some((s) => !staffIds.includes(s.staffId)))
             throw new RestartReservation();
           const now = await freshTime(tx);
-<<<<<<< HEAD
           const row = await tx.appointment.findUniqueOrThrow({ where: { id: candidate.id } });
           if (row.status !== "PENDING_PAYMENT" || !row.holdExpiresAt || row.holdExpiresAt >= now) return 0;
           // Update the saved appointment record so the visit status and reserved details stay current.
           await tx.appointment.update({ where: { id: row.id }, data: { status: "EXPIRED" } });
-=======
-          const row = await tx.appointment.findUniqueOrThrow({
-            where: { id: candidate.id },
-          });
-          if (
-            row.status !== "PENDING_PAYMENT" ||
-            !row.holdExpiresAt ||
-            row.holdExpiresAt >= now
-          )
-            return 0;
-          await tx.appointment.update({
-            where: { id: row.id },
-            data: { status: "EXPIRED" },
-          });
->>>>>>> 6dc780e (TNC application in notifications)
 
           return 1;
         });

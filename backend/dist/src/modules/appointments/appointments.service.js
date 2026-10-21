@@ -4,7 +4,7 @@ import { ApiError } from "../../shared/http.js";
 import { lockSalon, lockStaff, freshTime } from "../scheduling/coordination.js";
 import { loadAvailabilityData } from "../availability/availability.data.js";
 import { localDay, planAt } from "../availability/availability.engine.js";
-import { createGuestCredentials, validGuestAccess } from "./appointments.security.js";
+import { createGuestCredentials, validGuestAccess, } from "./appointments.security.js";
 import { bookingSchema } from "./appointments.schema.js";
 // Identify a booking attempt that needs a fresh start so scheduling can retry with current information.
 export class RestartReservation extends Error {
@@ -26,11 +26,14 @@ export async function reservationTransaction(prisma, work) {
             if (error instanceof RestartReservation)
                 continue;
             // Retry short-reference collisions with fresh credentials after rollback.
-            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002" &&
-                Array.isArray(error.meta?.target) && error.meta.target.includes("bookingCode"))
+            if (error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === "P2002" &&
+                Array.isArray(error.meta?.target) &&
+                error.meta.target.includes("bookingCode"))
                 continue;
             if (error instanceof Prisma.PrismaClientKnownRequestError &&
-                (["P2028", "P2034"].includes(error.code) || ["55P03", "40P01"].includes(String(error.meta?.code))))
+                (["P2028", "P2034"].includes(error.code) ||
+                    ["55P03", "40P01"].includes(String(error.meta?.code))))
                 throw busy();
             throw error;
         }
@@ -39,7 +42,10 @@ export async function reservationTransaction(prisma, work) {
 }
 // Load the booking rules currently in effect so the appointment uses the correct fee and deadlines.
 async function currentPolicy(tx, now) {
-    const policy = await tx.bookingPolicyVersion.findFirst({ where: { effectiveFrom: { lte: now } }, orderBy: { effectiveFrom: "desc" } });
+    const policy = await tx.bookingPolicyVersion.findFirst({
+        where: { effectiveFrom: { lte: now } },
+        orderBy: { effectiveFrom: "desc" },
+    });
     if (!policy)
         throw new ApiError(503, "POLICY_UNAVAILABLE", "Booking is not configured yet.");
     if (policy.appointmentFeeType !== "FIXED")
@@ -48,29 +54,81 @@ async function currentPolicy(tx, now) {
 }
 // Choose the booking details needed by customers so the appointment view has its permitted information.
 export const guestSelect = {
-    rescheduleCount: true, cancelledAt: true, noShowAt: true, noShowGraceExpiresAt: true,
-    recoveryAppointment: { select: { bookingCode: true } }, carriedAppointmentFeePaymentId: true,
-    bookingPolicyVersion: { select: { maxReschedules: true, rescheduleCutoffHours: true, cancellationCutoffHours: true, noShowGraceHours: true } },
-    checkedInAt: true, confirmedAt: true,
-    payments: { where: { type: "APPOINTMENT_FEE" }, orderBy: { createdAt: "asc" }, select: {
-            id: true, paymentReference: true, status: true, amount: true, currency: true, method: true, provider: true, satisfiesObligation: true, reconciliationStatus: true,
-            receipt: { select: { receiptNumber: true, issuedAt: true, receiptSnapshot: true } },
-        } },
-    bookingCode: true, status: true, startAt: true, endAt: true, appointmentFeeAmount: true, holdExpiresAt: true,
-    customer: { select: { firstName: true, lastName: true, phone: true, email: true } },
-    appointmentServices: { where: { membershipStatus: "ACTIVE" }, orderBy: { sequenceNo: "asc" }, select: {
-            id: true, serviceId: true, staffId: true, sequenceNo: true, serviceNameSnapshot: true, priceSnapshot: true, durationMinutesSnapshot: true, bufferMinutesSnapshot: true,
-            assignmentMode: true, scheduledStartAt: true, scheduledEndAt: true, reservedUntilAt: true,
+    rescheduleCount: true,
+    cancelledAt: true,
+    noShowAt: true,
+    noShowGraceExpiresAt: true,
+    recoveryAppointment: { select: { bookingCode: true } },
+    carriedAppointmentFeePaymentId: true,
+    bookingPolicyVersion: {
+        select: {
+            maxReschedules: true,
+            rescheduleCutoffHours: true,
+            cancellationCutoffHours: true,
+            noShowGraceHours: true,
+        },
+    },
+    checkedInAt: true,
+    confirmedAt: true,
+    payments: {
+        where: { type: "APPOINTMENT_FEE" },
+        orderBy: { createdAt: "asc" },
+        select: {
+            id: true,
+            paymentReference: true,
+            status: true,
+            amount: true,
+            currency: true,
+            method: true,
+            provider: true,
+            satisfiesObligation: true,
+            reconciliationStatus: true,
+            receipt: {
+                select: { receiptNumber: true, issuedAt: true, receiptSnapshot: true },
+            },
+        },
+    },
+    bookingCode: true,
+    status: true,
+    startAt: true,
+    endAt: true,
+    appointmentFeeAmount: true,
+    holdExpiresAt: true,
+    customer: {
+        select: { firstName: true, lastName: true, phone: true, email: true },
+    },
+    appointmentServices: {
+        where: { membershipStatus: "ACTIVE" },
+        orderBy: { sequenceNo: "asc" },
+        select: {
+            id: true,
+            serviceId: true,
+            staffId: true,
+            sequenceNo: true,
+            serviceNameSnapshot: true,
+            priceSnapshot: true,
+            durationMinutesSnapshot: true,
+            bufferMinutesSnapshot: true,
+            assignmentMode: true,
+            scheduledStartAt: true,
+            scheduledEndAt: true,
+            reservedUntilAt: true,
             staff: { select: { firstName: true, lastName: true } },
-        } },
+        },
+    },
 };
 // Prepare the customer-facing appointment details so private internal fields stay out of the response.
 export function guestView(row, now, timeZone) {
     return { ...row, status: row.status === "PENDING_PAYMENT" && row.holdExpiresAt && row.holdExpiresAt < now ? "EXPIRED" : row.status,
         payments: row.payments.map(payment => ({ ...payment, amount: payment.amount.toFixed(2) })),
         appointmentFeeAmount: row.appointmentFeeAmount.toFixed(2),
-        appointmentServices: row.appointmentServices.map(s => ({ ...s, priceSnapshot: s.priceSnapshot.toFixed(2) })),
-        serverTime: now.toISOString(), timeZone };
+        appointmentServices: row.appointmentServices.map((s) => ({
+            ...s,
+            priceSnapshot: s.priceSnapshot.toFixed(2),
+        })),
+        serverTime: now.toISOString(),
+        timeZone,
+    };
 }
 // Manage booking creation and retrieval so appointments follow the shared reservation rules.
 export function createAppointmentsService(prisma, timeZone) {
@@ -99,7 +157,7 @@ export function createAppointmentsService(prisma, timeZone) {
                 const data = await loadAvailabilityData(tx, input, timeZone, now, policy);
                 // Staff can be created while SHARED coordination is held. Never acquire
                 // a newly discovered staff lock out of order: roll back and rebuild.
-                if (data.staff.some(s => !lockedIds.includes(s.id)))
+                if (data.staff.some((s) => !lockedIds.includes(s.id)))
                     throw new RestartReservation();
                 const validationTime = await freshTime(tx);
                 if ((await currentPolicy(tx, validationTime)).id !== policy.id)
@@ -141,7 +199,10 @@ export function createAppointmentsService(prisma, timeZone) {
                 if (finalPlan.services.some((part, index) => part.staffId !== plan.services[index].staffId)) {
                     throw new RestartReservation();
                 }
-                return { appointment: guestView(row, finalTime, timeZone), guestToken: credentials.token };
+                return {
+                    appointment: guestView(row, finalTime, timeZone),
+                    guestToken: credentials.token,
+                };
             });
         },
         // Check booking access and return the appointment so customers can review their own visit.
@@ -172,8 +233,11 @@ export function createAppointmentsService(prisma, timeZone) {
                     // Coordinate access to the affected staff so another booking cannot change their reserved time during this step.
                     await lockStaff(tx, staffIds);
                     await tx.$queryRaw `SELECT id FROM "Appointment" WHERE id = ${candidate.id}::uuid FOR UPDATE`;
-                    const currentReservations = await tx.appointmentService.findMany({ where: { appointmentId: candidate.id, membershipStatus: "ACTIVE" }, select: { staffId: true } });
-                    if (currentReservations.some(s => !staffIds.includes(s.staffId)))
+                    const currentReservations = await tx.appointmentService.findMany({
+                        where: { appointmentId: candidate.id, membershipStatus: "ACTIVE" },
+                        select: { staffId: true },
+                    });
+                    if (currentReservations.some((s) => !staffIds.includes(s.staffId)))
                         throw new RestartReservation();
                     const now = await freshTime(tx);
                     const row = await tx.appointment.findUniqueOrThrow({ where: { id: candidate.id } });

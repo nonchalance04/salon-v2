@@ -31,9 +31,7 @@ export const notificationPayload = z.object({
         .optional(),
     reconciliationRequired: z.boolean().optional(),
 });
-<<<<<<< HEAD
 // Build the message for the recorded event so the customer receives the matching appointment update.
-=======
 function smsText(eventType, p, timeZone) {
     const when = p.startAt ? smsSchedule(new Date(p.startAt), timeZone) : undefined;
     let details;
@@ -70,7 +68,6 @@ function smsText(eventType, p, timeZone) {
     }
     return singleSegmentSms(p.bookingCode, `${details}\nT&C: contact salon.`, compact ?? details);
 }
->>>>>>> 6dc780e (TNC application in notifications)
 export function renderNotification(row, timeZone, publicSiteUrl) {
     const parsed = notificationPayload.safeParse(row.payload);
     if (!parsed.success)
