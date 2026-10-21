@@ -1,4 +1,3 @@
-/* Arrange the appointment-details dialog so staff can review a visit in one readable panel. */
 .appointment-details[data-slot="dialog-content"] {
   width: calc(100% - 2rem);
   max-width: 720px;
@@ -9,35 +8,105 @@
   box-sizing: border-box;
   color: #242424;
 }
-.appointment-details-header[data-slot="dialog-header"] { padding: 28px 56px 24px 28px; text-align: left; align-items: flex-start; border-bottom: 1px solid #e9e9e9; background: linear-gradient(120deg, #fcfaf2, #fff 75%); gap: 10px; }
-.appointment-details-title[data-slot="dialog-title"] { margin: 0; font-size: 26px; line-height: 1.25; letter-spacing: -.025em; }
-.appointment-details-reference[data-slot="dialog-description"] { margin: 0; font-size: 13px; color: #686868; }
-.appointment-details-services li + li { border-top: 1px solid #eee; }
-/* Adjust this layout for the matching screen size so its content and controls remain usable. */
+.appointment-details-header[data-slot="dialog-header"] {
+  padding: 28px 56px 24px 28px;
+  text-align: left;
+  align-items: flex-start;
+  border-bottom: 1px solid #e9e9e9;
+  background: linear-gradient(120deg, #fcfaf2, #fff 75%);
+  gap: 10px;
+}
+.appointment-details-title[data-slot="dialog-title"] {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+}
+.appointment-details-reference[data-slot="dialog-description"] {
+  margin: 0;
+  font-size: 13px;
+  color: #686868;
+}
+.appointment-details-services li + li {
+  border-top: 1px solid #eee;
+}
 @media (max-width: 580px) {
-  .appointment-details-header[data-slot="dialog-header"] { padding: 24px 44px 20px 20px; }
-  .appointment-details-title[data-slot="dialog-title"] { font-size: 23px; }
+  .appointment-details-header[data-slot="dialog-header"] {
+    padding: 24px 44px 20px 20px;
+  }
+  .appointment-details-title[data-slot="dialog-title"] {
+    font-size: 23px;
+  }
 }
 /* Keep the summary and actions visible while longer booking details scroll. */
-.appointment-details[data-slot="dialog-content"] { display: flex; flex-direction: column; overflow: hidden; }
-.appointment-details > [data-slot="dialog-close"] { display: grid; place-items: center; width: 30px; height: 30px; border: 0; background: transparent; color: #686868; cursor: pointer; }
-.appointment-details > [data-slot="dialog-close"]:hover { background: #eee; }
+.appointment-details[data-slot="dialog-content"] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.appointment-details > [data-slot="dialog-close"] {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  color: #686868;
+  cursor: pointer;
+}
+.appointment-details > [data-slot="dialog-close"]:hover {
+  background: #eee;
+}
 
 /* Simplified appointment list; detail-dialog styling remains independent. */
-.admin-bookings { --bookings-accent: #754365; }
-.admin-bookings-filters button { color: var(--bookings-accent); }
-.admin-bookings th:first-child { width: 13%; border-radius: 6px 0 0 6px; }
-.admin-bookings th:nth-child(2) { width: 21%; }
-.admin-bookings th:nth-child(3) { width: 25%; }
-.admin-bookings th:last-child { width: 125px; border-radius: 0 6px 6px 0; }
-.admin-bookings td:first-child small { margin: 0 0 4px; }
-.admin-bookings td:nth-child(3) > div + div { margin-top: 8px; }
-.admin-bookings td button { color: var(--bookings-accent); }
-.admin-bookings-pagination button { color: var(--bookings-accent); }
-/* Adjust this layout for the matching screen size so its content and controls remain usable. */
+.admin-bookings {
+  --bookings-accent: #754365;
+}
+.admin-bookings-filters button {
+  color: var(--bookings-accent);
+}
+.admin-bookings th:first-child {
+  width: 13%;
+  border-radius: 6px 0 0 6px;
+}
+.admin-bookings th:nth-child(2) {
+  width: 21%;
+}
+.admin-bookings th:nth-child(3) {
+  width: 25%;
+}
+.admin-bookings th:last-child {
+  width: 125px;
+  border-radius: 0 6px 6px 0;
+}
+.admin-bookings td:first-child small {
+  margin: 0 0 4px;
+}
+.admin-bookings td:nth-child(3) > div + div {
+  margin-top: 8px;
+}
+.admin-bookings td button {
+  color: var(--bookings-accent);
+}
+.admin-bookings-pagination button {
+  color: var(--bookings-accent);
+}
 @media (max-width: 700px) {
-  .admin-bookings thead { clip-path: inset(50%); }
-  .admin-bookings td::before { content: attr(data-label); display: block; margin-bottom: 6px; font-size: 10px; color: #77717c; }
-  .admin-bookings td:nth-child(3), .admin-bookings td:last-child { grid-column: 1 / -1; }
-  .admin-bookings td:last-child::before { display: none; }
+  .admin-bookings thead {
+    clip-path: inset(50%);
+  }
+  .admin-bookings td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 6px;
+    font-size: 10px;
+    color: #77717c;
+  }
+  .admin-bookings td:nth-child(3),
+  .admin-bookings td:last-child {
+    grid-column: 1 / -1;
+  }
+  .admin-bookings td:last-child::before {
+    display: none;
+  }
 }
