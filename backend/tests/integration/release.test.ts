@@ -80,7 +80,7 @@ test('integrated HTTP acceptance: 20 competing bookings, authenticated collectio
     assert.equal((await request('/reports/audit?from=2026-10-01&to=2026-10-31', undefined, cashier)).status, 403);
     assert.equal((await request('/auth/logout', {}, cashier, 'https://untrusted.example')).status, 403);
     const service = await prisma.service.findFirstOrThrow({ where: { name: 'Ladies Haircut' } });
-    const staff = await prisma.staff.findFirstOrThrow({ orderBy: { id: 'asc' } });
+    const staff = await prisma.staff.findFirstOrThrow({ where: { isActive: true, staffServices: { some: { serviceId: service.id, isActive: true } } }, orderBy: { id: 'asc' } });
     const date = Temporal.Now.zonedDateTimeISO('Asia/Manila').add({ days: 3 }).toPlainDate().toString();
     const services = [{ serviceId: service.id, staffId: staff.id, assignmentMode: 'SPECIFIC' }];
     const available = await ok('/availability', { date, services }); assert.ok(available.slots.length);
