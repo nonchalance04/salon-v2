@@ -206,7 +206,8 @@ test("minimal SMS sends one combined confirmation and skips old separate notific
   const messages: NotificationMessage[] = [];
   const worker = service(createTestNotificationProvider(m => messages.push(m)), { smsPolicy: "minimal", publicSiteUrl: "https://salon.example.com", bookingLinkSecret: "s".repeat(32) });
   while (await worker.processNext()) { /* drain without real SMS */ }
-  assert.equal(messages.length, 1); assert.match(messages[0]!.text, /^Hello, Test Guest!\n\nYour appointment at Clique Salon has been successfully confirmed, and your appointment fee has been received\./);
+  assert.equal(messages.length, 1); assert.match(messages[0]!.text, /^Clique Salon .+\nConfirmed; fee paid\./);
+  assert.ok(messages[0]!.text.length <= 160);
   assert.equal((await stored(confirmation.id)).status, "SENT");
   for (const row of others) { assert.equal((await stored(row.id)).status, "SKIPPED"); assert.equal((await stored(row.id)).lastError, "SMS_MINIMAL_POLICY"); }
   assert.ok(messages[0]!.text.includes(booking.bookingCode));
@@ -226,7 +227,7 @@ test("minimal policy generates no separate reminders and preserves SMS cancellat
   assert.match(messages.find(m => m.channel === "SMS")!.text, /cancelled/);
 });
 
-test("every SMS policy requires verified fee payment before sending the personalized confirmation", async () => {
+test("every SMS policy requires verified fee payment before sending the single-segment confirmation", async () => {
   for (const smsPolicy of ["minimal", "single", "all"] as const) {
     const booking = await appointment({}, null);
     const messages: NotificationMessage[] = [];
@@ -239,9 +240,10 @@ test("every SMS policy requires verified fee payment before sending the personal
     await queue({ appointmentId: booking.id, channel: "SMS", recipient: "09171234567" });
     await worker.processNext();
     assert.equal(messages.length, 1);
-    assert.match(messages[0]!.text, /^Hello, Test Guest!/);
-    assert.ok(messages[0]!.text.includes(`Reference Number: ${booking.bookingCode}`));
-    assert.match(messages[0]!.text, /Time: \d{1,2}:\d{2} [AP]M – \d{1,2}:\d{2} [AP]M/);
+    assert.match(messages[0]!.text, /^Clique Salon .+\nConfirmed; fee paid\./);
+    assert.ok(messages[0]!.text.includes(booking.bookingCode));
+    assert.match(messages[0]!.text, /\d{4}-\d{2}-\d{2} \d{2}:\d{2}-\d{2}:\d{2}/);
+    assert.ok(messages[0]!.text.length <= 160);
   }
 });
 

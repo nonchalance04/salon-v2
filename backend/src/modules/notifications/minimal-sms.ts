@@ -1,6 +1,7 @@
 // Bring in the tools for customer notifications so this file can work with the rest of the application.
 import type { NotificationQueue } from "../../../generated/prisma/client.js";
 import { smsRecipient, type NotificationMessage } from "./notification-provider.js";
+import { singleSegmentSms, smsSchedule } from "./sms-format.js";
 
 // Decide which routine text messages to omit so SMS follows the configured notification approach.
 export function suppressRoutineSms(row: Pick<NotificationQueue, "channel" | "eventType" | "payload">) {
@@ -14,12 +15,8 @@ export function confirmationSms(row: Pick<NotificationQueue, "id" | "recipient">
   startAt: Date; endAt: Date; bookingCode: string;
   customer: { firstName: string; lastName: string };
 }, timeZone: string): NotificationMessage {
-  const date = new Intl.DateTimeFormat("en-US", { timeZone, month: "long", day: "numeric", year: "numeric" }).format(appointment.startAt);
-  const time = new Intl.DateTimeFormat("en-US", { timeZone, hour: "numeric", minute: "2-digit", hour12: true });
-  const customerName = `${appointment.customer.firstName} ${appointment.customer.lastName}`.replace(/\s+/g, " ").trim();
-  const text = `Hello, ${customerName}!\n\n` +
-    "Your appointment at Clique Salon has been successfully confirmed, and your appointment fee has been received. Thank you for choosing us!\n\n" +
-    `Date: ${date}\nTime: ${time.format(appointment.startAt)} – ${time.format(appointment.endAt)}\nReference Number: ${appointment.bookingCode}\n\n` +
-    "Please keep your reference number for future inquiries or when managing your existing appointment. Kindly arrive on time to ensure a smooth and hassle-free experience. We look forward to welcoming you to Clique Salon. See you soon!";
+  const details = `Confirmed; fee paid.\n${smsSchedule(appointment.startAt, timeZone, appointment.endAt)}`;
+  const text = singleSegmentSms(appointment.bookingCode,
+    `${details}\nArrive on time. T&C: contact salon.`, details);
   return { id: row.id, channel: "SMS", recipient: smsRecipient(row.recipient), subject: "Payment received and booking confirmed", text };
 }

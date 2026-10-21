@@ -21,6 +21,7 @@ export function renderEmailLayout(options: {
   when?: string;
   verificationCode?: string;
   appointmentUrl?: string;
+  terms?: { heading: string; items: readonly string[] };
 }): string {
   const { title, text, bookingCode, when, verificationCode, appointmentUrl } = options;
   // Format one email detail so the customer can read the label and its value together.
@@ -43,6 +44,9 @@ export function renderEmailLayout(options: {
   const appointment = appointmentUrl
     ? `<table role="presentation" cellspacing="0" cellpadding="0" style="margin-top:28px;"><tr><td bgcolor="#d3ae30" style="border-radius:99px;text-align:center;mso-padding-alt:16px 28px;"><a href="${escapeHtml(appointmentUrl)}" style="display:inline-block;padding:16px 28px;font-size:14px;line-height:20px;font-weight:700;color:#292a28;text-decoration:none;border-radius:99px;">Your Appointment</a></td></tr></table><p style="margin:16px 0 0;font-size:13px;line-height:1.7;color:#5e6059;">View and manage your appointment details. Verify your email or phone number to access your appointment.</p>`
     : "";
+  const terms = options.terms
+    ? `<div style="margin-top:28px;padding-top:24px;border-top:1px solid #ddddd7;"><h2 style="margin:0 0 16px;font-size:18px;line-height:1.5;color:#292a28;">${escapeHtml(options.terms.heading)}</h2><ol style="margin:0;padding-left:22px;font-size:13px;line-height:1.75;color:#5e6059;">${options.terms.items.map(item => `<li style="margin:0 0 12px;padding-left:4px;">${escapeHtml(item)}</li>`).join("")}</ol></div>`
+    : "";
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><meta name="color-scheme" content="light" /><title>${escapeHtml(title)} | Clique Salon</title>
 <style>@media only screen and (max-width:480px){.email-shell{padding:24px 12px!important}.email-content{padding:28px 22px!important}.email-title{font-size:28px!important}}</style></head>
@@ -55,7 +59,7 @@ export function renderEmailLayout(options: {
 <tr><td class="email-content" bgcolor="#ffffff" style="padding:40px;border:1px solid #ddddd7;border-top:4px solid #d3ae30;border-radius:20px;">
 <p style="margin:0 0 16px;font-size:11px;font-weight:700;letter-spacing:2px;color:#987b1f;">A LITTLE TIME FOR YOURSELF</p>
 <h1 class="email-title" style="margin:0 0 22px;font-size:32px;line-height:1.2;font-weight:700;letter-spacing:-1px;color:#292a28;">${escapeHtml(title)}</h1>
-${paragraphs}${details}${code}${appointment}
+${paragraphs}${details}${code}${appointment}${terms}
 </td></tr>
 <tr><td style="padding:24px 16px;text-align:center;"><p style="margin:0 0 8px;font-size:13px;line-height:1.6;color:#73756f;">Your beauty. Our passion.</p><p style="margin:0;font-size:11px;line-height:1.6;color:#73756f;">Clique Salon &amp; Spa · Appointment updates</p></td></tr>
 </table><!--[if mso]></td></tr></table><![endif]-->

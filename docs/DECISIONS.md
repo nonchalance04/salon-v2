@@ -698,8 +698,18 @@ PayMongo receipts also retain their provider reference.
 
 At the user's request, Admin and Cashier may record each active service outcome only once. PERFORMED and NOT_PERFORMED are immutable immediately after saving for both roles, including the original recorder. This supersedes previous pre-settlement correction permissions. The shared workspace requires a confirmation modal reviewing the booking and outcomes and explaining the permanent lock. Existing transaction locks and revision checks protect concurrent saves; unchanged recorded rows retain their amounts and timestamps. Payment and no-service closure remain separate finalization steps with existing permissions and financial rules. No migration is required.
 
+<<<<<<< HEAD
 ## 2026-10-22 — Attribute actual performers during payment processing
 
 The user also requested visible replacement attribution in Staff Commission Reports. Keep the actual commission recipient in the detail table and add a per-service disclosure for booked stylist, reason, customer agreement, recording actor and salon-local timestamp. Preserve existing summary totals, filters and historical monetary snapshots. Show the same recording details in Process Payments and list recipients in final payment confirmation. Cashier report permissions remain unchanged.
 
 At the user's request, Admin and Cashier can record a replacement stylist for each performed service in Process Payments before final payment. Require an active qualification, reason and confirmation of customer agreement and actual performance. Preserve booked staff, schedules, immutable outcomes and original price/rate snapshots. Append ServicePerformerAssignment history with the actor, time, names and replacement's current configured rate; this explicitly overrides the original commission rate only for that service's actual performer. Use settlement locks and revisions to serialize against payment. Finalization snapshots the performer into CommissionRecord and service-payment receipts, so Admin commission reports credit the correct person. Cashier gains only this payment-processing action, with no commission amounts/rates or report access. No finalized historical data is rewritten.
+=======
+## 2026-10-22 — Terms in appointment notifications
+
+Include the customer's six supplied T&C clauses verbatim in appointment notification email (HTML and plain text) and SMS, including the specialized paid-booking SMS. Keep the placeholder website and both late-arrival clauses. Share the wording across channels, render an escaped numbered list in HTML, and send the complete SMS text without truncation. Verification and password-reset messages remain separate. This is a notification wording change; it does not change configured cancellation/rescheduling cutoffs, reschedule limits, fee handling, or automatic no-show behavior. In particular, the supplied one-day wording differs from the four-hour development seed cutoff and does not update that policy.
+
+## 2026-10-22 — Limit appointment SMS to one segment
+
+At the user's request, supersede the long SMS wording with a link-free message of at most 160 basic GSM-7 characters. Keep all six terms in email. Preserve the entire booking reference and the financial meaning for every SMS event; confirmation also retains the salon-local date and time range. Omit optional guidance for long references rather than truncating required details. Reject unsupported or oversized template output before provider submission. Keep payment verification, SMS policies, and retry behavior unchanged. URLs are omitted because SIM-based SMS may be filtered by Philippine carriers. Provider acceptance remains distinct from carrier delivery.
+>>>>>>> 6dc780e (TNC application in notifications)

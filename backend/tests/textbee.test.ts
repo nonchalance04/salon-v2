@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { createTextBeeProvider, NotificationFailure } from "../src/modules/notifications/notification-provider.js";
 import { parseEnv } from "../src/config/env.schema.js";
 import { guestSessionCookie } from "../src/modules/appointments/appointment-otp.routes.js";
+import { confirmationSms } from "../src/modules/notifications/minimal-sms.js";
 const message = { id: "test", channel: "SMS" as const, recipient: "0917 123 4567", subject: "OTP", text: "Your code is 123456" };
 test("TextBee uses documented endpoint, E.164 recipient, device and backend key", async () => {
   const signal = AbortSignal.timeout(1000);
@@ -24,6 +25,26 @@ test("TextBee rejects malformed success, HTTP failures and transport errors with
     });
   }
   await assert.rejects(createTextBeeProvider("secret", "device", async () => { throw new Error("private"); }).send(message, AbortSignal.timeout(1000)), /PROVIDER_UNAVAILABLE/);
+});
+test("TextBee forwards one complete SMS segment in one request", async () => {
+  const confirmation = confirmationSms({ id: "test", recipient: "09171234567" }, {
+    startAt: new Date("2026-10-22T01:00:00Z"), endAt: new Date("2026-10-22T02:00:00Z"),
+    bookingCode: "BOOK-123", customer: { firstName: "Test", lastName: "Guest" },
+  }, "Asia/Manila");
+  assert.ok(confirmation.text.length <= 160);
+  assert.match(confirmation.text, /^[\x20-\x7e\n]+$/);
+  let requests = 0;
+  await createTextBeeProvider("secret", "device", async (_url, init) => {
+    requests++;
+    const sent = JSON.parse(String(init!.body)).message;
+    assert.equal(sent, confirmation.text);
+    assert.ok(sent.includes("Confirmed; fee paid."));
+    assert.ok(sent.includes("BOOK-123"));
+    assert.ok(!sent.includes("Terms & Conditions"));
+    assert.doesNotMatch(sent, /https?:|salonappointment\.com/);
+    return Response.json({ data: { success: true, smsBatchId: "batch" } });
+  }).send(confirmation, AbortSignal.timeout(1000));
+  assert.equal(requests, 1, "Confirmation must use one provider request");
 });
 test("TextBee OTP requires complete configuration and cookie parser rejects duplicates", () => {
   const base = { DATABASE_URL: "postgresql://localhost/test", JWT_SECRET: "a".repeat(32), APPOINTMENT_OTP_PROVIDER: "textbee" };

@@ -1,5 +1,9 @@
 import { smsRecipient } from "./notification-provider.js";
+<<<<<<< HEAD
 // Decide which routine text messages to omit so SMS follows the configured notification approach.
+=======
+import { singleSegmentSms, smsSchedule } from "./sms-format.js";
+>>>>>>> 6dc780e (TNC application in notifications)
 export function suppressRoutineSms(row) {
     if (row.channel !== "SMS")
         return false;
@@ -10,13 +14,8 @@ export function suppressRoutineSms(row) {
 }
 // Compose a short booking confirmation so the customer receives the key visit details by text.
 export function confirmationSms(row, appointment, timeZone) {
-    const date = new Intl.DateTimeFormat("en-US", { timeZone, month: "long", day: "numeric", year: "numeric" }).format(appointment.startAt);
-    const time = new Intl.DateTimeFormat("en-US", { timeZone, hour: "numeric", minute: "2-digit", hour12: true });
-    const customerName = `${appointment.customer.firstName} ${appointment.customer.lastName}`.replace(/\s+/g, " ").trim();
-    const text = `Hello, ${customerName}!\n\n` +
-        "Your appointment at Clique Salon has been successfully confirmed, and your appointment fee has been received. Thank you for choosing us!\n\n" +
-        `Date: ${date}\nTime: ${time.format(appointment.startAt)} – ${time.format(appointment.endAt)}\nReference Number: ${appointment.bookingCode}\n\n` +
-        "Please keep your reference number for future inquiries or when managing your existing appointment. Kindly arrive on time to ensure a smooth and hassle-free experience. We look forward to welcoming you to Clique Salon. See you soon!";
+    const details = `Confirmed; fee paid.\n${smsSchedule(appointment.startAt, timeZone, appointment.endAt)}`;
+    const text = singleSegmentSms(appointment.bookingCode, `${details}\nArrive on time. T&C: contact salon.`, details);
     return { id: row.id, channel: "SMS", recipient: smsRecipient(row.recipient), subject: "Payment received and booking confirmed", text };
 }
 //# sourceMappingURL=minimal-sms.js.map

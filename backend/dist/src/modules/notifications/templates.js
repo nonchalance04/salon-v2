@@ -1,6 +1,8 @@
 // Bring in the tools for customer notifications so this file can work with the rest of the application.
 import { z } from "zod";
 import { renderSimpleEmailLayout } from "./simple-email-layout.js";
+import { notificationTerms, notificationTermsText } from "./terms-and-conditions.js";
+import { singleSegmentSms, smsSchedule } from "./sms-format.js";
 import { NotificationFailure, smsRecipient, } from "./notification-provider.js";
 // Keep the shared values for customer notifications together so later steps use the same definitions.
 export const notificationPayload = z.object({
@@ -29,7 +31,46 @@ export const notificationPayload = z.object({
         .optional(),
     reconciliationRequired: z.boolean().optional(),
 });
+<<<<<<< HEAD
 // Build the message for the recorded event so the customer receives the matching appointment update.
+=======
+function smsText(eventType, p, timeZone) {
+    const when = p.startAt ? smsSchedule(new Date(p.startAt), timeZone) : undefined;
+    let details;
+    let compact;
+    switch (eventType) {
+        case "BOOKING_CONFIRMED":
+            details = `Booking confirmed${when ? `: ${when}` : ""}.`;
+            break;
+        case "BOOKING_RESCHEDULED":
+            details = `Rescheduled${when ? `: ${when}` : ""}.`;
+            break;
+        case "BOOKING_CANCELLED":
+            details = "Booking cancelled.";
+            break;
+        case "NO_SHOW_RECOVERY_CREATED":
+            details = `Replacement created${when ? `: ${when}` : ""}.${p.appointmentStatus === "PENDING_PAYMENT" ? " Fee payment required." : ""}`;
+            compact = p.appointmentStatus === "PENDING_PAYMENT"
+                ? "Replacement created. Fee payment required."
+                : details;
+            break;
+        case "PAYMENT_RECEIVED":
+            details = p.reconciliationRequired
+                ? "Payment needs review. Booking not confirmed."
+                : "Payment received.";
+            break;
+        case "APPOINTMENT_COMPLETED":
+            details = p.completionType === "NO_SERVICE_CLOSURE"
+                ? "Closed: no services or service payment."
+                : "Appointment completed.";
+            break;
+        case "APPOINTMENT_REMINDER":
+            details = `Appointment: ${when}.`;
+            break;
+    }
+    return singleSegmentSms(p.bookingCode, `${details}\nT&C: contact salon.`, compact ?? details);
+}
+>>>>>>> 6dc780e (TNC application in notifications)
 export function renderNotification(row, timeZone, publicSiteUrl) {
     const parsed = notificationPayload.safeParse(row.payload);
     if (!parsed.success)
@@ -100,9 +141,9 @@ export function renderNotification(row, timeZone, publicSiteUrl) {
         channel: row.channel,
         recipient: row.channel === "SMS" ? smsRecipient(row.recipient) : row.recipient,
         subject,
-        text: `Booking ${p.bookingCode}: ${text}${appointmentUrl ? `\n\nYour Appointment: ${appointmentUrl}\nView and manage your appointment details. Verify your email or phone number to access your appointment.` : ""}`,
+        text: row.channel === "SMS" ? smsText(row.eventType, p, timeZone) : `Booking ${p.bookingCode}: ${text}${appointmentUrl ? `\n\nYour Appointment: ${appointmentUrl}\nView and manage your appointment details. Verify your email or phone number to access your appointment.` : ""}\n\n${notificationTermsText}`,
         ...(row.channel === "EMAIL" ? { html: renderSimpleEmailLayout({
-                title: subject, text, bookingCode: p.bookingCode, when, appointmentUrl,
+                title: subject, text, bookingCode: p.bookingCode, when, appointmentUrl, terms: notificationTerms,
             }) } : {}),
     };
 }

@@ -2,17 +2,34 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { confirmationSms, suppressRoutineSms } from "../src/modules/notifications/minimal-sms.js";
 import { parseEnv } from "../src/config/env.schema.js";
-test("confirmation uses the requested customer greeting, local time range and reference", () => {
+import { singleSegmentSms } from "../src/modules/notifications/sms-format.js";
+test("confirmation fits one GSM-7 segment with local time range and reference", () => {
   const message = confirmationSms({ id: "queue-id", recipient: "09171234567" }, {
     startAt: new Date("2026-10-21T23:00:00Z"), endAt: new Date("2026-10-22T01:00:00Z"),
     bookingCode: "BOOK-123", customer: { firstName: "María", lastName: "Santos" },
   }, "Asia/Manila");
-  assert.equal(message.text, "Hello, María Santos!\n\n" +
-    "Your appointment at Clique Salon has been successfully confirmed, and your appointment fee has been received. Thank you for choosing us!\n\n" +
-    "Date: October 22, 2026\nTime: 7:00 AM – 9:00 AM\nReference Number: BOOK-123\n\n" +
-    "Please keep your reference number for future inquiries or when managing your existing appointment. Kindly arrive on time to ensure a smooth and hassle-free experience. We look forward to welcoming you to Clique Salon. See you soon!");
+  assert.equal(message.text, "Clique Salon BOOK-123\nConfirmed; fee paid.\n2026-10-22 07:00-09:00\nArrive on time. T&C: contact salon.");
+  assert.ok(message.text.length <= 160);
+  assert.match(message.text, /^[\x20-\x7e\n]+$/);
   assert.equal(message.recipient, "+639171234567");
   assert.doesNotMatch(message.text, /https?:|Private link|#/);
+});
+test("long references retain the entire reference and schedule within one segment", () => {
+  const bookingCode = "B".repeat(100);
+  const message = confirmationSms({ id: "id", recipient: "09171234567" }, {
+    startAt: new Date("2026-10-21T16:00:00Z"), endAt: new Date("2026-10-21T17:00:00Z"),
+    bookingCode, customer: { firstName: "長い名前", lastName: "Santos" },
+  }, "Asia/Manila");
+  assert.ok(message.text.includes(bookingCode));
+  assert.ok(message.text.includes("2026-10-22 00:00-01:00"));
+  assert.ok(message.text.includes("Confirmed; fee paid."));
+  assert.ok(message.text.length <= 160);
+  assert.match(message.text, /^[\x20-\x7e\n]+$/);
+});
+test("SMS guard rejects Unicode, GSM extension characters, and oversized bodies without truncation", () => {
+  for (const body of ["Time – now", "Hello 😀", "^".repeat(81), "a".repeat(161)]) {
+    assert.throws(() => singleSegmentSms("BOOK-123", body), /SMS_SEGMENT_LIMIT/);
+  }
 });
 test("minimal policy suppresses routine SMS while keeping changes, exceptions and email", () => {
   for (const eventType of ["PAYMENT_RECEIVED", "APPOINTMENT_COMPLETED", "APPOINTMENT_REMINDER"] as const) {

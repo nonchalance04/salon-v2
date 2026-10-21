@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { renderEmailLayout } from "../src/modules/notifications/email-layout.js";
 import { renderSimpleEmailLayout } from "../src/modules/notifications/simple-email-layout.js";
 import { renderNotification } from "../src/modules/notifications/templates.js";
+import { notificationTermsText } from "../src/modules/notifications/terms-and-conditions.js";
 
 test("confirmation emails link to appointment management in HTML and plain text", () => {
   const row = { id: "id", recipient: "guest@example.test", channel: "EMAIL" as const,
@@ -39,9 +40,40 @@ test("all notification events receive HTML without exposing private payload fiel
     assert.ok(message.html?.includes("BOOK-123"));
     assert.ok(message.html?.includes("9:00 AM (Asia/Manila)"));
     assert.ok(!message.html?.includes("private-"));
+    assert.ok(message.text.endsWith(notificationTermsText));
+    assert.match(message.html!, /Terms &amp; Conditions \(T&amp;C\)/);
+    assert.equal((message.html!.match(/<li /g) ?? []).length, 6);
+    assert.match(message.html!, /one \(1\) day before/);
+    assert.match(message.html!, /All appointment cancellations and rescheduling requests must be made through our official website/);
+    assert.match(message.html!, /fee is non-refundable/);
+    assert.match(message.html!, /may only be used once/);
+    assert.match(message.html!, /grace period of fifteen \(15\) minutes/);
+    assert.match(message.html!, /&quot;No Show\.&quot;/);
     const sms = renderNotification({ ...base, channel: "SMS", recipient: "09171234567", eventType }, "Asia/Manila");
     assert.equal(sms.html, undefined);
+    assert.ok(!sms.text.includes(notificationTermsText));
+    assert.ok(sms.text.length <= 160);
+    assert.match(sms.text, /^[\x20-\x7e\n]+$/);
+    assert.doesNotMatch(sms.text, /https?:|salonappointment\.com/);
+    const longest = renderNotification({ ...base, channel: "SMS", recipient: "09171234567", eventType,
+      payload: { ...base.payload, bookingCode: "B".repeat(100), appointmentStatus: "PENDING_PAYMENT", reconciliationRequired: true, completionType: "NO_SERVICE_CLOSURE" },
+    }, "Asia/Manila", "https://salon.example.com");
+    assert.ok(longest.text.length <= 160, eventType);
+    assert.ok(longest.text.includes("B".repeat(100)));
+    if (eventType === "PAYMENT_RECEIVED") assert.match(longest.text, /Booking not confirmed/);
+    if (eventType === "NO_SHOW_RECOVERY_CREATED") assert.match(longest.text, /Fee payment required/);
   }
+});
+
+test("terms are escaped in HTML and excluded from verification emails", () => {
+  const html = renderSimpleEmailLayout({ title: "Appointment update", text: "Details", terms: {
+    heading: "T&C <script>", items: ['<img src=x onerror="alert(1)">'],
+  } });
+  assert.ok(!html.includes("<script>"));
+  assert.ok(!html.includes("<img"));
+  assert.ok(html.includes("&lt;img src=x onerror=&quot;alert(1)&quot;&gt;"));
+  const verification = renderSimpleEmailLayout({ title: "Verification", text: "Your code", verificationCode: "123456" });
+  assert.ok(!verification.includes("Terms &amp; Conditions"));
 });
 
 test("payment review and no-service closure notices remain visible in HTML", () => {
