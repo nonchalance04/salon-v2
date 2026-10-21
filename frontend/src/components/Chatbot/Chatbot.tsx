@@ -1,3 +1,4 @@
+// Bring in the tools for the chatbot view so this file can work with the rest of the application.
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { Link } from "react-router";
@@ -8,6 +9,7 @@ import { readChatSession, saveChatSession, type ChatReply } from "./chatbot-sess
 
 import "./Chatbot.css";
 
+// Format the service price so the customer can understand the displayed cost.
 const price = (value: string) => new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(Number(value));
 const topics = [
   { icon: "✧", title: "Find my service", detail: "A little guidance for your next visit", question: "Help me choose a service" },
@@ -15,7 +17,9 @@ const topics = [
   { icon: "◷", title: "Plan my visit", detail: "Opening hours and booking help", question: "Opening hours" },
 ];
 
+// Show the salon conversation and reply choices so customers can ask for help while browsing.
 export function Chatbot({ embedded = false, compact = false, active = true }: { embedded?: boolean; compact?: boolean; active?: boolean } = {}) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [savedSession] = useState(readChatSession);
   const [history, setHistory] = useState(savedSession.history);
   const [message, setMessage] = useState(savedSession.draft);
@@ -27,17 +31,21 @@ export function Chatbot({ embedded = false, compact = false, active = true }: { 
   const input = useRef<HTMLTextAreaElement>(null);
   const transcript = useRef<HTMLDivElement>(null);
 
+  // Keep this view in step with its current inputs so changes are reflected on screen.
   useEffect(() => {
     saveChatSession({ history, draft: message || pending });
   }, [history, message, pending]);
 
+  // Keep this view in step with its current inputs so changes are reflected on screen.
   useEffect(() => {
     const region = transcript.current;
     if (active && region) region.scrollTo({ top: region.scrollHeight, behavior: "instant" });
   }, [active, history, pending, error]);
+  // Move keyboard focus to the active control so the user can continue without searching through the page.
   useEffect(() => {
     if (active && !busy && (history.length > 0 || error)) input.current?.focus({ preventScroll: true });
   }, [active, busy, history.length, error]);
+  // Keep this view in step with its current inputs so changes are reflected on screen.
   useEffect(() => {
     if (input.current) {
       input.current.style.height = "auto";
@@ -45,6 +53,7 @@ export function Chatbot({ embedded = false, compact = false, active = true }: { 
     }
   }, [message, active]);
 
+  // Send the customer question and add the reply so the chat conversation can continue.
   async function ask(question: string) {
     const trimmed = question.trim();
     if (!trimmed || submitting.current) return;
@@ -59,11 +68,14 @@ export function Chatbot({ embedded = false, compact = false, active = true }: { 
       setError(err instanceof Error ? err.message : "Please try again.");
     } finally { submitting.current = false; setBusy(false); }
   }
+  // Handle the submitted form so the selected action can use the entered details.
   function submit(e: FormEvent) { e.preventDefault(); void ask(message); }
+  // Clear the conversation so the visitor can start a fresh salon question.
   function reset() {
     setAnswerAnimation(null);
     setHistory([]); setPending(""); setMessage(""); setError(""); input.current?.focus();
   }
+  // Show the prepared content and actions so the user can review the information and continue.
   return <section className={`salon-guide tw:customer:max-w-[1000px]  chat-page tw:[&_.wordmark]:mb-7.5 tw:[&_button:disabled]:cursor-default tw:[&_button:disabled]:opacity-[.45] tw:[&_a:hover]:underline tw:[&_a:hover]:underline-offset-[3px] tw:[&_:focus-visible]:[outline:3px_solid_#a58a36] tw:[&_:focus-visible]:outline-offset-[3px] ${compact ? " chat-page--compact tw:[.chat-widget_&]:flex tw:[.chat-widget_&]:flex-col tw:[.chat-widget_&]:flex-1 tw:[.chat-widget_&]:min-h-0 tw:[.chat-widget_&]:w-full tw:[.chat-widget_&]:max-w-none tw:[.chat-widget_&]:m-0 tw:[.chat-widget_&]:p-0 " : embedded ? " container public:w-[min(1280px,calc(100%_-_96px))] public:mx-auto public:down-1023:w-[calc(100%_-_48px)] public:down-639:w-[calc(100%_-_36px)] " : " workspace-main tw:max-w-[1200px] tw:m-auto tw:[padding:60px_32px_80px] tw:[&>h1]:text-[46px] tw:[&>h1]:mb-2 tw:down-760:py-9.5 tw:down-760:px-5 tw:down-760:[&>h1]:text-[38px] "}`} aria-label={compact ? "Salon recommendations" : undefined} aria-labelledby={compact ? undefined : "chat-title"}>
     {!embedded && !compact && <Link className="wordmark tw:text-[27px] tw:tracking-[.16em] tw:no-underline tw:font-semibold tw:inline-flex tw:flex-col
           tw:[&_span]:text-[10px] tw:[&_span]:tracking-[.5em] tw:[&_span]:mt-1.5 tw:[.intro_&]:self-start

@@ -62,6 +62,7 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* Apply the next layout refinements so related content keeps consistent spacing and appearance. */
 :root {
   --radius: .75rem;
   --background: #fff;
@@ -84,12 +85,14 @@
   --ring: #b67a3d;
 }
 
+/* Apply the next layout refinements so related content keeps consistent spacing and appearance. */
 .customer-site {
   --primary: #d3ae30;
   --primary-foreground: #292a28;
   --ring: #987b16;
 }
 
+/* Apply the next layout refinements so related content keeps consistent spacing and appearance. */
 .clique-workspace, .clique-login {
   --primary: #d9b437;
   --primary-foreground: #242424;
@@ -111,6 +114,7 @@
   :where([data-slot="button"]:disabled) { cursor: not-allowed; }
 }
 
+/* Reduce movement when requested so the page respects the visitor's motion preference. */
 @media (prefers-reduced-motion: reduce) {
   [data-slot] { animation-duration: 0s !important; transition-duration: 0s !important; }
 }

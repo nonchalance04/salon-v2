@@ -1,5 +1,7 @@
+// Bring in the tools for the not found page view so this file can work with the rest of the application.
 import { Link } from "react-router";
 
+// Explain that the requested page is unavailable so visitors can return to a working page.
 export function NotFoundPage() {
   return (
       <section className="container public:w-[min(1280px,calc(100%_-_96px))] public:mx-auto public:down-1023:w-[calc(100%_-_48px)]

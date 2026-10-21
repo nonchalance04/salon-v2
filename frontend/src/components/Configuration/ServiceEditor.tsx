@@ -1,3 +1,4 @@
+// Bring in the tools for the configuration view so this file can work with the rest of the application.
 import { useId, useRef, type FormEvent } from "react";
 import { Clock3, Scissors, ShieldCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -5,6 +6,7 @@ import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/Dialog";
 
+// Show the service fields so an administrator can maintain the menu offering.
 export function ServiceEditor({ editing, values, categories, busy, error, onChange, onSubmit, onClose, onRestoreFocus }: {
   editing: boolean;
   values: Record<string, string | boolean>;
@@ -17,7 +19,9 @@ export function ServiceEditor({ editing, values, categories, busy, error, onChan
   onRestoreFocus: () => void;
 }) {
   const categoryId = useId();
+  // Remember the current choices and screen status so the page can respond as the user works.
   const name = useRef<HTMLInputElement>(null);
+  // Show the prepared content and actions so the user can review the information and continue.
   return <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }}>
     <DialogContent className="service-editor tw:[&_label]:m-0 tw:[&_label]:gap-2 tw:[&_label]:text-[12px] tw:[&_label]:font-semibold
           tw:[&_label]:text-[#4b4b45] tw:[&_label_>_span_>_small]:ml-1.5 tw:[&_label_>_span_>_small]:text-[#93928a]
@@ -40,6 +44,7 @@ export function ServiceEditor({ editing, values, categories, busy, error, onChan
         <Button className="service-editor-close tw:[.service-editor_&]:self-start tw:[.service-editor_&]:shrink-0
           tw:[.service-editor_&]:ml-auto tw:[.service-editor_&]:text-[#77766f]" variant="ghost" size="icon" type="button" disabled={busy} aria-label="Close service editor" onClick={onClose}><X size={19} aria-hidden="true" /></Button>
       </DialogHeader>
+      {/* Group the entry fields and submit action so the user can complete this step in one place. */}
       <form className="service-editor-form tw:flex tw:flex-col tw:min-h-0" onSubmit={onSubmit} aria-busy={busy}>
         <div className="service-editor-body tw:overflow-y-auto tw:[padding:26px_28px_22px] tw:down-540:py-5.5 tw:down-540:px-5">
           {error && <p role="alert" className="error tw:[background:#fff0ed] tw:[border:1px_solid_#ecc5ba] tw:text-[#963923] tw:py-3 tw:px-4 tw:rounded-[6px]

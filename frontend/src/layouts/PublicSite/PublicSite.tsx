@@ -1,3 +1,4 @@
+// Bring in the tools for the public site view so this file can work with the rest of the application.
 import { Button } from "@/components/ui/Button";
 import "./PublicSite.css";
 import "../../components/PublicBooking/PublicBooking.css";
@@ -13,14 +14,18 @@ import { SiteHeader } from "../../components/SiteHeader";
 import type { CatalogService, Salon } from "../../types/salon";
 import type { PublicContext } from "./PublicSite.context";
 
+// Choose a readable error message so the screen can explain what went wrong.
 const message = (error: unknown) =>
   error instanceof Error ? error.message : "Please try again.";
 
+// Load shared salon information and frame the public pages so visitors have consistent navigation and content.
 export function PublicSite() {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [services, setServices] = useState<CatalogService[]>([]);
   const [salon, setSalon] = useState<Salon | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // Load the saved information so the screen can show current salon records.
   async function load() {
     setLoading(true);
     setError("");
@@ -37,6 +42,7 @@ export function PublicSite() {
       setLoading(false);
     }
   }
+  // Load the information this view needs when its inputs change so the displayed results stay current.
   useEffect(() => {
     void load();
   }, []);
@@ -119,6 +125,7 @@ export function PublicSite() {
       </a>
       <SiteHeader />
       <main id="main"><Outlet context={{ salon, services, loading, error, catalogStatus } satisfies PublicContext} /></main>
+      {/* Show the closing information and links so visitors can find the remaining salon details. */}
       <footer className="container public:w-[min(1280px,calc(100%_-_96px))] public:mx-auto public:down-1023:w-[calc(100%_-_48px)]
           public:down-639:w-[calc(100%_-_36px)] site-footer public:[border-top:1px_solid_#d4d5ce] public:py-7
           public:[&_p]:text-[12px] public:[&_>_a]:text-[12px] public:down-639:py-[25px] footer-row tw:customer:flex

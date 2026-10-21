@@ -1,9 +1,13 @@
+// Bring in the tools for the phone input view so this file can work with the rest of the application.
 import { Input } from "@/components/ui/Input";
 import { useState } from "react";
 import { philippinePhoneDigits } from "../../utils/phone-number";
 
+// Provide a phone-number field so customer contact details use the expected local format.
 export function PhoneInput({ name, value, onChange, required = true }: { required?: boolean; name?: string; value?: string; onChange?: (value: string) => void }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [digits, setDigits] = useState("");
+  // Show the prepared content and actions so the user can review the information and continue.
   return <span className="phone-field tw:customer:block">
     <span className="phone-input-group tw:customer:flex tw:customer:items-stretch tw:customer:mt-2
           tw:customer:[border:1px_solid_#d5d8cf] tw:customer:rounded-[10px] tw:customer:[background:white]

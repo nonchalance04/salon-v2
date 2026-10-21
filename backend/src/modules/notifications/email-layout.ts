@@ -1,3 +1,4 @@
+// Make supplied text safe to place in an email so it appears as text rather than page instructions.
 function escapeHtml(value: string): string {
   return value.replace(
     /[&<>"']/g,
@@ -22,6 +23,7 @@ export function renderEmailLayout(options: {
   appointmentUrl?: string;
 }): string {
   const { title, text, bookingCode, when, verificationCode, appointmentUrl } = options;
+  // Format one email detail so the customer can read the label and its value together.
   const detail = (label: string, value: string) =>
     `<tr><td style="padding:0 0 6px;font-size:11px;font-weight:700;letter-spacing:1.5px;color:#73756f;text-transform:uppercase;">${label}</td></tr><tr><td style="padding:0 0 20px;font-size:17px;font-weight:700;line-height:1.5;overflow-wrap:anywhere;">${escapeHtml(value)}</td></tr>`;
   const details =

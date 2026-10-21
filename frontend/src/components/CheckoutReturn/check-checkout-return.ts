@@ -1,6 +1,8 @@
+// Bring in the tools for the checkout return view so this file can work with the rest of the application.
 import type { Appointment } from "../../types/booking";
 import type { FeePayment } from "../../types/payments";
 
+// Describe the information used by the checkout return view so different parts of the application agree on its contents.
 type Request = <T>(path: string, options?: RequestInit) => Promise<T>;
 
 // A checkout redirect supplies no proof of payment. Ask the existing verified

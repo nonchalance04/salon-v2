@@ -1,14 +1,17 @@
+/* Animate the payment-check illustration so customers can recognize progress while waiting. */
 .payment-return-check-line {
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
   animation: payment-return-draw 1s ease-in-out forwards;
 }
 
+/* Define the animation movements so the status illustration can show its progress. */
 @keyframes payment-return-draw {
   0%, 10% { stroke-dashoffset: 1; opacity: 1; }
   75%, 100% { stroke-dashoffset: 0; opacity: 1; }
 }
 
+/* Reduce movement when requested so the page respects the visitor's motion preference. */
 @media (prefers-reduced-motion: reduce) {
   .payment-return-check-line {
     animation: none;

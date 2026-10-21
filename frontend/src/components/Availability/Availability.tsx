@@ -1,3 +1,4 @@
+// Bring in the tools for the availability view so this file can work with the rest of the application.
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/NativeSelect";
@@ -8,13 +9,17 @@ import { api } from "../../lib/api";
 import { BookingForm } from "../BookingForm";
 import { AppointmentView } from "../AppointmentView";
 
+// Describe the information used by the availability view so different parts of the application agree on its contents.
 type Service = { id: string; name: string; description: string | null; price: string; durationMinutes: number };
 type Staff = { id: string; firstName: string; lastName: string; serviceIds: string[] };
 type Selection = { key: number; serviceId: string; staffId: string };
 type Slot = { startAt: string; endAt: string; services: { sequenceNo: number; serviceId: string; serviceName: string; staffName: string; startAt: string; endAt: string; reservedUntilAt: string; bufferMinutes: number }[] };
 type Result = { timeZone: string; generatedAt: string; earliest: string; latest: string; slots: Slot[] };
+// Choose a readable error message so the screen can explain what went wrong.
 const message = (error: unknown) => error instanceof Error ? error.message : "Please try again.";
+// Show the visit search and matching times so staff can find a suitable booking.
 export function Availability() {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [services, setServices] = useState<Service[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [timeZone, setTimeZone] = useState("");
@@ -30,6 +35,7 @@ export function Availability() {
   const [booked, setBooked] = useState<Parameters<typeof AppointmentView>[0] | null>(null);
   const request = useRef(0);
   const nextKey = useRef(0);
+  // Load the saved information so the screen can show current salon records.
   async function load() {
     setLoading(true); setError("");
     try {
@@ -40,11 +46,15 @@ export function Availability() {
     } catch (err) { setError(message(err)); }
     finally { setLoading(false); }
   }
+  // Load the information this view needs when its inputs change so the displayed results stay current.
   useEffect(() => { void load(); return () => { request.current++; }; }, []);
+  // Clear results that depend on earlier choices so an outdated visit cannot be selected.
   function invalidate() { request.current++; setResult(null); setSelected(null); setHour(""); setBusy(false); setError(""); }
+  // Apply the changed visit choice and clear dependent results so the next search uses the updated plan.
   function change(key: number, values: Partial<Selection>) {
     invalidate(); setSelections(rows => rows.map(row => row.key === key ? { ...row, ...values } : row));
   }
+  // Find the matching choices so the person using this feature can review the available results.
   async function search(event: FormEvent) {
     event.preventDefault();
     const generation = ++request.current;
@@ -59,9 +69,12 @@ export function Availability() {
     } catch (err) { if (generation === request.current) setError(message(err)); }
     finally { if (generation === request.current) setBusy(false); }
   }
+  // Format the visit time for display so the schedule can be read in the salon time zone.
   const format = (instant: string) => new Intl.DateTimeFormat(undefined, { timeZone, hour: "numeric", minute: "2-digit", timeZoneName: "short" }).format(new Date(instant));
+  // Group a start time by its hour so the list of available times can be organized.
   const hourKey = (instant: string, zone = timeZone) => Temporal.Instant.from(instant).toZonedDateTimeISO(zone).toString().slice(0, 13) + Temporal.Instant.from(instant).toZonedDateTimeISO(zone).offset;
   const groups = [...new Map((result?.slots ?? []).map(slot => [hourKey(slot.startAt), slot.startAt])).entries()];
+  // Show the prepared content and actions so the user can review the information and continue.
   return <div className="workspace tw:[&_header]:py-6 tw:[&_header]:px-[5vw] tw:[&_header]:[border-bottom:1px_solid_#dce0d8]
           tw:[&_header]:flex tw:[&_header]:justify-between tw:[&_header]:items-center tw:[&_header]:[background:#fff]
           tw:[&_header_.wordmark]:text-[23px] tw:down-760:[&_header]:p-5"><header><Link className="wordmark tw:text-[27px] tw:tracking-[.16em] tw:no-underline tw:font-semibold tw:inline-flex tw:flex-col
@@ -79,6 +92,7 @@ export function Availability() {
           <h2>Your visit</h2>
           {selections.map((row, index) => {
             const service = services.find(s => s.id === row.serviceId);
+            // Show the prepared content and actions so the user can review the information and continue.
             return <fieldset key={row.key} className="visit-service tw:rounded-[12px] tw:p-4.5 tw:my-4 tw:mx-0 tw:min-w-0 tw:[&_legend]:font-semibold
           tw:[&_legend]:py-0 tw:[&_legend]:px-2"><legend>Service {index + 1}</legend><div className="form-grid tw:grid tw:grid-cols-[1fr_1fr] tw:gap-[0_24px] tw:down-760:grid-cols-[1fr]">
               <label>Service<NativeSelect value={row.serviceId} onChange={e => change(row.key, { serviceId: e.target.value, staffId: "" })}>{services.map(s => <NativeSelectOption key={s.id} value={s.id}>{s.name} · PHP {s.price} · {s.durationMinutes} min</NativeSelectOption>)}</NativeSelect></label>
@@ -110,6 +124,7 @@ export function Availability() {
           tw:[&_input[readonly]]:w-full tw:[&_input[readonly]]:box-border tw:workspace-main:[background:#fff]
           tw:workspace-main:[border:1px_solid_#e3e3e3]" aria-label="Selected visit"><h3>Your selected visit</h3><p>{date} · {format(selected.startAt)} – {format(selected.endAt)}</p>
           <ol>{selected.services.map(s => <li key={s.sequenceNo}><strong>{s.serviceName}</strong> with {s.staffName}<br />{format(s.startAt)} – {format(s.endAt)}{s.bufferMinutes > 0 && <span className="muted"> · {s.bufferMinutes} min buffer, through {format(s.reservedUntilAt)}</span>}</li>)}</ol>
+          {/* Collect customer contact details so the selected visit can be reserved and linked to its customer. */}
           <BookingForm key={selected.startAt} plan={{ date, startAt: selected.startAt, services: selections.map(row => row.staffId ? { serviceId: row.serviceId, assignmentMode: "SPECIFIC", staffId: row.staffId } : { serviceId: row.serviceId, assignmentMode: "ANY_AVAILABLE" }) }} onBusy={setBookingBusy} onBooked={response => setBooked({ initial: response.appointment, token: response.guestToken })} /></section>}
       </section>}
       </fieldset>}

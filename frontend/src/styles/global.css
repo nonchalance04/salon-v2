@@ -1,23 +1,29 @@
+/* Set shared fonts, colors and basic page controls so the application has a consistent starting appearance. */
 :root{font-family:Arial,Helvetica,sans-serif;color:#203c34;background:#faf9f5;font-synthesis:none;line-height:1.5}*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button,a,input,select{ -webkit-tap-highlight-color:transparent}button:where(:not([data-slot])){cursor:pointer;border:1px solid #ced5cf;border-radius:7px;padding:10px 18px;background:white;color:#203c34;font-weight:600}button:where(:not([data-slot])):hover{background:#eef2ed}button:where(:not([data-slot])):disabled{opacity:.6;cursor:wait}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #b67a3d;outline-offset:3px}a{color:inherit}h1,h2,h3,p{margin-top:0}h1,h2{font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.035em}h1{font-size:clamp(38px,5vw,64px);line-height:1.15}h2{font-size:32px;line-height:1.2;margin-bottom:12px}h3{font-size:20px}.muted,.help,small{color:#64736b}.login-page{display:grid;grid-template-columns:1fr 1fr;min-height:100vh}.intro{background:#203c34;color:#f8f3e9;padding:54px 64px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}.intro:after{content:'';width:360px;height:480px;border:1px solid #ffffff18;border-radius:50% 50% 0 0;position:absolute;right:-140px;bottom:-120px;transform:rotate(-24deg);pointer-events:none}.intro>div{padding:70px 0}.intro>div>p:last-child{max-width:260px;color:#d1ded4}.intro-foot{font-size:12px;color:#d1ded4;margin:0}.login-panel{display:flex;align-items:center;justify-content:center;padding:60px 32px}.login-card{max-width:380px;width:100%}.login-card form{margin-top:35px}label{display:flex;flex-direction:column;font-size:13px;font-weight:600;gap:8px;margin-bottom:22px}input:where(:not([data-slot])),select:where(:not([data-slot])){border:1px solid #cad1c8;border-radius:6px;padding:12px 13px;background:#fff;color:#203c34;min-width:0;width:100%}label small{font-weight:400}.user-menu{display:flex;align-items:center;gap:22px;font-size:14px}.section-heading p:last-child{margin-bottom:0}table{border-collapse:collapse;width:100%;text-align:left;font-size:14px;white-space:nowrap}th{background:#f0f2ec;color:#64736b;font-size:11px;text-transform:uppercase;letter-spacing:.1em}td,th{padding:18px 22px;border-bottom:1px solid #e7e9e3}tbody tr:last-child td{border-bottom:0}.cashier-card{padding:38px;border:1px solid #dce0d8;border-radius:12px;background:white}.cashier-card h2{margin-top:24px}.cashier-card p{max-width:480px;color:#64736b}footer{padding:25px 5vw;border-top:1px solid #dce0d8;color:#64736b;font-size:12px}.sr-only{clip:rect(0,0,0,0)}@media(max-width:760px){.login-page{grid-template-columns:1fr}.intro{padding:28px 26px}.intro>div{padding:40px 0 0}.intro h1{font-size:38px}.intro-foot{display:none}.login-panel{padding:40px 26px}.login-card{max-width:none}.user-menu{gap:12px}.user-menu span{font-size:12px}}
 
+/* Show the control states clearly so the user can recognize the current choice. */
 .workspace-tabs,.config-tabs { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:28px; }
 .workspace-tabs { border-bottom:1px solid #dce0d8; padding-bottom:18px; }
 .workspace-tabs button[aria-current],.config-tabs button[aria-current] { background:#203c34; color:white; border-color:#203c34; }
 .configuration .section-heading .primary { flex-shrink:0; }
 .visit-service { border: 1px solid var(--line, #ddd); }
 
+/* Arrange record columns and values so longer lists remain readable. */
 .payments-workspace table { table-layout: fixed; white-space: normal; }
 .payments-workspace td, .payments-workspace th { padding: 14px 12px; overflow-wrap: anywhere; vertical-align: top; }
 .payments-workspace td button { max-width: 100%; overflow-wrap: anywhere; padding: 8px; }
 .payments-workspace fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .chat-history { margin-block: 1.5rem; }
 
+/* Arrange form fields and labels so information can be entered clearly. */
 fieldset { min-width: 0; }
 textarea { font: inherit; width: 100%; max-width: 100%; }
 
 /* Cashier desk */
 .cashier-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;margin:22px 0}.cashier-metrics article{display:flex;flex-direction:column;gap:10px;padding:22px;border:1px solid #dce0d8;border-radius:10px;background:#fff}.cashier-metrics strong{font-size:28px;overflow-wrap:anywhere}.cashier-collections{margin-bottom:28px;padding:22px;border:1px solid #dce0d8;border-radius:10px;background:#f0f2ec}.cashier-collections summary{cursor:pointer;font-weight:700;margin-bottom:16px}.cashier-collections p{font-size:14px}@media(max-width:600px){.cashier-metrics{grid-template-columns:1fr}}
 
+/* Group cashier figures and visit details so daily payment work is easy to scan. */
 .cashier-main{padding-top:28px}.cashier-main>h1{font-size:32px}
 
+/* Arrange service choices and details so the available offerings are easy to compare. */
 .confirmed-services{margin:24px 0;padding:24px;border:1px solid #dce0d8;border-radius:10px;background:#fff}.confirmed-services td{white-space:normal;min-width:150px}.confirmed-services td:last-child{min-width:170px}.confirmed-services td>div+div{margin-top:12px}.today-activity{margin-top:24px}.today-activity>summary{cursor:pointer;margin-bottom:16px}@media(max-width:600px){.confirmed-services{padding:16px}}

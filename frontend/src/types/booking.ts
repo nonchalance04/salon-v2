@@ -1,4 +1,6 @@
+// Bring in the tools for booking details so this file can work with the rest of the application.
 import type { FeePayment } from "./payments";
+// Describe the information used by booking details so different parts of the application agree on its contents.
 export type BookingPlan = { date: string; startAt: string; services: ({ serviceId: string; assignmentMode: "ANY_AVAILABLE" } | { serviceId: string; assignmentMode: "SPECIFIC"; staffId: string })[] };
 export type Appointment = {
   checkedInAt: string | null; checkedInByUser?: { firstName: string; lastName: string } | null;

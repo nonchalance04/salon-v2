@@ -1,1 +1,2 @@
+/* Fit the phone entry beside its country prefix so the whole field reads as one control. */
 .customer-site .phone-field .phone-input-group input{margin:0;border:0;border-radius:0;box-shadow:none;outline:none;min-width:0;flex:1;width:100%;padding:12px;font-weight:400}

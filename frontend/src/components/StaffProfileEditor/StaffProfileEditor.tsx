@@ -1,3 +1,4 @@
+// Bring in the tools for the staff profile editor view so this file can work with the rest of the application.
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -10,8 +11,11 @@ import { emptyStaffProfile, type StaffPublicProfile } from "../../utils/staff-pr
 
 import "./StaffProfileEditor.css";
 
+// Show the selected portfolio picture so the administrator can review it before saving.
 function PortfolioPreview({ file, imageUrl, title }: { file?: File | null; imageUrl: string; title: string }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [preview, setPreview] = useState("");
+  // Keep this view in step with its current inputs so changes are reflected on screen.
   useEffect(() => {
     if (!file) { setPreview(""); return; }
     const url = URL.createObjectURL(file);
@@ -25,11 +29,13 @@ function PortfolioPreview({ file, imageUrl, title }: { file?: File | null; image
           tw:[.staff-profile-editor_&]:rounded-[10px] tw:[.staff-profile-editor_&]:[border:1px_solid_#e4e1d6]" src={source} alt={title || "Portfolio image preview"} referrerPolicy="no-referrer" /> : null;
 }
 
+// Show public profile and portfolio fields so administrators can maintain the staff booking profile.
 export function StaffProfileEditor({ staffId, name, initial, busy, onBusy, onSaved, onClose, onRestoreFocus }: {
   onRestoreFocus: () => void;
   staffId: string; name: string; initial: StaffPublicProfile | null; busy: boolean;
   onBusy: (busy: boolean) => void; onSaved: (profile: StaffPublicProfile) => void; onClose: () => void;
 }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [profile, setProfile] = useState<StaffPublicProfile>(() => initial ?? emptyStaffProfile());
   const [languages, setLanguages] = useState(initial?.languages.join(", ") ?? "");
   const [portfolioFiles, setPortfolioFiles] = useState<(File | null)[]>(() => (initial?.portfolio ?? []).map(() => null));
@@ -38,8 +44,11 @@ export function StaffProfileEditor({ staffId, name, initial, busy, onBusy, onSav
   const [error, setError] = useState("");
   const sending = useRef(false);
   const errorPanel = useRef<HTMLDivElement>(null);
+  // Bring the relevant content into view so the user can find the new information or error.
   useEffect(() => { if (error) errorPanel.current?.scrollIntoView({ block: "nearest" }); }, [error]);
+  // Update the edited selection so the screen reflects the latest choices.
   const update = <K extends keyof StaffPublicProfile>(key: K, value: StaffPublicProfile[K]) => setProfile(current => ({ ...current, [key]: value }));
+  // Check and submit the edited details so the saved record matches the form.
   async function save(event: FormEvent) {
     event.preventDefault(); if (sending.current) return;
     sending.current = true; onBusy(true); setError("");
@@ -61,7 +70,9 @@ export function StaffProfileEditor({ staffId, name, initial, busy, onBusy, onSav
     } catch (err) { setError(err instanceof Error ? err.message : "The profile could not be saved."); }
     finally { sending.current = false; onBusy(false); }
   }
+  // Show the prepared content and actions so the user can review the information and continue.
   return <StaffManagementDialog title="Edit public profile" description="Shape how clients get to know this professional before booking." name={name} icon={<UserRound size={23} />} busy={busy} onClose={onClose} onRestoreFocus={onRestoreFocus}>
+    {/* Group the entry fields and submit action so the user can complete this step in one place. */}
     <form className="staff-management-form tw:flex tw:flex-col tw:min-h-0 staff-profile-editor tw:[&_label_>_small]:block
           tw:[&_label_>_small]:text-[#97907e] tw:[&_label_>_small]:text-[10px] tw:[&_label_>_small]:font-normal
           tw:[&_label_>_small]:leading-[1.6]" onSubmit={save} aria-busy={busy} aria-label={`Edit public profile for ${name}`}>

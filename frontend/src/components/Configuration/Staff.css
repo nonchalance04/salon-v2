@@ -1,3 +1,4 @@
+/* Style staff cards and their editing dialog so administrators can manage the team clearly. */
 .staff-configuration .staff-member-card { box-shadow: 0 3px 12px #25220c04; }
 .staff-member-card .actions button:first-child { background: #faf6e7; border-color: #e8dcac; color: #80691f; }
 .staff-member-card .actions button[aria-label^="Delete"] { box-shadow: none; }
@@ -16,6 +17,7 @@
 .staff-editor-availability input:checked + .staff-editor-toggle { background: #b5952c; }
 .staff-editor-availability input:checked + .staff-editor-toggle::after { transform: translateX(16px); }
 .staff-editor-availability input:focus-visible + .staff-editor-toggle { outline: 3px solid #b5952c; outline-offset: 3px; }
+/* Adjust this layout for the matching screen size so its content and controls remain usable. */
 @media (max-width: 540px) {
   .staff-editor[data-slot="dialog-content"] { width: calc(100% - 1rem); max-height: calc(100dvh - 1rem); border-radius: 16px; }
   .staff-editor-header[data-slot="dialog-header"] { padding: 20px; gap: 12px; }

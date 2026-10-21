@@ -1,3 +1,4 @@
+/* Style schedule cards, time fields and day switches so salon hours are easy to review and edit. */
 .schedule-day { box-shadow: 0 3px 12px #25220c03; }
 .schedule-day li + li { border-top: 1px solid #f0eee7; }
 .schedule-availability label > span:first-child { flex: 1; }

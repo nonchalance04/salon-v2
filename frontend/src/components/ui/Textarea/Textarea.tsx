@@ -1,6 +1,8 @@
+// Bring in the tools for the ui view so this file can work with the rest of the application.
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
+// Provide the shared multiline field so longer form entries use a consistent appearance.
 function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
   return (
     <textarea
@@ -14,4 +16,5 @@ function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
   )
 }
 
+// Expose the shared parts of this file so other screens can use the same building blocks.
 export { Textarea }

@@ -1,3 +1,4 @@
+// Describe the information used by the chatbot view so different parts of the application agree on its contents.
 export type ConversationTurn = {
   question: string;
   reply: { answer: string; recommendations?: { name: string; reason: string }[] };

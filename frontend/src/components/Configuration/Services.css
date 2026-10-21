@@ -1,3 +1,4 @@
+/* Style service cards and their editing dialog so administrators can manage the menu clearly. */
 .service-menu-card { box-shadow: 0 3px 12px #25220c04; }
 .service-menu-description { -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .service-editor[data-slot="dialog-content"] { width: calc(100% - 2rem); max-width: 680px; padding: 0; gap: 0; border: 1px solid #e5e3dc; border-radius: 20px; background: #fff; color: #292a28; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 24px 90px #19170e30; }
@@ -15,6 +16,7 @@
 .service-editor-availability input:checked + .service-editor-toggle { background: #b5952c; }
 .service-editor-availability input:checked + .service-editor-toggle::after { transform: translateX(16px); }
 .service-editor-availability input:focus-visible + .service-editor-toggle { outline: 3px solid #b5952c; outline-offset: 3px; }
+/* Adjust this layout for the matching screen size so its content and controls remain usable. */
 @media (max-width: 540px) {
   .service-editor[data-slot="dialog-content"] { width: calc(100% - 1rem); max-height: calc(100dvh - 1rem); border-radius: 16px; }
   .service-editor-header[data-slot="dialog-header"] { padding: 20px; gap: 12px; }

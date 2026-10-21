@@ -1,3 +1,4 @@
+// Bring in the tools for the appointment view view so this file can work with the rest of the application.
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/Dialog";
 import { CalendarDays, Check, X } from "lucide-react";
 import "./AppointmentView.css";
@@ -11,9 +12,11 @@ import { BookingConfirmation } from "../BookingConfirmation";
 import type { Salon } from "../../types/salon";
 import type { Appointment } from "../../types/booking";
 
+// Choose a readable error message so the screen can explain what went wrong.
 const message = (error: unknown) =>
   error instanceof Error ? error.message : "Please try again.";
 
+// Show the current appointment and available actions so the customer can follow their booking.
 export function AppointmentView({
   initial,
   token: initialToken,
@@ -25,6 +28,7 @@ export function AppointmentView({
   salon?: Salon | null;
   onBackHome?: () => void;
 }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [appointment, setAppointment] = useState(initial);
   const [token, setToken] = useState(initialToken);
   const [error, setError] = useState("");
@@ -33,9 +37,11 @@ export function AppointmentView({
   const [managementBusy, setManagementBusy] = useState(false);
   const [rescheduled, setRescheduled] = useState<Appointment | null>(null);
   const manageTrigger = useRef<HTMLElement | null>(null);
+  // Keep this view in step with its current inputs so changes are reflected on screen.
   useEffect(() => {
     if (appointment.status !== "CONFIRMED") setManaging(false);
   }, [appointment.status]);
+  // Open the booking-management view so the customer can change an eligible appointment.
   function openManagement() {
     if (appointment.status !== "CONFIRMED") return;
     manageTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -49,6 +55,7 @@ export function AppointmentView({
   const refreshBusy = useRef(false);
   const activeCode = useRef(appointment.bookingCode);
   activeCode.current = appointment.bookingCode;
+  // Reload the latest information so the next view or action reflects the current saved state.
   async function refresh() {
     if (refreshBusy.current) return;
     refreshBusy.current = true;
@@ -73,7 +80,9 @@ export function AppointmentView({
       refreshBusy.current = false;
     }
   }
+  // Keep time-based screen updates running while this view is open so its status stays current.
   useEffect(() => {
+    // Update the displayed time so the appointment countdown follows the current clock.
     const tick = () =>
       setRemaining(
         appointment.holdExpiresAt
@@ -92,18 +101,21 @@ export function AppointmentView({
     const timer = setInterval(tick, 1000);
     return () => clearInterval(timer);
   }, [appointment]);
+  // Keep time-based screen updates running while this view is open so its status stays current.
   useEffect(() => {
     const timer = setInterval(() => {
       void refresh();
     }, 15_000);
     return () => clearInterval(timer);
   }, [appointment.bookingCode, token]);
+  // Format the visit time for display so the schedule can be read in the salon time zone.
   const format = (value: string) =>
     new Intl.DateTimeFormat(undefined, {
       timeZone: appointment.timeZone,
       dateStyle: "medium",
       timeStyle: "short",
     }).format(new Date(value));
+  // Convert the date to the format needed here so the selected salon day can be handled consistently.
   const date = (value: string) =>
     new Intl.DateTimeFormat("en-PH", {
       timeZone: appointment.timeZone,
@@ -112,12 +124,14 @@ export function AppointmentView({
       day: "numeric",
       year: "numeric",
     }).format(new Date(value));
+  // Convert the time to the format needed here so salon schedule values are handled consistently.
   const time = (value: string) =>
     new Intl.DateTimeFormat("en-PH", {
       timeZone: appointment.timeZone,
       hour: "numeric",
       minute: "2-digit",
     }).format(new Date(value));
+  // Format the amount as Philippine pesos so prices and payments are easy to recognize.
   const money = (value: string | number) =>
     new Intl.NumberFormat("en-PH", {
       style: "currency",
@@ -217,18 +231,22 @@ export function AppointmentView({
     </Dialog>
   );
   if (appointment.status === "CONFIRMED")
+    // Show the prepared content and actions so the user can review the information and continue.
     return <>
+      {/* Show the reservation result and payment details so the customer understands the booking status. */}
       <BookingConfirmation key={appointment.bookingCode} appointment={appointment} salon={salon} token={token} onManage={openManagement} onBackHome={onBackHome} />
       {managementDialog}
       {rescheduleConfirmation}
     </>;
   return (
     <>
+    {/* Group the selected visit details so the customer can review the plan before continuing. */}
     <section className="visit-summary tw:customer:[background:white] tw:customer:[border:1px_solid_#ddddd7] tw:customer:rounded-[20px]
           tw:customer:mt-0 tw:[background:#eef3ef] tw:p-6 tw:rounded-[12px] tw:mt-6 tw:[&_li]:py-2 tw:[&_li]:px-0
           tw:[&_input[readonly]]:w-full tw:[&_input[readonly]]:box-border tw:workspace-main:[background:#fff]
           tw:workspace-main:[border:1px_solid_#e3e3e3] reservation tw:customer:[&_h3]:text-[20px]
           tw:customer:[&_h3]:[margin:0_0_12px] tw:customer:[&_h3]:leading-[1.4] tw:customer:[&_p]:leading-[1.7]" aria-label="Your booking">
+      {/* Show the page heading and its main controls so the current task is easy to identify. */}
       <header className="reservation-header tw:customer:flex tw:customer:justify-between tw:customer:items-center tw:customer:gap-6
           tw:customer:py-[25px] tw:customer:px-7 tw:customer:mb-6 tw:customer:[border:1px_solid_#e0e0d7]
           tw:customer:rounded-[16px] tw:customer:[background:white] tw:customer:[&_h2]:text-[24px]
@@ -271,6 +289,7 @@ export function AppointmentView({
           tw:customer:[align-items:start] tw:down-960:customer:grid-cols-[minmax(0,1fr)_310px]
           tw:down-960:customer:gap-4.5 tw:down-760:customer:grid-cols-[minmax(0,1fr)]">
         <div className="reservation-main tw:customer:grid tw:customer:gap-6 tw:customer:min-w-0">
+          {/* Group the selected visit details so the customer can review the plan before continuing. */}
           <section className="reservation-card tw:customer:[background:white] tw:customer:[border:1px_solid_#e0e0d7]
           tw:customer:rounded-[16px] tw:customer:p-7 tw:customer:min-w-0 tw:down-960:customer:p-5.5
           tw:down-760:customer:p-5.5" aria-label="Visit details">
@@ -315,6 +334,7 @@ export function AppointmentView({
             </p>
           </section>
         </div>
+        {/* Keep the supporting information beside the main task so it stays available while the user works. */}
         <aside
           className="reservation-sidebar tw:customer:grid tw:customer:gap-6 tw:customer:min-w-0 tw:down-760:customer:[grid-row:1]"
           aria-label="Payment and booking access"
@@ -355,6 +375,7 @@ export function AppointmentView({
               <p className="muted reservation-footnote">
                 Separate from your service charges.
               </p>
+              {/* Show the available appointment-fee actions so the customer can continue or check payment. */}
               <FeePaymentControls
                 bookingCode={appointment.bookingCode}
                 token={token}

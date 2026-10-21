@@ -1,8 +1,11 @@
+// Bring in the tools for salon reports so this file can work with the rest of the application.
 import { Prisma } from "../../../generated/prisma/client.js";
 import { reportPeriod, type CommissionSummaryQuery } from "./reports.schema.js";
 
+// Describe the information used by salon reports so different parts of the application agree on its contents.
 type StaffOption = { staffId: string; name: string; state: "Active" | "Inactive" | "Former staff" };
 type SummaryRow = { staffId: string; name: string; currency: string; serviceCount: number; commissionBase: Prisma.Decimal; commissionAmount: Prisma.Decimal };
+// Combine the available name parts so the person can be identified in the report.
 const fullName = (first: string, last: string) => `${first} ${last}`.trim();
 
 // Runs within the parent report service's authorized repeatable-read transaction.

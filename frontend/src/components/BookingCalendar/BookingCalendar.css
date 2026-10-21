@@ -1,1 +1,2 @@
+/* Show the waiting pointer while dates load so the customer knows the calendar is busy. */
 .customer-site .calendar[aria-busy="true"] .calendar-day:disabled{cursor:wait}

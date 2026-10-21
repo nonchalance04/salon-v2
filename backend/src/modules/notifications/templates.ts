@@ -1,3 +1,4 @@
+// Bring in the tools for customer notifications so this file can work with the rest of the application.
 import { z } from "zod";
 import { renderSimpleEmailLayout } from "./simple-email-layout.js";
 import type { NotificationQueue } from "../../../generated/prisma/client.js";
@@ -7,6 +8,7 @@ import {
   type NotificationMessage,
 } from "./notification-provider.js";
 
+// Keep the shared values for customer notifications together so later steps use the same definitions.
 export const notificationPayload = z.object({
   paymentId: z.string().optional(),
   appointmentFeePaid: z.boolean().optional(),
@@ -34,6 +36,7 @@ export const notificationPayload = z.object({
   reconciliationRequired: z.boolean().optional(),
 });
 
+// Build the message for the recorded event so the customer receives the matching appointment update.
 export function renderNotification(
   row: Pick<
     NotificationQueue,

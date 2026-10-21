@@ -1,6 +1,8 @@
+// Bring in the tools for salon reports so this file can work with the rest of the application.
 import { Prisma } from "../../../generated/prisma/client.js";
 import { reportPeriod, type SalesSummaryQuery } from "./reports.schema.js";
 
+// Describe the information used by salon reports so different parts of the application agree on its contents.
 type DailySales = {
   date: string; currency: string; successfulPayments: number; returnedPayments: number;
   appointmentFees: Prisma.Decimal; servicePayments: Prisma.Decimal;
@@ -10,7 +12,9 @@ type Movement = {
   id: string; bookingCode: string; eventAt: Date; eventType: "COLLECTED" | "RETURNED";
   type: string; method: string; currency: string; amount: Prisma.Decimal; reconciliationStatus: string;
 };
+// Keep the shared values for salon reports together so later steps use the same definitions.
 const moneyFields = ["appointmentFees", "servicePayments", "collected", "returned", "netCollections"] as const;
+// Convert report amounts and dates into response values so the browser can display them consistently.
 function serialize(row: DailySales) {
   return { ...row, appointmentFees: row.appointmentFees.toFixed(2), servicePayments: row.servicePayments.toFixed(2),
     collected: row.collected.toFixed(2), returned: row.returned.toFixed(2), netCollections: row.netCollections.toFixed(2) };

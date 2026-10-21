@@ -1,7 +1,9 @@
+// Bring in the tools for the booking calendar view so this file can work with the rest of the application.
 import { Button } from "@/components/ui/Button";
 import { Temporal } from "@js-temporal/polyfill";
 import "./BookingCalendar.css";
 
+// Describe the information used by the booking calendar view so different parts of the application agree on its contents.
 type Props = {
   month: string;
   today: string;
@@ -14,6 +16,7 @@ type Props = {
   onRetry: () => void;
 };
 
+// Show the available booking days so the customer can choose a date for the visit.
 export function BookingCalendar({ month, today, date, availableDates, status, error, onMonthChange, onSelect, onRetry }: Props) {
   const first = Temporal.PlainDate.from(`${month}-01`);
   const ready = status === "ready";
@@ -41,6 +44,7 @@ export function BookingCalendar({ month, today, date, availableDates, status, er
         {Array.from({ length: first.daysInMonth }, (_, index) => {
           const day = first.add({ days: index }).toString();
           const available = ready && day >= today && availableDates.has(day);
+          // Show the prepared content and actions so the user can review the information and continue.
           return <Button variant="outline" type="button" key={day} className={`calendar-day tw:customer:disabled:opacity-[.35] tw:customer:disabled:cursor-not-allowed tw:customer:[border:0] tw:customer:p-1.5 tw:customer:[background:transparent] tw:down-639:customer:min-w-0 public:[aspect-ratio:1.25] public:rounded-[9px] public:text-[14px] public:min-h-9 public:[&.selected]:font-bold  ${date === day && available ? "selected" : ""}`} aria-label={day} aria-pressed={date === day && available} disabled={!available} title={available ? "Available for booking" : ready ? "No available booking times" : "Availability not checked yet"} onClick={() => onSelect(day)}>{index + 1}</Button>;
         })}
       </div>

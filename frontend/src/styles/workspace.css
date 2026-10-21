@@ -141,6 +141,7 @@
   color: #dedede;
   margin: 0;
 }
+/* Adjust this layout for the matching screen size so its content and controls remain usable. */
 @media (max-width: 1100px) {
   .clique-sidebar button {
     font-size: 15px;
@@ -149,6 +150,7 @@
     display: none;
   }
 }
+/* Adjust this layout for the matching screen size so its content and controls remain usable. */
 @media (max-width: 760px) {
   .clique-sidebar {
     transform: translateX(-100%);
@@ -160,6 +162,7 @@
     transform: translateX(0);
   }
 }
+/* Reduce movement when requested so the page respects the visitor's motion preference. */
 @media (prefers-reduced-motion: reduce) {
   .clique-sidebar {
     transition: none;
@@ -276,6 +279,7 @@
 .clique-main:focus {
   outline: none;
 }
+/* Adjust this layout for the matching screen size so its content and controls remain usable. */
 @media (max-width: 1000px) {
   .admin-finance-grid,
   .admin-scheduling-grid {
@@ -294,6 +298,7 @@
     flex-wrap: wrap;
   }
 }
+/* Adjust this layout for the matching screen size so its content and controls remain usable. */
 @media (max-width: 540px) {
   .admin-finance-grid > div {
     display: block;
@@ -348,6 +353,7 @@
   font-size: 16px;
   font-variant-numeric: tabular-nums;
 }
+/* Adjust this layout for the matching screen size so its content and controls remain usable. */
 @media (max-width: 760px) {
   .clique-main .outcomes-workspace .outcomes-detail {
     padding: 18px;
@@ -484,6 +490,7 @@
   flex-direction: column;
   justify-content: center;
 }
+/* Adjust this layout for the matching screen size so its content and controls remain usable. */
 @media (min-width: 761px) and (max-width: 1200px) {
   .dashboard-list td:nth-child(-n + 2) {
     border-bottom: 1px solid var(--line);
@@ -502,6 +509,7 @@
     grid-row: auto;
   }
 }
+/* Adjust this layout for the matching screen size so its content and controls remain usable. */
 @media (max-width: 760px) {
   .dashboard-list thead {
     clip: rect(0, 0, 0, 0);

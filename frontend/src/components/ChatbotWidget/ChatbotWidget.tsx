@@ -1,9 +1,12 @@
+// Bring in the tools for the chatbot widget view so this file can work with the rest of the application.
 import { Button } from "@/components/ui/Button";
 import { Link } from "react-router";
 import { useLayoutEffect, useRef, useState } from "react";
 import { Chatbot } from "../Chatbot";
 
+// Provide the floating chat window so customers can open salon help from the page.
 export function ChatbotWidget() {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [open, setOpen] = useState(false);
   const [started, setStarted] = useState(false);
   const panel = useRef<HTMLDialogElement>(null);
@@ -20,11 +23,13 @@ export function ChatbotWidget() {
     }
   }, [open]);
 
+  // Close the open panel so the user can return to the surrounding screen.
   function close() {
     setOpen(false);
     launcher.current?.focus({ preventScroll: true });
   }
 
+  // Show the prepared content and actions so the user can review the information and continue.
   return <>
     <dialog ref={panel} id="salon-chat-widget" className="chat-widget tw:[&_:focus-visible]:[outline:3px_solid_#856d25] tw:[&_:focus-visible]:outline-offset-[3px]
           tw:fixed tw:[inset:auto_max(24px,env(safe-area-inset-right))_calc(92px_+_env(safe-area-inset-bottom))_auto]

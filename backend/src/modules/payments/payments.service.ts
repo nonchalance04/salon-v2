@@ -1,3 +1,4 @@
+// Bring in the tools for booking payments so this file can work with the rest of the application.
 import { notificationRecipients } from "../notifications/notification-recipients.js";
 import {
   Prisma,
@@ -18,7 +19,9 @@ import {
   type ManualPaymentInput,
 } from "./payments.schema.js";
 
+// Describe the information used by booking payments so different parts of the application agree on its contents.
 type Tx = Prisma.TransactionClient;
+// Check the saved payment details so provider information can be interpreted consistently.
 function metadata(payment: Payment): Prisma.JsonObject {
   return payment.metadata &&
     typeof payment.metadata === "object" &&
@@ -26,19 +29,23 @@ function metadata(payment: Payment): Prisma.JsonObject {
     ? payment.metadata
     : {};
 }
+// Identify a payment attempt that needs a fresh start so it can retry with current records.
 class RestartPayment extends Error {}
+// Build a clear refusal message so a conflicting change can be explained to the person making it.
 const conflict = () =>
   new ApiError(
     409,
     "PAYMENT_IDENTITY_CONFLICT",
     "This payment identity is already associated with different payment details.",
   );
+// Keep related payment changes together so a failure cannot leave only part of the update saved.
 async function transaction<T>(
   prisma: PrismaClient,
   work: (tx: Tx) => Promise<T>,
 ): Promise<T> {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
+      // Keep the related database changes together so a failure leaves the earlier records intact.
       return await prisma.$transaction(
         async (tx) => {
           await tx.$executeRaw`SET LOCAL lock_timeout = '5s'`;
@@ -71,6 +78,7 @@ async function transaction<T>(
     "Payment processing changed. Retry with the same payment reference.",
   );
 }
+// Check the acting staff account and any required role so only permitted staff can proceed.
 async function authorize(tx: Tx, actorId: string, adminOnly = false) {
   await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${actorId}::uuid FOR SHARE`;
   const user = await tx.user.findUnique({ where: { id: actorId } });
@@ -80,6 +88,7 @@ async function authorize(tx: Tx, actorId: string, adminOnly = false) {
     throw new ApiError(403, "FORBIDDEN", "Administrator access is required.");
   return user;
 }
+// Check the customer booking credentials so payment information is available only for the matching visit.
 async function guest(db: Tx, bookingCode: string, token: string) {
   const row = await db.appointment.findUnique({ where: { bookingCode } });
   const valid = await validGuestAccess(db, token, row);
@@ -91,12 +100,14 @@ async function guest(db: Tx, bookingCode: string, token: string) {
     );
   return row;
 }
+// Reserve exclusive access to this appointment while checking it so competing changes cannot interfere.
 async function lockAppointment(tx: Tx, id: string) {
   const before = await tx.appointmentService.findMany({
     where: { appointmentId: id, membershipStatus: "ACTIVE" },
     select: { staffId: true },
   });
   const ids = before.map((s) => s.staffId);
+  // Coordinate access to the affected staff so another booking cannot change their reserved time during this step.
   await lockStaff(tx, ids);
   await tx.$queryRaw`SELECT id FROM "Appointment" WHERE id = ${id}::uuid FOR UPDATE`;
   const row = await tx.appointment.findUniqueOrThrow({
@@ -111,12 +122,14 @@ async function lockAppointment(tx: Tx, id: string) {
     throw new RestartPayment();
   return row;
 }
+// Reserve access to the payment while changing it so competing updates cannot settle it twice.
 async function lockPayment(tx: Tx, id: string) {
   await tx.$queryRaw`SELECT id FROM "Payment" WHERE id = ${id}::uuid FOR UPDATE`;
   const payment = await tx.payment.findUnique({ where: { id } });
   if (!payment) throw new ApiError(404, "NOT_FOUND", "Payment not found.");
   return payment;
 }
+// Prepare the allowed record details so the caller receives a usable response.
 async function view(tx: Tx, id: string) {
   const payment = await tx.payment.findUniqueOrThrow({
     where: { id },
@@ -139,6 +152,7 @@ async function view(tx: Tx, id: string) {
   });
   return { ...payment, amount: payment.amount.toFixed(2) };
 }
+// Create or reuse the receipt for the payment so its saved proof of payment is preserved.
 async function issueReceipt(tx: Tx, payment: Payment, actorId: string | null, timeZone = "Asia/Manila") {
   const existing = await tx.receipt.findUnique({
     where: { paymentId: payment.id },
@@ -155,6 +169,7 @@ async function issueReceipt(tx: Tx, payment: Payment, actorId: string | null, ti
     include: { customer: true, appointmentServices: { where: { membershipStatus: "ACTIVE" }, orderBy: { sequenceNo: "asc" } } },
   });
   const salon = await tx.salonProfile.findFirst();
+  // Save the new receipt record so the proof of payment remains available later.
   return tx.receipt.create({
     data: {
       paymentId: payment.id,
@@ -187,6 +202,7 @@ async function issueReceipt(tx: Tx, payment: Payment, actorId: string | null, ti
     },
   });
 }
+// Create the customer receipt when eligible so a verified online payment has a saved proof of payment.
 async function issueAutomaticReceipt(tx: Tx, payment: Payment, timeZone: string) {
   if (payment.provider !== "paymongo" || payment.status !== "SUCCEEDED" || payment.type !== "APPOINTMENT_FEE")
     throw new ApiError(409, "RECEIPT_UNAVAILABLE", "An e-receipt requires a verified successful PayMongo appointment-fee payment.");
@@ -196,6 +212,7 @@ async function issueAutomaticReceipt(tx: Tx, payment: Payment, timeZone: string)
 
   return receipt;
 }
+// Check that the appointment still owns its reserved time so payment cannot confirm a conflicting visit.
 async function reservationsOwned(
   tx: Tx,
   row: Awaited<ReturnType<typeof lockAppointment>>,
@@ -274,6 +291,7 @@ async function reservationsOwned(
   }
   return true;
 }
+// Check the payment against the visit and save the related updates together so settlement stays consistent.
 async function settle(
   tx: Tx,
   row: Awaited<ReturnType<typeof lockAppointment>>,
@@ -326,6 +344,7 @@ async function settle(
     confirm = false;
     reason = "HOLD_NOT_ACTIVE";
   }
+  // Update the saved payment record so the payment history reflects this operation.
   const updated = await tx.payment.update({
     where: { id: payment.id },
     data: {
@@ -350,6 +369,7 @@ async function settle(
     row.holdExpiresAt &&
     row.holdExpiresAt < decisionTime
   ) {
+    // Update the saved appointment record so the visit status and reserved details stay current.
     await tx.appointment.update({
       where: { id: row.id },
       data: { status: "EXPIRED" },
@@ -366,6 +386,7 @@ async function settle(
       for (const contact of notificationRecipients(row.customer)) {
         const combineEmail = confirm && contact.channel === "EMAIL";
         const skipPaymentEmail = combineEmail && eventType === "PAYMENT_RECEIVED";
+        // Save the new customer notification record so the customer can receive the saved appointment update.
         await tx.notificationQueue.create({
           data: {
             appointmentId: row.id,
@@ -405,6 +426,7 @@ async function settle(
     throw new RestartPayment();
   return result;
 }
+// Prepare the provider payment request so checkout uses the saved booking amount and identity.
 function requestFor(payment: Payment, appointment: Appointment) {
   return {
     paymentId: payment.id,
@@ -414,13 +436,16 @@ function requestFor(payment: Payment, appointment: Appointment) {
     expiresAt: appointment.holdExpiresAt!,
   };
 }
+// Manage payment creation, verification and receipts so each booking payment follows one consistent process.
 export function createPaymentsService(
   prisma: PrismaClient,
   provider?: PaymentProvider,
   timeZone = "Asia/Manila",
 ) {
   return {
+    // Find the requested appointment and its payment details so staff can review the matching visit.
     async lookup(actorId: string, bookingCode: string) {
+      // Keep the related database changes together so a failure leaves the earlier records intact.
       return transaction(prisma, async (tx) => {
         await authorize(tx, actorId);
         const row = await tx.appointment.findUnique({
@@ -466,10 +491,13 @@ export function createPaymentsService(
         };
       });
     },
+    // Match the returning checkout session to its payment so the customer sees the correct booking result.
     async returnSession(bookingCode: string, token: string) {
+      // Keep the related database changes together so a failure leaves the earlier records intact.
       return transaction(prisma, async tx => {
         const appointment = await guest(tx, bookingCode, token);
         const session = createGuestCredentials();
+        // Save the new verified appointment access record so the verified customer can return to their booking.
         await tx.appointmentGuestSession.create({ data: {
           appointmentId: appointment.id, tokenHash: session.hash,
           expiresAt: new Date(Date.now() + GUEST_SESSION_MS),
@@ -477,6 +505,7 @@ export function createPaymentsService(
         return session.token;
       });
     },
+    // Create or reuse the booking checkout so the customer can pay the required appointment fee.
     async checkout(bookingCode: string, token: string, key: string, returnOrigin?: string) {
       if (!provider)
         throw new ApiError(
@@ -541,6 +570,7 @@ export function createPaymentsService(
             "HOLD_NOT_ACTIVE",
             "This booking no longer has an active payment hold.",
           );
+        // Save the new payment record so the payment history reflects this operation.
         const payment = await tx.payment.create({
           data: {
             appointmentId: row.id,
@@ -602,6 +632,7 @@ export function createPaymentsService(
             stored.checkoutReference !== checkout.reference
           )
             throw conflict();
+          // Update the saved payment record so the payment history reflects this operation.
           await tx.payment.update({
             where: { id: row.id },
             data: {
@@ -619,6 +650,7 @@ export function createPaymentsService(
             row.externalReference !== checkout.reference
           )
             throw conflict();
+          // Update the saved payment record so the payment history reflects this operation.
           await tx.payment.update({
             where: { id: row.id },
             data: { externalReference: checkout.reference },
@@ -647,6 +679,7 @@ export function createPaymentsService(
         testMode: provider.name === "test",
       };
     },
+    // Verify and process the payment-provider event so only trusted payment updates change salon records.
     async providerEvent(raw: Buffer, signature: string | undefined) {
       if (!provider)
         throw new ApiError(
@@ -657,6 +690,7 @@ export function createPaymentsService(
       const event = await provider.verifyPayment(raw, signature);
       return event ? processVerified(event) : null;
     },
+    // Reload the latest information so the next view or action reflects the current saved state.
     async refresh(bookingCode: string, token: string, paymentId: string) {
       const appointment = await guest(prisma, bookingCode, token);
       const payment = await prisma.payment.findUnique({
@@ -670,6 +704,7 @@ export function createPaymentsService(
       if (typeof reference !== "string") return view(prisma, payment.id);
       return processVerified(await provider.getPaymentStatus(reference));
     },
+    // Recover a previously started checkout so interrupted requests can find the original payment session.
     async recoverCheckout(
       actorId: string,
       paymentId: string,
@@ -687,6 +722,7 @@ export function createPaymentsService(
       if (event.paymentId !== paymentId) throw conflict();
       return processVerified(event, actorId);
     },
+    // Check provider results for expired holds so a completed payment is considered before releasing the booking.
     async synchronizeExpired(limit = 20) {
       if (!provider?.expirePayment) return;
       const now = new Date();
@@ -731,6 +767,7 @@ export function createPaymentsService(
         });
       }
     },
+    // Run the supported test-payment path so payment behavior can be exercised in the test setup.
     async simulate(
       bookingCode: string,
       token: string,
@@ -753,11 +790,14 @@ export function createPaymentsService(
         await provider.simulate(requestFor(payment, appointment), outcome),
       );
     },
+    // Record a permitted staff-entered payment so the saved payment matches the appointment obligation.
     async manual(actorId: string, raw: ManualPaymentInput) {
+      // Check the submitted details before continuing so invalid input cannot reach the saved records.
       const input = manualPaymentSchema.parse(raw);
       // Stable across retries; a salon reference, not a provider transaction ID.
       const reference =
         input.externalReference ?? `SALON-FEE-${input.idempotencyKey}`;
+      // Keep the related database changes together so a failure leaves the earlier records intact.
       return transaction(prisma, async (tx) => {
         const appointment = await tx.appointment.findUnique({
           where: { bookingCode: input.bookingCode },
@@ -827,7 +867,9 @@ export function createPaymentsService(
         );
       });
     },
+    // Check customer access and locate the eligible receipt so the customer can view proof of payment.
     async customerReceipt(bookingCode: string, token: string, paymentId: string) {
+      // Keep the related database changes together so a failure leaves the earlier records intact.
       return transaction(prisma, async tx => {
         const appointment = await guest(tx, bookingCode, token);
         await lockAppointment(tx, appointment.id);
@@ -837,7 +879,9 @@ export function createPaymentsService(
         return view(tx, paymentId);
       });
     },
+    // Create or reuse the receipt for the payment so its saved proof of payment is preserved.
     async issueReceipt(actorId: string, paymentId: string) {
+      // Keep the related database changes together so a failure leaves the earlier records intact.
       return transaction(prisma, async (tx) => {
         const payment = await lockPayment(tx, paymentId);
         await authorize(tx, actorId);
@@ -854,7 +898,9 @@ export function createPaymentsService(
         return view(tx, paymentId);
       });
     },
+    // Find the records matching the request so the caller can display the relevant results.
     async list(actorId: string, cursor?: string, reconciliationOnly = true) {
+      // Keep the related database changes together so a failure leaves the earlier records intact.
       return transaction(prisma, async (tx) => {
         await authorize(tx, actorId, true);
         const rows = await tx.payment.findMany({
@@ -893,7 +939,9 @@ export function createPaymentsService(
       });
     },
   };
+  // Apply a verified provider result so the payment and appointment are updated together.
   async function processVerified(event: VerifiedPayment, actorId?: string) {
+    // Keep the related database changes together so a failure leaves the earlier records intact.
     return transaction(prisma, async (tx) => {
       const original = await tx.payment.findUnique({
         where: { id: event.paymentId },
@@ -945,6 +993,7 @@ export function createPaymentsService(
         if (event.status !== "SUCCEEDED") {
           // A session is not a captured transaction. Keep externalReference for pay_ identity.
           if (event.status === "EXPIRED" && payment.status === "PENDING") {
+            // Update the saved payment record so the payment history reflects this operation.
             await tx.payment.update({
               where: { id: payment.id },
               data: { status: "EXPIRED" },

@@ -1,8 +1,11 @@
+// Bring in the tools for shared request handling so this file can work with the rest of the application.
 import { randomUUID } from "node:crypto";
 import type { ErrorRequestHandler, RequestHandler } from "express";
 import type { z } from "zod";
 
+// Carry a safe error code and message so request failures can be explained consistently.
 export class ApiError extends Error {
+  // function Object() { [native code] }
   constructor(
     public readonly status: number,
     public readonly code: string,
@@ -31,16 +34,19 @@ export function validateRequest(schema: z.ZodType): RequestHandler {
   };
 }
 
+// Attach a request reference so errors and responses can be traced to the same request.
 export const requestContext: RequestHandler = (_req, res, next) => {
   res.locals.requestId = randomUUID();
   res.setHeader("X-Request-Id", res.locals.requestId);
   next();
 };
 
+// Return a clear missing-address response so unsupported requests have a predictable result.
 export const notFound: RequestHandler = (_req, _res, next) => {
   next(new ApiError(404, "NOT_FOUND", "The requested resource was not found."));
 };
 
+// Translate request failures into safe responses so callers receive a clear error without private server details.
 export const errorHandler: ErrorRequestHandler = (
   error: unknown,
   _req,

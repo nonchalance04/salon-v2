@@ -1,9 +1,11 @@
+// Bring in the tools for the reports view so this file can work with the rest of the application.
 import { useEffect, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { NativeSelect } from "@/components/ui/NativeSelect";
 import { api } from "../../lib/api";
 
+// Describe the information used by the reports view so different parts of the application agree on its contents.
 type Filters = { from: string; to: string; method: string; type: string };
 type Sales = {
   date: string; currency: string; successfulPayments: number; returnedPayments: number;
@@ -17,18 +19,23 @@ type Report = {
   from: string; to: string; timeZone: string; rows: Sales[]; totals: Sales[];
   transactions: Movement[]; totalMovements: number; page: number; pageSize: number;
 };
+// Keep the shared values for the reports view together so later steps use the same definitions.
 const methods: Record<string, string> = { CASH: "Cash", GCASH: "GCash", QRPH: "QR Ph", OTHER: "Other" };
 const types: Record<string, string> = { APPOINTMENT_FEE: "Appointment Fee", SERVICE_PAYMENT: "Service Payment" };
+// Format the amount as Philippine pesos so prices and payments are easy to recognize.
 function money(value: string, currency: string) {
   const negative = value.startsWith("-");
   const [whole, cents = "00"] = value.replace(/^-/, "").split(".");
   return `${negative ? "−" : ""}${currency === "PHP" ? "₱" : `${currency} `}${whole!.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}.${cents}`;
 }
+// Format the selected date so the report shows a readable calendar day.
 function day(value: string) {
   return new Intl.DateTimeFormat("en-PH", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" }).format(new Date(`${value}T00:00:00Z`));
 }
 
+// Show sales and collection totals so staff can review the selected reporting period.
 export function SalesSummary() {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [draft, setDraft] = useState<Filters>({ from: "", to: "", method: "", type: "" });
   const [applied, setApplied] = useState<Filters | null>(null);
   const [timeZone, setTimeZone] = useState("");
@@ -39,6 +46,7 @@ export function SalesSummary() {
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
   const [showDetails, setShowDetails] = useState(false);
+  // Load the information this view needs when its inputs change so the displayed results stay current.
   useEffect(() => {
     let active = true;
     setBusy(true); setError("");
@@ -50,6 +58,7 @@ export function SalesSummary() {
     }).catch(err => { if (active) { setError(err instanceof Error ? err.message : "Unable to load salon date."); setBusy(false); } });
     return () => { active = false; };
   }, [salonRetry]);
+  // Load the information this view needs when its inputs change so the displayed results stay current.
   useEffect(() => {
     if (!applied) return;
     let active = true;
@@ -62,6 +71,7 @@ export function SalesSummary() {
       .finally(() => { if (active) setBusy(false); });
     return () => { active = false; };
   }, [applied, page, revision]);
+  // Handle the submitted form so the selected action can use the entered details.
   function submit(event: FormEvent) {
     event.preventDefault();
     const days = (Date.parse(draft.to) - Date.parse(draft.from)) / 86_400_000;
@@ -73,14 +83,18 @@ export function SalesSummary() {
   const pendingFilters = applied && Object.keys(draft).some(key => draft[key as keyof Filters] !== applied[key as keyof Filters]);
   const hasReturns = report?.totals.some(row => row.returnedPayments > 0) ?? false;
   const headers = ["Date", "Successful payments", "Appointment fees", "Service payments", "Total collected", ...(hasReturns ? ["Returned payments", "Net collections"] : [])];
+  // Arrange the report amounts for display so the totals can be compared consistently.
   function amounts(row: Sales) {
+    // Show the prepared content and actions so the user can review the information and continue.
     return <><td>{row.successfulPayments}</td><td>{money(row.appointmentFees, row.currency)}</td><td>{money(row.servicePayments, row.currency)}</td><td>{money(row.collected, row.currency)}</td>{hasReturns && <><td>{money(row.returned, row.currency)}</td><td>{money(row.netCollections, row.currency)}</td></>}</>;
   }
+  // Show the prepared content and actions so the user can review the information and continue.
   return <section className="reports tw:min-w-0 tw:[&_>_.account-form_label]:mb-0 tw:[&_>_.account-form_>_button]:mt-4.5
           tw:down-640:[&_>_.account-form]:p-4.5 sales-summary" aria-busy={busy}>
     <div className="appointment-report-heading tw:flex tw:items-center tw:justify-between tw:gap-5 tw:mb-6 tw:[&_h2]:my-1.5
           tw:[&_h2]:mx-0 tw:[&_p]:m-0 tw:[&_p]:text-[#686868] tw:[&_p]:text-[14px] tw:down-640:items-start"><div><h2>Sales Summary</h2><p>Review money collected by day, payment method, and payment type.</p></div>
     </div>
+    {/* Group the entry fields and submit action so the user can complete this step in one place. */}
     <form className="appointment-report-filters tw:flex tw:items-end tw:flex-wrap tw:gap-4.5 tw:p-5 tw:[border:1px_solid_#e4dfd3]
           tw:[background:#fff] tw:rounded-[12px] tw:[&_label]:grid tw:[&_label]:gap-2 tw:[&_label]:text-[13px]
           tw:[&_label]:font-semibold tw:[&_label]:m-0 tw:[&_p]:[margin:0_0_2px] tw:[&_p]:text-[12px]
@@ -106,6 +120,7 @@ export function SalesSummary() {
           tw:[&_pre]:whitespace-pre-wrap tw:[&_pre]:[overflow-wrap:anywhere] tw:[&_pre]:text-[.8rem] sales-table-wrap
           tw:max-w-full tw:overflow-x-auto tw:my-4 tw:mx-0 tw:[border:1px_solid_#e4dfd3] tw:rounded-[10px]
           tw:[background:#fff] tw:focus-visible:[outline:3px_solid_#987b1f] tw:focus-visible:outline-offset-[3px]" role="region" aria-label="Daily collections table" tabIndex={0}>
+          {/* Show the records in labeled columns so their details can be compared row by row. */}
           <table className="sales-table tw:w-full tw:min-w-[800px] tw:border-collapse tw:text-[13px] tw:[&_th]:p-4 tw:[&_td]:p-4
           tw:[&_th]:[border-bottom:1px_solid_#e4dfd3] tw:[&_td]:[border-bottom:1px_solid_#e4dfd3] tw:[&_th]:text-right
           tw:[&_td]:text-right tw:[&_th]:tabular-nums tw:[&_td]:tabular-nums tw:[&_thead_th]:[background:#f5f3eb]
@@ -127,6 +142,7 @@ export function SalesSummary() {
           tw:[&_pre]:whitespace-pre-wrap tw:[&_pre]:[overflow-wrap:anywhere] tw:[&_pre]:text-[.8rem] sales-table-wrap
           tw:max-w-full tw:overflow-x-auto tw:my-4 tw:mx-0 tw:[border:1px_solid_#e4dfd3] tw:rounded-[10px]
           tw:[background:#fff] tw:focus-visible:[outline:3px_solid_#987b1f] tw:focus-visible:outline-offset-[3px]" role="region" aria-label="Payment details table" tabIndex={0}>
+            {/* Show the records in labeled columns so their details can be compared row by row. */}
             <table className="sales-table tw:w-full tw:min-w-[800px] tw:border-collapse tw:text-[13px] tw:[&_th]:p-4 tw:[&_td]:p-4
           tw:[&_th]:[border-bottom:1px_solid_#e4dfd3] tw:[&_td]:[border-bottom:1px_solid_#e4dfd3] tw:[&_th]:text-right
           tw:[&_td]:text-right tw:[&_th]:tabular-nums tw:[&_td]:tabular-nums tw:[&_thead_th]:[background:#f5f3eb]

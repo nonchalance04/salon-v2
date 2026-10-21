@@ -1,3 +1,4 @@
+// Bring in the tools for the staff skills editor view so this file can work with the rest of the application.
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
@@ -7,13 +8,16 @@ import { api } from "../../lib/api";
 
 import "./StaffSkillsEditor.css";
 
+// Describe the information used by the staff skills editor view so different parts of the application agree on its contents.
 type Service = { id: string; name: string; category: string; isActive: boolean };
 type Qualification = { serviceId: string; commissionRate: string; isActive: boolean };
+// Show the staff service skills so administrators can maintain who is qualified for each offering.
 export function StaffSkillsEditor({ staffId, name, services, qualifications, busy, error, errorDetails, onStart, onBusy, onSaved, onError, onClose, onRestoreFocus }: {
   staffId: string; name: string; services: Service[]; qualifications: Qualification[]; busy: boolean;
   error: string; errorDetails?: ReactNode; onStart: () => void; onRestoreFocus: () => void;
   onBusy: (busy: boolean) => void; onSaved: () => Promise<void>; onError: (error: unknown) => void; onClose: () => void;
 }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [selected, setSelected] = useState(() => new Set(qualifications.filter(row => row.isActive).map(row => row.serviceId)));
   const [rates, setRates] = useState<Record<string, string>>(() => Object.fromEntries(services.map(service => {
     const qualification = qualifications.find(row => row.serviceId === service.id);
@@ -21,11 +25,14 @@ export function StaffSkillsEditor({ staffId, name, services, qualifications, bus
   })));
   const sending = useRef(false);
   const errorPanel = useRef<HTMLDivElement>(null);
+  // Bring the relevant content into view so the user can find the new information or error.
   useEffect(() => { if (error) errorPanel.current?.scrollIntoView({ block: "nearest" }); }, [error]);
   const groups = [...new Set(services.map(row => row.category))].sort((a, b) => a.localeCompare(b));
+  // Change the selected staff skill so the editor reflects the services that person can provide.
   const toggle = (id: string, checked: boolean) => setSelected(current => {
     const next = new Set(current); if (checked) next.add(id); else next.delete(id); return next;
   });
+  // Check and submit the edited details so the saved record matches the form.
   async function save(event: FormEvent) {
     event.preventDefault(); if (sending.current) return;
     sending.current = true; onBusy(true); onStart();
@@ -37,7 +44,9 @@ export function StaffSkillsEditor({ staffId, name, services, qualifications, bus
     } catch (error) { onError(error); }
     finally { sending.current = false; onBusy(false); }
   }
+  // Show the prepared content and actions so the user can review the information and continue.
   return <StaffManagementDialog title="Manage skills" description="Choose their services and set the commission for each one." name={name} icon={<Scissors size={23} />} busy={busy} onClose={onClose} onRestoreFocus={onRestoreFocus}>
+    {/* Group the entry fields and submit action so the user can complete this step in one place. */}
     <form className="staff-management-form tw:flex tw:flex-col tw:min-h-0 staff-skills-editor" onSubmit={save} aria-busy={busy} aria-label={`Manage skills for ${name}`}>
     <div className="staff-management-body tw:py-6 tw:px-7 tw:overflow-y-auto tw:min-h-0 tw:down-540:py-5.5 tw:down-540:px-5" tabIndex={-1}>
       {error && <div ref={errorPanel} role="alert" className="error tw:[background:#fff0ed] tw:[border:1px_solid_#ecc5ba] tw:text-[#963923] tw:py-3 tw:px-4 tw:rounded-[6px]

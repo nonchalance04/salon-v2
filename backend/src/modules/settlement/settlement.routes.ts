@@ -1,3 +1,4 @@
+// Bring in the tools for visit settlement so this file can work with the rest of the application.
 import { Router } from "express";
 import { z } from "zod";
 import type { PrismaClient } from "../../../generated/prisma/client.js";
@@ -6,6 +7,7 @@ import { browserSecurity, type AuthConfig } from "../auth/auth.security.js";
 import { createAuthMiddleware } from "../auth/auth.middleware.js";
 import { booking, outcomesSchema, revision, settlementSchema } from "./settlement.schema.js";
 import { createSettlementService } from "./settlement.service.js";
+// Connect settlement requests to staff checks so visit outcomes and final payments use the approved actions.
 export function createSettlementRouter(prisma: PrismaClient, config: AuthConfig) {
   const router = Router(); const service = createSettlementService(prisma); const auth = createAuthMiddleware(prisma, config);
   router.use("/settlement", browserSecurity(config.TRUSTED_ORIGINS), auth.authenticate, (_req, res, next) => { res.set("Cache-Control", "no-store"); next(); });

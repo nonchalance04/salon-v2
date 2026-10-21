@@ -9,12 +9,15 @@
 .customer-site .art-mirror { background:linear-gradient(120deg,#fff8e5aa,#bbc5b799 45%,#f5ecd555); box-shadow:0 0 45px #fff5d599; }
 .customer-site .art-chair { box-shadow:0 15px 0 -8px #9c8b6e; }
 .customer-site .interior-art { min-height:420px; border-radius:20px; background:linear-gradient(135deg,#d8d9ca,#bcbba5,#92836b); }
+/* Adjust this layout for the matching screen size so its content and controls remain usable. */
 @media(max-width:1023px) {
   .customer-site .salon-art { min-height:320px; }
 }
+/* Adjust this layout for the matching screen size so its content and controls remain usable. */
 @media(max-width:639px) {
   .customer-site .main-nav.nav-open { display:flex; }
 }
+/* Limit these appearance rules to their intended pages so shared styles are applied in the right place. */
 @scope (.customer-site) {
 
 :scope {

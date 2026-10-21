@@ -1,3 +1,4 @@
+// Bring in the tools for the appointment otp view so this file can work with the rest of the application.
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/NativeSelect";
@@ -7,8 +8,11 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api, ApiError } from "../../lib/api";
 import type { Appointment } from "../../types/booking";
 
+// Guide the customer through a contact verification code so they can regain access to their booking.
 export function AppointmentOtp({ onVerified, restoreSession = true }: { onVerified: (appointment: Appointment) => void; restoreSession?: boolean }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const verified = useRef(onVerified); verified.current = onVerified;
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [channels, setChannels] = useState<Array<"SMS" | "EMAIL">>([]);
   const [channel, setChannel] = useState<"SMS" | "EMAIL">("SMS");
   const [email, setEmail] = useState("");
@@ -21,6 +25,7 @@ export function AppointmentOtp({ onVerified, restoreSession = true }: { onVerifi
   const [busy, setBusy] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const sending = useRef(false);
+  // Load the information this view needs when its inputs change so the displayed results stay current.
   useEffect(() => {
     let active = true;
     // Restoring checkout access must also work when OTP delivery is disabled.
@@ -44,10 +49,12 @@ export function AppointmentOtp({ onVerified, restoreSession = true }: { onVerifi
     })();
     return () => { active = false; };
   }, [restoreSession]);
+  // Keep time-based screen updates running while this view is open so its status stays current.
   useEffect(() => {
     const timer = window.setInterval(() => setCooldown(value => Math.max(0, value - 1)), 1000);
     return () => window.clearInterval(timer);
   }, []);
+  // Request a verification code for the entered contact or account so access can be recovered.
   async function requestCode(event?: FormEvent) {
     event?.preventDefault();
     if (sending.current || cooldown) return;
@@ -60,6 +67,7 @@ export function AppointmentOtp({ onVerified, restoreSession = true }: { onVerifi
     } catch (err) { setError(err instanceof Error ? err.message : "Please try again."); }
     finally { sending.current = false; setBusy(false); }
   }
+  // Submit the entered verification code so the customer can open the matching appointment.
   async function verify(event: FormEvent) {
     event.preventDefault();
     if (sending.current) return;
@@ -72,10 +80,12 @@ export function AppointmentOtp({ onVerified, restoreSession = true }: { onVerifi
     } catch (err) { setError(err instanceof Error ? err.message : "Please try again."); }
     finally { sending.current = false; setBusy(false); }
   }
+  // Show the prepared content and actions so the user can review the information and continue.
   return <section className="account-form tw:[border:1px_solid_#dce0d8] tw:[background:white] tw:p-7 tw:rounded-[10px] tw:mb-[25px]
           tw:down-760:p-5" aria-label="Verify appointment">
     {channels.length > 0 && <><h3>Find your appointment</h3>
       <p>Enter your booking code and choose how to receive your verification code. Use the email address or phone number you provided when booking.</p>
+      {/* Group the entry fields and submit action so the user can complete this step in one place. */}
       <form onSubmit={requestCode}><fieldset disabled={busy || Boolean(challengeId)}>
         <label>Booking code<Input required value={bookingCode} onChange={e => setBookingCode(e.target.value)} autoCapitalize="characters" maxLength={100} /></label>
         <label>Verification method<NativeSelect value={channel} onChange={e => setChannel(e.target.value as "SMS" | "EMAIL")}>

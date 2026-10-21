@@ -1,3 +1,4 @@
+// Bring in the tools for the reports view so this file can work with the rest of the application.
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
@@ -10,15 +11,19 @@ import { AppointmentReport } from "./AppointmentReport";
 import { SalesSummary } from "./SalesSummary";
 import { StaffCommissionReport } from "./StaffCommissionReport";
 
+// Describe the information used by the reports view so different parts of the application agree on its contents.
 type Collections = { timeZone: string; basis: string; totals: { currency: string; captured: string; netCashMovement: string; successfulApplied: string; successfulUnapplied: string; reconciliationRequired: string }[]; methodTotals: Record<string, unknown>[]; typeTotals: Record<string, unknown>[]; breakdown: Record<string, unknown>[] };
 type Report = { rows: Record<string, unknown>[]; total: number; page: number; pageSize: number; dateBasis: string; timeZone: string };
+// Define readable names for saved states so screens can explain them consistently.
 const reportLabels: Record<string, string> = {
   serviceNameSnapshot: "Service Name",
   priceSnapshot: "Price",
   recoveryOfAppointmentId: "Original Booking ID",
   carriedAppointmentFeePaymentId: "Transferred Booking Fee Payment ID",
 };
+// Turn the stored value into a readable label so the screen is easier to follow.
 const label = (key: string) => reportLabels[key] ?? key.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, s => s.toUpperCase());
+// Show a report value in a readable form so different field types can share the table.
 function Value({ value }: { value: unknown }) {
   if (value == null) return <>—</>;
   if (Array.isArray(value)) return <ul>{value.map((item, i) => <li key={i}><Value value={item} /></li>)}</ul>;
@@ -30,9 +35,12 @@ function Value({ value }: { value: unknown }) {
           tw:[&_>_div]:mb-[.5rem] tw:[&_dt]:font-semibold tw:[&_dd]:[margin:.15rem_0_.5rem]
           tw:[&_dd]:[overflow-wrap:anywhere]">{visibleReportEntries(value as Record<string, unknown>).map(([key, item]) => <div key={key}><dt>{label(key)}</dt><dd><Value value={item} /></dd></div>)}</dl>;
   if (typeof value === "boolean") return <>{value ? "Yes" : "No"}</>;
+  // Show the prepared content and actions so the user can review the information and continue.
   return <>{paymentStatusLabel(String(value))}</>;
 }
+// Recognize numeric report columns so their values can be aligned consistently.
 const numericColumn = (key: string) => /(?:amount|price|captured|netCashMovement|successfulApplied|successfulUnapplied|reconciliationRequired|commissionBase|allocatedAppointmentFee|total|count|rate)$/i.test(key);
+// Choose a useful report column width so different kinds of information remain readable.
 function columnWidth(key: string, rows: Record<string, unknown>[]) {
   if (rows.some(row => row[key] !== null && typeof row[key] === "object")) return 280;
   if (/Id$|Number$/.test(key)) return 220;
@@ -43,12 +51,14 @@ function columnWidth(key: string, rows: Record<string, unknown>[]) {
   if (key === "status") return 150;
   return 170;
 }
+// Arrange report records in rows and columns so staff can compare their details.
 function DataTable({ rows, renderCell, title = "Report records" }: { rows: Record<string, unknown>[]; renderCell?: (column: string, row: Record<string, unknown>) => ReactNode; title?: string }) {
   if (!rows.length) return <p className="report-empty tw:[.reports_&]:p-6 tw:[.reports_&]:[border:1px_dashed_#d6d6cf] tw:[.reports_&]:rounded-[10px]
           tw:[.reports_&]:text-[#686868] tw:[.reports_&]:[background:#fff]">No records in this period.</p>;
   const columns = visibleReportEntries(rows[0]).map(([key]) => key).filter(k => k !== "id");
   const widths = columns.map(column => columnWidth(column, rows));
   const style = { "--report-table-width": `${widths.reduce((sum, width) => sum + width, 0)}px` } as CSSProperties;
+  // Show the prepared content and actions so the user can review the information and continue.
   return <div className="table-wrap tw:overflow-auto tw:[background:white] tw:[border:1px_solid_#dce0d8] tw:rounded-[10px]
           tw:[&_pre]:max-w-[36rem] tw:[&_pre]:max-h-[28rem] tw:[&_pre]:overflow-auto tw:[&_pre]:whitespace-pre-wrap
           tw:[&_pre]:[overflow-wrap:anywhere] tw:[&_pre]:text-[.8rem] report-table-wrap tw:[.reports_&]:relative
@@ -58,6 +68,7 @@ function DataTable({ rows, renderCell, title = "Report records" }: { rows: Recor
           tw:down-640:[.reports_&]:rounded-none tw:down-640:[.reports_&]:[background:transparent]
           tw:down-640:[.reports_&]:overflow-visible tw:down-640:[.appointment-report_&]:overflow-x-auto
           tw:down-640:[.appointment-report_&]:[background:#fff] tw:down-640:[.appointment-report_&]:rounded-[10px]" role="region" aria-label={`${title} table`} tabIndex={0}>
+    {/* Show the records in labeled columns so their details can be compared row by row. */}
     <table className="report-table tw:[.reports_&]:table-fixed tw:[.reports_&]:whitespace-normal tw:[.reports_&_th]:p-4
           tw:[.reports_&_td]:p-4 tw:[.reports_&_th]:align-top tw:[.reports_&_td]:align-top
           tw:[.reports_&_th]:[overflow-wrap:anywhere] tw:[.reports_&_td]:[overflow-wrap:anywhere]
@@ -91,18 +102,23 @@ function DataTable({ rows, renderCell, title = "Report records" }: { rows: Recor
     </table>
   </div>;
 }
+// Choose the receipt display for the report row so staff can find its proof of payment.
 function receiptCell(column: string, row: Record<string, unknown>) {
   const snapshot = row.receiptSnapshot;
   if (column !== "receiptSnapshot") return undefined;
   if (typeof row.receiptNumber !== "string" || !snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) return <>—</>;
+  // Show the prepared content and actions so the user can review the information and continue.
   return <ReceiptPrintButton label="Print / Save PDF" receipt={{ receiptNumber: row.receiptNumber, receiptSnapshot: snapshot as Record<string, unknown> }} />;
 }
+// Show the available reporting areas so staff can open the information they need.
 export function Reports({ admin, initialKind = "appointments" }: { admin: boolean; initialKind?: string }) {
   if (admin && initialKind === "payments") return <SalesSummary />;
   if (admin && initialKind === "commissions") return <StaffCommissionReport />;
   return admin && initialKind === "appointments" ? <AppointmentReport /> : <TransactionReports admin={admin} initialKind={initialKind} />;
 }
+// Show transaction report filters and results so staff can inspect recorded activity.
 function TransactionReports({ admin, initialKind = "appointments" }: { admin: boolean; initialKind?: string }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [from, setFrom] = useState(""); const [to, setTo] = useState("");
   const [kind, setKind] = useState(initialKind); const [collections, setCollections] = useState<Collections | null>(null);
   const [report, setReport] = useState<Report | null>(null);
@@ -142,13 +158,18 @@ function TransactionReports({ admin, initialKind = "appointments" }: { admin: bo
     } catch (err) { setError(err instanceof Error ? err.message : "Unable to load reports."); }
     finally { setBusy(false); }
   }, [admin, from, to, kind]);
+  // Load the information this view needs when its inputs change so the displayed results stay current.
   useEffect(() => {
     if (admin && from && to && to >= from) void load();
   }, [admin, from, to, load]);
+  // Handle the submitted form so the selected action can use the entered details.
   function submit(e: FormEvent) { e.preventDefault(); void load(); }
+  // Reset the report filters so the next search can start without the earlier restrictions.
   function clear() { setCollections(null); setReport(null); }
+  // Show the prepared content and actions so the user can review the information and continue.
   return <section className="reports tw:min-w-0 tw:[&_>_.account-form_label]:mb-0 tw:[&_>_.account-form_>_button]:mt-4.5
           tw:down-640:[&_>_.account-form]:p-4.5"><h2>{admin ? "Reports" : "Collection summary"}</h2><p>Choose up to 366 days in salon time. Reports use historical transactions and stored service values.</p>
+    {/* Group the entry fields and submit action so the user can complete this step in one place. */}
     <form className="account-form tw:[border:1px_solid_#dce0d8] tw:[background:white] tw:p-7 tw:rounded-[10px] tw:mb-[25px]
           tw:down-760:p-5" onSubmit={submit}><div className="form-grid tw:grid tw:grid-cols-[1fr_1fr] tw:gap-[0_24px] tw:down-760:grid-cols-[1fr]"><label>From<Input type="date" required value={from} disabled={busy} onChange={e => { setFrom(e.target.value); clear(); }} /></label><label>Through<Input type="date" required value={to} min={from} disabled={busy} onChange={e => { setTo(e.target.value); clear(); }} /></label>
     {/* {admin && <label>Report<select value={kind} disabled={busy} onChange={e => { setKind(e.target.value); clear(); }}>{["appointments", "payments", "receipts", "commissions"].map(k => <option key={k} value={k}>{label(k)}</option>)}</select></label>} */}</div>{!admin && <Button variant="default" className="primary tw:[background:#203c34] tw:text-[white] tw:[border-color:#203c34] tw:hover:[background:#31584c]

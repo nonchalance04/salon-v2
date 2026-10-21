@@ -1,14 +1,18 @@
+// Bring in the tools for the staff management dialog view so this file can work with the rest of the application.
 import { useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/Dialog";
 import "./StaffManagementDialog.css";
 
+// Bring staff editing choices into one dialog so administrators can manage the selected professional.
 export function StaffManagementDialog({ title, description, name, icon, busy, onClose, onRestoreFocus, children }: {
   title: string; description: string; name: string; icon: ReactNode; busy: boolean;
   onClose: () => void; onRestoreFocus: () => void; children: ReactNode;
 }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const content = useRef<HTMLDivElement>(null);
+  // Show the prepared content and actions so the user can review the information and continue.
   return <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }}>
     <DialogContent ref={content} className="staff-management-dialog tw:[&_fieldset]:min-w-0 tw:[&_label]:text-[#4b4b45] tw:[&_label]:m-0 tw:[&_label]:gap-2
           tw:[&_label]:text-[12px] tw:[&_label]:font-semibold tw:[&_textarea]:min-h-20.5 tw:[&_textarea]:max-h-[220px]

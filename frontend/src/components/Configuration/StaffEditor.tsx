@@ -1,9 +1,11 @@
+// Bring in the tools for the configuration view so this file can work with the rest of the application.
 import { useRef, type FormEvent, type ReactNode } from "react";
 import { BadgeCheck, Phone, ShieldCheck, UserRoundPlus, UsersRound, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/Dialog";
 
+// Show the staff fields so an administrator can maintain the professional details.
 export function StaffEditor({ editing, staffCode, values, busy, error, errorDetails, onChange, onSubmit, onClose, onRestoreFocus }: {
   editing: boolean;
   staffCode?: string;
@@ -16,7 +18,9 @@ export function StaffEditor({ editing, staffCode, values, busy, error, errorDeta
   onClose: () => void;
   onRestoreFocus: () => void;
 }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const firstName = useRef<HTMLInputElement>(null);
+  // Show the prepared content and actions so the user can review the information and continue.
   return <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }}>
     <DialogContent className="staff-editor tw:[&_label]:m-0 tw:[&_label]:gap-2 tw:[&_label]:text-[12px] tw:[&_label]:font-semibold
           tw:[&_label]:text-[#4b4b45] tw:[&_label_>_span_>_small]:ml-1.5 tw:[&_label_>_span_>_small]:text-[#93928a]
@@ -35,6 +39,7 @@ export function StaffEditor({ editing, staffCode, values, busy, error, errorDeta
         <Button type="button" variant="ghost" size="icon" className="staff-editor-close tw:[.staff-editor_&]:self-start tw:[.staff-editor_&]:shrink-0 tw:[.staff-editor_&]:ml-auto
           tw:[.staff-editor_&]:text-[#77766f]" disabled={busy} aria-label="Close staff editor" onClick={onClose}><X size={19} aria-hidden="true" /></Button>
       </DialogHeader>
+      {/* Group the entry fields and submit action so the user can complete this step in one place. */}
       <form className="staff-editor-form tw:flex tw:flex-col tw:min-h-0" onSubmit={onSubmit} aria-busy={busy}>
         <div className="staff-editor-body tw:overflow-y-auto tw:py-6 tw:px-7 tw:[&_.error]:[margin:0_0_18px] tw:[&_.error]:text-[13px]
           tw:[&_.error_p]:mb-0 tw:[&_.error_ul]:pl-4.5 tw:[&_.error_li]:mt-2.5 tw:[&_.error_li]:[overflow-wrap:anywhere]

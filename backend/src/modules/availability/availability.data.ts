@@ -1,3 +1,4 @@
+// Bring in the tools for available booking times so this file can work with the rest of the application.
 import type { Prisma } from "../../../generated/prisma/client.js";
 import { ApiError } from "../../shared/http.js";
 import { localDay } from "./availability.engine.js";

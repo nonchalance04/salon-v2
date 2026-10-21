@@ -1,6 +1,8 @@
+// Bring in the tools for the ui view so this file can work with the rest of the application.
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
+// Provide the shared selection field so forms can offer a consistent list of choices.
 function NativeSelect({
   className,
   size = "default",
@@ -26,6 +28,7 @@ function NativeSelect({
   )
 }
 
+// Provide one selection choice so the shared field can display its available values.
 function NativeSelectOption({
   className,
   ...props
@@ -39,6 +42,7 @@ function NativeSelectOption({
   )
 }
 
+// Group related selection choices so long lists are easier to browse.
 function NativeSelectOptGroup({
   className,
   ...props
@@ -52,4 +56,5 @@ function NativeSelectOptGroup({
   )
 }
 
+// Expose the shared parts of this file so other screens can use the same building blocks.
 export { NativeSelect, NativeSelectOptGroup, NativeSelectOption }

@@ -1,6 +1,8 @@
+// Bring in the tools for the salon server so this file can work with the rest of the application.
 import { prisma, disconnectDatabase } from "./database/prisma.js";
 import { bootstrapAdmin } from "./modules/users/bootstrap.service.js";
 
+// Read the initial administrator details and attempt account creation so a new installation can be managed.
 try {
   await bootstrapAdmin(prisma, {
     username: process.env.BOOTSTRAP_ADMIN_USERNAME,

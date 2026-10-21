@@ -1,14 +1,17 @@
+// Bring in the tools for customer notifications so this file can work with the rest of the application.
 import { createHash } from "node:crypto";
 import SMTPConnection from "nodemailer/lib/smtp-connection/index.js";
 import MailComposer from "nodemailer/lib/mail-composer/index.js";
 import { z } from "zod";
 import { NotificationFailure, type NotificationProvider } from "./notification-provider.js";
 
+// Describe the information used by customer notifications so different parts of the application agree on its contents.
 type Connection = Pick<SMTPConnection, "connect" | "login" | "send" | "close"> & {
   on(event: "error" | "end", listener: (error?: unknown) => void): unknown;
 };
 type ConnectionFactory = (options: SMTPConnection.Options) => Connection;
 
+// Translate the email delivery failure so retry handling can distinguish its cause.
 function smtpFailure(error: unknown): NotificationFailure {
   const value = error as { code?: string; responseCode?: number } | null;
   const status = value?.responseCode;
@@ -21,6 +24,7 @@ function smtpFailure(error: unknown): NotificationFailure {
   return new NotificationFailure("PROVIDER_UNAVAILABLE");
 }
 
+// Prepare the configured email connection so salon messages can be sent through Gmail.
 export function createGmailProvider(
   user: string, password: string, from: string, timeoutMs: number,
   createConnection: ConnectionFactory = options => new SMTPConnection(options),
@@ -50,6 +54,7 @@ export function createGmailProvider(
         logger: false, debug: false,
       });
       let finished = false;
+      // Finish the delivery attempt and release its resources so the email request can settle cleanly.
       const finish = (error?: NotificationFailure) => {
         if (finished) return;
         finished = true;
@@ -58,6 +63,7 @@ export function createGmailProvider(
         connection.close();
         if (error) reject(error); else resolve();
       };
+      // Stop the unfinished delivery attempt so a cancelled request can release its resources.
       const abort = () => finish(new NotificationFailure("PROVIDER_TIMEOUT"));
       const timer = setTimeout(abort, timeoutMs);
       connection.on("error", error => finish(smtpFailure(error)));

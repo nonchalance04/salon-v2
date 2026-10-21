@@ -1,3 +1,4 @@
+// Bring in the tools for staff sign-in so this file can work with the rest of the application.
 import { createAuthMiddleware } from "./auth.middleware.js";
 import { Router } from "express";
 import type { PrismaClient } from "../../../generated/prisma/client.js";
@@ -22,6 +23,7 @@ import {
   type AuthConfig,
 } from "./auth.security.js";
 
+// Connect sign-in, sign-out and recovery requests so staff can manage their access.
 export function createAuthRouter(prisma: PrismaClient, config: AuthConfig, resetEmailProvider?: NotificationProvider) {
   const router = Router();
   const service = createAuthService(prisma);

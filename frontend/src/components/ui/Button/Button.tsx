@@ -1,8 +1,10 @@
+// Bring in the tools for the ui view so this file can work with the rest of the application.
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 import * as Slot from "@radix-ui/react-slot"
 
+// Define the supported appearance choices so shared controls keep a consistent look.
 const buttonVariants = cva(
   "inline-flex min-w-0 border border-transparent shrink-0 items-center justify-center gap-2 rounded-md text-sm font-semibold whitespace-normal transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
@@ -37,6 +39,7 @@ const buttonVariants = cva(
   }
 )
 
+// Build the shared button appearance and behavior so actions look consistent across screens.
 function Button({
   className,
   variant = "default",
@@ -60,4 +63,5 @@ function Button({
   )
 }
 
+// Expose the shared parts of this file so other screens can use the same building blocks.
 export { Button, buttonVariants }

@@ -1,3 +1,4 @@
+// Bring in the tools for the public booking view so this file can work with the rest of the application.
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { BookingCalendar } from "../BookingCalendar";
@@ -24,6 +25,7 @@ import {
   type BookingStaff as Staff,
 } from "../ProfessionalPicker";
 
+// Describe the information used by the public booking view so different parts of the application agree on its contents.
 type Selection = { key: number; serviceId: string; staffId: string };
 type Slot = {
   startAt: string;
@@ -37,13 +39,17 @@ type Slot = {
   }[];
 };
 type Result = { timeZone: string; slots: Slot[] };
+// Keep the shared values for the public booking view together so later steps use the same definitions.
 const steps = ["Services", "Professional", "Date & Time", "Information"];
+// Choose a readable error message so the screen can explain what went wrong.
 const message = (error: unknown) =>
   error instanceof Error ? error.message : "Please try again.";
 
+// Guide the customer through services, staff and time choices so a complete visit can be reserved.
 export function PublicBooking({ salon }: { salon: Salon | null }) {
   const navigate = useNavigate();
   const [params] = useSearchParams();
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("");
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -87,6 +93,7 @@ export function PublicBooking({ salon }: { salon: Salon | null }) {
     date >= today &&
     calendar.availableDates.has(date);
 
+  // Load the saved information so the screen can show current salon records.
   async function load() {
     setLoading(true);
     setError("");
@@ -120,15 +127,18 @@ export function PublicBooking({ salon }: { salon: Salon | null }) {
       setLoading(false);
     }
   }
+  // Load the information this view needs when its inputs change so the displayed results stay current.
   useEffect(() => {
     void load();
     return () => {
       generation.current++;
     };
   }, []);
+  // Move keyboard focus to the active control so the user can continue without searching through the page.
   useEffect(() => {
     titleRef.current?.focus();
   }, [step]);
+  // Clear results that depend on earlier choices so an outdated visit cannot be selected.
   function invalidate() {
     generation.current++;
     setResult(null);
@@ -136,7 +146,9 @@ export function PublicBooking({ salon }: { salon: Salon | null }) {
     setBusy(false);
     setError("");
   }
+  // Build the service choices for the visit so availability uses the selected offerings and professionals.
   const planServices = () => bookingServices;
+  // Keep this view in step with its current inputs so changes are reflected on screen.
   useEffect(() => {
     if (
       step === 2 &&
@@ -149,12 +161,14 @@ export function PublicBooking({ salon }: { salon: Salon | null }) {
       setError("That date has no available times. Choose an enabled date.");
     }
   }, [step, date, today, calendar.status, calendar.availableDates]);
+  // Format the visit time for display so the schedule can be read in the salon time zone.
   const format = (instant: string) =>
     new Intl.DateTimeFormat("en-PH", {
       timeZone,
       hour: "numeric",
       minute: "2-digit",
     }).format(new Date(instant));
+  // Find the matching choices so the person using this feature can review the available results.
   async function search() {
     if (!dateAvailable) return;
     const attempt = ++generation.current;
@@ -265,6 +279,7 @@ export function PublicBooking({ salon }: { salon: Salon | null }) {
           tw:down-820:customer:grid-cols-[minmax(0,1fr)] tw:down-820:customer:gap-8"
         >
           <div className="booking-main tw:customer:min-w-0">
+            {/* Group the page links so the user can find the next area to open. */}
             <nav className="booking-steps tw:customer:flex-wrap tw:customer:[&_button]:p-0 tw:customer:[&_button]:[border:0]
           tw:customer:[&_button]:[background:transparent] tw:customer:[&_button]:text-[inherit]
           tw:customer:[&_button]:font-normal public:text-[#888a83] public:text-[13px] public:[&_.current]:text-[#8a6f1c]
@@ -409,6 +424,7 @@ export function PublicBooking({ salon }: { salon: Salon | null }) {
                 <p className="timezone-note tw:text-[12px] tw:text-[#64736b] tw:mb-6">
                   All dates and times are in {timeZone}.
                 </p>
+                {/* Show the available booking days so the customer can choose a date for the visit. */}
                 <BookingCalendar
                   month={month}
                   today={today}
@@ -477,6 +493,7 @@ export function PublicBooking({ salon }: { salon: Salon | null }) {
                   Your appointment begins with a temporary hold. Pay the
                   appointment fee to confirm it.
                 </p>
+                {/* Collect customer contact details so the selected visit can be reserved and linked to its customer. */}
                 <BookingForm
                   plan={{
                     date,
@@ -494,6 +511,7 @@ export function PublicBooking({ salon }: { salon: Salon | null }) {
               </>
             )}
           </div>
+          {/* Keep the supporting information beside the main task so it stays available while the user works. */}
           <aside className="booking-summary tw:customer:[&_>_button]:w-full tw:customer:[&_>_button]:justify-center tw:customer:[&_>_button]:text-center public:sticky public:top-6 public:[background:#fff]
           public:[border:1px_solid_#d7d9d1] public:rounded-[22px] public:p-7 public:min-h-[540px] public:down-1023:static
           public:down-1023:min-h-[300px] public:down-639:p-5.5" aria-label="Appointment summary">

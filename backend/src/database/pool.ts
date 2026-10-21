@@ -1,3 +1,4 @@
+// Bring in the tools for database access so this file can work with the rest of the application.
 import { Pool, type PoolConfig } from "pg";
 
 // Prisma's pg adapter formats datetime parameters as UTC wall-clock strings.

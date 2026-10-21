@@ -1,7 +1,9 @@
+/* Arrange receipt details and amounts so proof of payment is readable on screen. */
 .salon-receipt .receipt-heading h3 + p { margin: 10px 0 24px; color: #73756f; }
 .salon-receipt .receipt-services th:last-child, .salon-receipt .receipt-services td:last-child { width: 32%; text-align: right; font-variant-numeric: tabular-nums; }
 .salon-receipt .receipt-print { font: 700 13px Arial, Helvetica, sans-serif; }
 .receipt-preview-toolbar button { font:inherit; }
+/* Prepare the receipt for paper so printing shows the payment record clearly. */
 @media print {
   @page { margin: 15mm; }
   body > * { display: none !important; }
@@ -30,4 +32,5 @@
   .receipt-preview-dialog::backdrop { background:transparent; }
 }
 
+/* Arrange receipt controls and details so the payment record remains easy to read. */
 .receipt-preview-toolbar [data-slot="dialog-title"] { margin:0; font:inherit; font-weight:600; }

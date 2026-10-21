@@ -48,8 +48,11 @@
 .customer-site .appointment-manager-slot:has(input:disabled){opacity:.55;cursor:default}
 .customer-site .appointment-manager .appointment-manager-loading{display:flex;align-items:center;gap:8px}
 .customer-site .appointment-manager-loading svg{animation:appointment-manager-spin 1s linear infinite}
+/* Define the animation movements so the status illustration can show its progress. */
 @keyframes appointment-manager-spin{to{transform:rotate(360deg)}}
+/* Reduce movement when requested so the page respects the visitor's motion preference. */
 @media(prefers-reduced-motion:reduce){.customer-site .appointment-manager-loading svg{animation:none}}
+/* Adjust this layout for the matching screen size so its content and controls remain usable. */
 @media(max-width:600px){
  .customer-site .appointment-management-header [data-slot=dialog-title]{font-size:21px}
  .customer-site .appointment-management-header [data-slot=dialog-description]{font-size:12px}

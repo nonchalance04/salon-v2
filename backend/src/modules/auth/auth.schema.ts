@@ -1,5 +1,7 @@
+// Bring in the tools for staff sign-in so this file can work with the rest of the application.
 import { z } from "zod";
 
+// Define the accepted staff sign-in details so unexpected or incomplete input can be rejected.
 export const email = z.string().trim().toLowerCase().pipe(z.email().max(254));
 export const password = z.string().min(12).refine(value => Buffer.byteLength(value, "utf8") <= 72,
   "Password must fit within 72 UTF-8 bytes.");
@@ -25,4 +27,5 @@ export const updateAccountSchema = z.object({
   params: z.object({ id: z.uuid() }),
   body: accountFields.partial().refine(value => Object.keys(value).length > 0),
 });
+// Describe the information used by staff sign-in so different parts of the application agree on its contents.
 export type AccountInput = z.infer<typeof accountFields>;

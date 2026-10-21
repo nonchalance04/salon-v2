@@ -1,1 +1,2 @@
+/* Highlight keyboard focus on policy history so the section can be opened without a mouse. */
 .appointment-settings .policy-history > summary:focus-visible { outline:3px solid var(--ring, #b67a3d); }

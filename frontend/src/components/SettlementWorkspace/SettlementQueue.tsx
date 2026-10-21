@@ -1,9 +1,11 @@
+// Bring in the tools for the settlement workspace view so this file can work with the rest of the application.
 import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { api } from "../../lib/api";
 
+// Describe the information used by the settlement workspace view so different parts of the application agree on its contents.
 export type QueueVisit = {
   bookingCode: string;
   startAt: string;
@@ -12,10 +14,12 @@ export type QueueVisit = {
 };
 type Queue = { timeZone: string; total: number; page: number; pageSize: number; rows: QueueVisit[] };
 
+// Show visits awaiting settlement so the cashier can select an appointment to finish.
 export function SettlementQueue({ selectedCode, disabled, refresh, onSelect }: {
   selectedCode?: string; disabled: boolean; refresh: number;
   onSelect: (code: string) => void;
 }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [data, setData] = useState<Queue | null>(null);
   const [draft, setDraft] = useState("");
   const [search, setSearch] = useState("");
@@ -23,10 +27,12 @@ export function SettlementQueue({ selectedCode, disabled, refresh, onSelect }: {
   const [retry, setRetry] = useState(0);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
+  // Keep time-based screen updates running while this view is open so its status stays current.
   useEffect(() => {
     const timer = window.setTimeout(() => { setSearch(draft.trim()); setPage(1); }, 350);
     return () => window.clearTimeout(timer);
   }, [draft]);
+  // Load the information this view needs when its inputs change so the displayed results stay current.
   useEffect(() => {
     const controller = new AbortController();
     setBusy(true);
@@ -44,6 +50,7 @@ export function SettlementQueue({ selectedCode, disabled, refresh, onSelect }: {
       .finally(() => { if (!controller.signal.aborted) setBusy(false); });
     return () => controller.abort();
   }, [page, search, retry, refresh]);
+  // Show the prepared content and actions so the user can review the information and continue.
   return <aside className="settlement-queue tw:[grid-column:1] tw:[grid-row:2_/_span_6] tw:[background:white]
           tw:[border:1px_solid_#e7e3e9] tw:rounded-[12px] tw:py-5 tw:px-3.5 tw:min-w-0" aria-label="Bookings awaiting settlement">
     <div className="settlement-queue-heading tw:py-0 tw:px-1.5 tw:[&_h3]:text-[22px] tw:[&_h3]:[margin:0_0_5px]

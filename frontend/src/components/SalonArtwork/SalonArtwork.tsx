@@ -1,3 +1,4 @@
+// Show the salon banner artwork so the public page has its visual introduction.
 export function SalonArtwork({ interior = false }: { interior?: boolean }) {
   return (
     <div className={`salon-art tw:customer:[&_img]:w-full tw:customer:[&_img]:h-full tw:customer:[&_img]:min-h-[inherit] tw:customer:[&_img]:object-cover tw:customer:[&_img]:block  ${interior ? "interior-art" : ""}`}>

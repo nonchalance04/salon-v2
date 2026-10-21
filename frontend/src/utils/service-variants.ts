@@ -1,3 +1,4 @@
+// Describe the information used by service variants so different parts of the application agree on its contents.
 type Service = { id: string; name: string };
 
 // Only combine variants explicitly listed on the salon menu. Every choice
@@ -33,8 +34,10 @@ const families = [
   ] },
 ];
 
+// Describe the information used by service variants so different parts of the application agree on its contents.
 export type ServiceFamily<T extends Service> = { key: string; name: string; options: { label: string; service: T }[] };
 
+// Recognize related service options so variants can appear under the same offering.
 function findVariant(serviceName: string) {
   const normalized = serviceName.trim().toLowerCase();
   for (const family of families) {
@@ -46,6 +49,7 @@ function findVariant(serviceName: string) {
   return undefined;
 }
 
+// Group related service variants so the customer can browse one offering with its available options.
 export function groupServiceVariants<T extends Service>(services: T[]): ServiceFamily<T>[] {
   const groups = new Map<string, ServiceFamily<T>>();
 

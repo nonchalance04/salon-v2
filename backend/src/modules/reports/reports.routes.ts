@@ -1,3 +1,4 @@
+// Bring in the tools for salon reports so this file can work with the rest of the application.
 import { Router } from "express";
 import { z } from "zod";
 import type { PrismaClient } from "../../../generated/prisma/client.js";
@@ -6,6 +7,7 @@ import { createAuthMiddleware } from "../auth/auth.middleware.js";
 import { browserSecurity, type AuthConfig } from "../auth/auth.security.js";
 import { appointmentReportQuery, commissionSummaryQuery, confirmedServicesQuery, reportKinds, reportQuery, salesSummaryQuery } from "./reports.schema.js";
 import { createReportsService } from "./reports.service.js";
+// Connect report requests to staff access checks so each report is available to the permitted role.
 export function createReportsRouter(prisma: PrismaClient, config: AuthConfig) {
   const router = Router(); const auth = createAuthMiddleware(prisma, config);
   const service = createReportsService(prisma, config.SALON_TIMEZONE);

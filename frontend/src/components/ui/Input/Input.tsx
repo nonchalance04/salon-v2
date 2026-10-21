@@ -1,6 +1,8 @@
+// Bring in the tools for the ui view so this file can work with the rest of the application.
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
+// Provide the shared text field so forms use a consistent appearance and interaction.
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (
     <input
@@ -17,4 +19,5 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   )
 }
 
+// Expose the shared parts of this file so other screens can use the same building blocks.
 export { Input }

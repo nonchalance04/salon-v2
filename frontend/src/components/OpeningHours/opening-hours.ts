@@ -1,4 +1,6 @@
+// Keep the shared values for the opening hours view together so later steps use the same definitions.
 export const weekdays = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"] as const;
+// Describe the information used by the opening hours view so different parts of the application agree on its contents.
 export type Weekday = typeof weekdays[number];
 export type OpeningHour = { id: string; dayOfWeek: string; openTime: string; closeTime: string; isActive: boolean };
 export type Period = { id?: string; openTime: string; closeTime: string };
@@ -14,6 +16,7 @@ export function dayHours(rows: OpeningHour[]): DayHours {
   };
 }
 
+// Prepare the whole day of hours for saving so its ranges and closed state are submitted together.
 export function dayHoursRequest(draft: DayHours): DayHours {
   return { isOpen: draft.isOpen, periods: draft.isOpen ? draft.periods : [] };
 }

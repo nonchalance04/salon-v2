@@ -1,3 +1,4 @@
+// Bring in the tools for the opening hours view so this file can work with the rest of the application.
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useEffect, useState, type FormEvent } from "react";
@@ -12,14 +13,19 @@ import {
   type Weekday,
 } from "./opening-hours";
 
+// Turn the stored value into a readable label so the screen is easier to follow.
 const label = (day: string) => day[0] + day.slice(1).toLowerCase();
+// Prepare the time for the form so saved hours can be edited in a time field.
 const timeValue = (value: string) =>
   value.length === 8 && value.endsWith(":00") ? value.slice(0, 5) : value;
+// Prepare the entered time for saving so the hours request uses the expected format.
 const storedTime = (value: string) =>
   value.length === 5 ? `${value}:00` : value;
+// Choose the time field precision so existing saved times can still be represented.
 const timeStep = (value: string) =>
   value.length === 8 && !value.endsWith(":00") ? "1" : "60";
 
+// Describe the information used by the opening hours view so different parts of the application agree on its contents.
 type Props = {
   hours: OpeningHour[];
   busy: boolean;
@@ -29,6 +35,7 @@ type Props = {
   onError: (error: unknown) => void;
 };
 
+// Show weekly salon hours so administrators can review and update when bookings are offered.
 export function OpeningHours({
   hours,
   busy,
@@ -37,6 +44,7 @@ export function OpeningHours({
   onSaved,
   onError,
 }: Props) {
+  // Check and submit the edited details so the saved record matches the form.
   async function save(day: Weekday, draft: DayHours) {
     onBusy(true);
     onStart();
@@ -71,6 +79,7 @@ export function OpeningHours({
   );
 }
 
+// Show one day and its time ranges so its open or closed state can be edited together.
 function OpeningDay({
   day,
   rows,
@@ -83,14 +92,17 @@ function OpeningDay({
   onSave: (draft: DayHours) => Promise<void>;
 }) {
   const version = JSON.stringify(rows);
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [draft, setDraft] = useState(() => dayHours(rows));
   const [saved, setSaved] = useState(() => JSON.stringify(dayHours(rows)));
+  // Keep this view in step with its current inputs so changes are reflected on screen.
   useEffect(() => {
     const initial = dayHours(JSON.parse(version));
     setDraft(initial);
     setSaved(JSON.stringify(initial));
   }, [version]);
   const dirty = JSON.stringify(draft) !== saved;
+  // Update the edited selection so the screen reflects the latest choices.
   function update(index: number, changes: Partial<Period>) {
     setDraft((current) => ({
       ...current,
@@ -99,6 +111,7 @@ function OpeningDay({
       ),
     }));
   }
+  // Handle the submitted form so the selected action can use the entered details.
   function submit(event: FormEvent) {
     event.preventDefault();
     if (!busy && dirty) void onSave(draft);

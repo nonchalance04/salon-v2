@@ -1,3 +1,4 @@
+// Bring in the tools for the booking form view so this file can work with the rest of the application.
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PhoneInput } from "../PhoneInput";
@@ -6,29 +7,38 @@ import { useRef, useState, type FormEvent } from "react";
 import { api } from "../../lib/api";
 import type { BookingPlan, BookingResult } from "../../types/booking";
 
+// Choose a readable error message so the screen can explain what went wrong.
 const message = (error: unknown) =>
   error instanceof Error ? error.message : "Please try again.";
 
+// Collect customer contact details so the selected visit can be reserved and linked to its customer.
 export function BookingForm({ plan, onBusy, onBooked }: { plan: BookingPlan; onBusy: (busy: boolean) => void; onBooked: (result: BookingResult) => void }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [busy, setBusy] = useState(false);
   const sending = useRef(false);
   const [error, setError] = useState("");
+  // Handle the submitted form so the selected action can use the entered details.
   async function submit(event: FormEvent<HTMLFormElement>) {
+    // Keep submission on this page and block repeated sends so one click sequence creates only one pending request.
     event.preventDefault();
     if (sending.current) return;
     const data = new FormData(event.currentTarget);
     sending.current = true; setBusy(true); onBusy(true); setError("");
     try {
+      // Read the entered contact details and require at least one contact method so the salon can reach the customer.
       const email = String(data.get("email") ?? "").trim();
       const phone = String(data.get("phone") ?? "").trim();
       if (!email && !phone) throw new Error("Enter an email address or phone number before proceeding to payment.");
+      // Send the chosen visit and customer details for another availability check so the server can reserve the current plan.
       const result = await api<BookingResult>("/appointments", { method: "POST", body: JSON.stringify({ ...plan,
         customer: { firstName: String(data.get("firstName")).trim(), lastName: String(data.get("lastName")).trim(), ...(phone ? { phone: philippinePhoneNumber(phone) } : {}), ...(email ? { email } : {}) },
       }) });
+      // Pass the new reservation back to the booking flow so the customer can continue to payment.
       onBooked(result);
     } catch (err) { setError(message(err)); }
     finally { sending.current = false; setBusy(false); onBusy(false); }
   }
+  // Show the prepared content and actions so the user can review the information and continue.
   return <form className="account-form tw:[border:1px_solid_#dce0d8] tw:[background:white] tw:p-7 tw:rounded-[10px] tw:mb-[25px]
           tw:down-760:p-5" onSubmit={submit}><h3>Your contact details</h3>
     <fieldset disabled={busy}><div className="form-grid tw:grid tw:grid-cols-[1fr_1fr] tw:gap-[0_24px] tw:down-760:grid-cols-[1fr]">

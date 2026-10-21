@@ -1,10 +1,13 @@
+// Bring in the tools for the salon assistant so this file can work with the rest of the application.
 import { open } from "node:fs/promises";
 import { z } from "zod";
 import type { AuthConfig } from "../auth/auth.security.js";
 import { chatbotLanguage, createChatbotService, type ChatbotSource } from "./chatbot.service.js";
 import type { ChatHistory } from "./chatbot.schema.js";
 
+// Describe the information used by the salon assistant so different parts of the application agree on its contents.
 type Config = Pick<AuthConfig, "GEMINI_API_KEY" | "GEMINI_MODEL" | "CHATBOT_TIMEOUT_MS">;
+// Keep the shared values for the salon assistant together so later steps use the same definitions.
 const decisionSchema = z.object({
   intent: z.enum(["consultation", "unclear", "services", "salon", "policy", "booking", "availability", "manage", "cancel", "reschedule"]),
   answer: z.string().trim().min(1).max(3000),
@@ -44,12 +47,14 @@ export async function loadChatbotGuidelines(): Promise<string> {
   } finally { await file.close(); }
 }
 
+// Describe the information used by the salon assistant so different parts of the application agree on its contents.
 export type GeminiDependencies = {
   fetch?: typeof fetch;
   loadGuidelines?: () => Promise<string>;
   onFallback?: () => void;
 };
 
+// Prepare the optional AI answer service so salon questions can use the configured assistant.
 export function createGeminiChatbotService(source: ChatbotSource, config: Config, deps: GeminiDependencies = {}) {
   if (!config.GEMINI_API_KEY || !config.GEMINI_MODEL) throw new Error("Gemini configuration is required.");
   const request = deps.fetch ?? fetch;
@@ -58,6 +63,7 @@ export function createGeminiChatbotService(source: ChatbotSource, config: Config
   const guided = createChatbotService(source);
   let inFlight = 0;
 
+  // Use the built-in salon answer when needed so the customer still receives a reply.
   async function fallback(message: string, history: ChatHistory) {
     onFallback();
     return { ...await guided.answer(message, history), recommendations: [] };

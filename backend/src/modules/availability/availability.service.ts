@@ -1,3 +1,4 @@
+// Bring in the tools for available booking times so this file can work with the rest of the application.
 import { Temporal } from "@js-temporal/polyfill";
 import { Prisma, type PrismaClient } from "../../../generated/prisma/client.js";
 import { ApiError } from "../../shared/http.js";
@@ -6,22 +7,27 @@ import { calculateAvailability, calculateCalendarAvailability, localDay, policyB
 import { loadAvailabilityData } from "./availability.data.js";
 import type { AvailabilityInput, CalendarAvailabilityInput } from "./availability.schema.js";
 
+// Bring together the service catalog and scheduling searches so booking choices use current salon data.
 export function createAvailabilityService(prisma: PrismaClient, timeZone: string) {
+  // Load the scheduling information for the request so availability is calculated from a consistent set of records.
   async function query<T>(input: AvailabilityInput,
     build: (data: Awaited<ReturnType<typeof loadAvailabilityData>>) => T,
     rangeEnd?: Date,
   ): Promise<T> {
     try {
+      // Keep the related database changes together so a failure leaves the earlier records intact.
       return await prisma.$transaction(async tx => {
         await tx.$executeRaw`SET LOCAL lock_timeout = '5s'`;
         await lockSalon(tx, "shared");
         // Small-salon MVP: lock the existing staff set in universal order, then
         // reload all inputs. This also serializes staff-specific config writes.
         const staffIds = (await tx.staff.findMany({ select: { id: true } })).map(s => s.id);
+        // Coordinate access to the affected staff so another booking cannot change their reserved time during this step.
         await lockStaff(tx, staffIds);
         const now = await freshTime(tx);
         const policy = await tx.bookingPolicyVersion.findFirst({ where: { effectiveFrom: { lte: now } }, orderBy: { effectiveFrom: "desc" } });
         if (!policy) throw new ApiError(503, "POLICY_UNAVAILABLE", "Booking availability is not configured yet.");
+        // Load current hours, skills and reservations so the proposed visit is checked against the real schedule.
         const data = await loadAvailabilityData(tx, input, timeZone, now, policy, { rangeEnd });
         return build(data);
       }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, timeout: 20_000 });
@@ -34,6 +40,7 @@ export function createAvailabilityService(prisma: PrismaClient, timeZone: string
     }
   }
   return {
+    // Collect public service and staff choices so customers can plan their visit.
     async catalog() {
       const staff = await prisma.staff.findMany({ where: { isActive: true }, select: {
         id: true, firstName: true, lastName: true, publicProfile: true,
@@ -52,6 +59,7 @@ export function createAvailabilityService(prisma: PrismaClient, timeZone: string
         statistics: statistics.get(row.id) ?? { appointmentsCompleted: 0, clientsServed: 0 },
         serviceIds: staffServices.map(q => q.serviceId) })) };
     },
+    // Find the matching choices so the person using this feature can review the available results.
     async search(input: AvailabilityInput) {
       const day = localDay(input.date, timeZone);
       if (input.startAt && (new Date(input.startAt) < day.start || new Date(input.startAt) >= day.end)) {
@@ -60,6 +68,7 @@ export function createAvailabilityService(prisma: PrismaClient, timeZone: string
       return query(input, data => ({ date: input.date, timeZone, advisory: true, generatedAt: data.now.toISOString(), policyVersion: data.policy.version,
         ...policyBounds(data), slots: calculateAvailability(input, data) }));
     },
+    // Calculate availability across the requested dates so customers can choose a day with open times.
     async calendar(input: CalendarAvailabilityInput) {
       const first = Temporal.PlainDate.from(`${input.month}-01`);
       const end = localDay(first.add({ months: 1 }).toString(), timeZone).start;

@@ -1,3 +1,4 @@
+// Bring in the tools for the settlement workspace view so this file can work with the rest of the application.
 import { CheckCircle2 } from "lucide-react";
 import { SettlementQueue } from "./SettlementQueue";
 import "./SettlementWorkspace.css";
@@ -24,6 +25,7 @@ import { NoShowCorrection } from "../NoShowCorrection";
 import { ReceiptPreviewButton } from "../ReceiptPreviewButton";
 import type { Receipt } from "../../types/receipt";
 
+// Describe the information used by the settlement workspace view so different parts of the application agree on its contents.
 type Outcome = "SCHEDULED" | "PERFORMED" | "NOT_PERFORMED";
 type Appointment = {
   bookingCode: string;
@@ -59,6 +61,7 @@ type Appointment = {
     commissionAmount: string;
   }[];
 };
+// Guide staff through service outcomes and final payment so the visit can be completed.
 export function SettlementWorkspace({
   admin,
   initialCode,
@@ -79,6 +82,7 @@ export function SettlementWorkspace({
   onNavigationStateChange?: (state: { busy: boolean; dirty: boolean }) => void;
 }) {
   const simplified = admin && mode !== "payments";
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [queueRefresh, setQueueRefresh] = useState(0);
   const [timeZone, setTimeZone] = useState<string>();
   const [row, setRow] = useState<Appointment | null>(null);
@@ -94,9 +98,11 @@ export function SettlementWorkspace({
   });
   const key = useRef("");
   if (!key.current) key.current = createPaymentKey();
+  // Remember the current choices and screen status so the page can respond as the user works.
   const sending = useRef(false);
   const [method, setMethod] = useState("CASH");
   const [tendered, setTendered] = useState("");
+  // Use the returned settlement details so the workspace follows the latest saved visit state.
   function accept(appointment: Appointment) {
     setConfirmOutcomes(false);
     setQueueRefresh((value) => value + 1);
@@ -106,6 +112,7 @@ export function SettlementWorkspace({
       Object.fromEntries(appointment.services.map((s) => [s.id, s.outcome])),
     );
   }
+  // Run the selected settlement action and handle its result so staff can continue from the updated visit.
   async function act(fn: () => Promise<void>) {
     if (sending.current) return;
     sending.current = true;
@@ -121,6 +128,7 @@ export function SettlementWorkspace({
       setBusy(false);
     }
   }
+  // Find the entered booking so staff can review its service outcomes and payment.
   async function lookup(code: string) {
     accept(
       (
@@ -131,6 +139,7 @@ export function SettlementWorkspace({
       ).appointment,
     );
   }
+  // Load the information this view needs when its inputs change so the displayed results stay current.
   useEffect(() => {
     if (!simplified) return;
     let active = true;
@@ -143,9 +152,11 @@ export function SettlementWorkspace({
       active = false;
     };
   }, [simplified]);
+  // Keep this view in step with its current inputs so changes are reflected on screen.
   useEffect(() => {
     if (initialCode) void act(() => lookup(initialCode));
   }, [initialCode]);
+  // Review and submit the service outcomes so staff record the intended results once.
   async function save() {
     if (
       !row ||
@@ -183,6 +194,7 @@ export function SettlementWorkspace({
   const collectPayments = mode !== "services";
   const paymentLayout = admin && mode === "payments";
   const backLabel = mode === "combined" ? "appointments" : mode;
+  // Keep this view in step with its current inputs so changes are reflected on screen.
   useEffect(() => {
     onNavigationStateChange?.({
       busy: busy || correctionNavigation.busy,
@@ -292,6 +304,7 @@ export function SettlementWorkspace({
       )}
       {!simplified && !initialCode && !row && (
         <>
+          {/* Show confirmed service rows so staff can review the scheduled work and recorded outcomes. */}
           <ConfirmedServices
             admin={admin}
             manageOutcomes={manageServices}
@@ -315,6 +328,7 @@ export function SettlementWorkspace({
           tw:[.outcomes-workspace_&_label]:max-w-[480px] tw:down-760:[.outcomes-workspace_&_form]:flex-col
           tw:down-760:[.outcomes-workspace_&_form]:items-stretch">
               <summary>Find another booking by code</summary>
+              {/* Group the entry fields and submit action so the user can complete this step in one place. */}
               <form
                 className="account-form tw:[border:1px_solid_#dce0d8] tw:[background:white] tw:p-7 tw:rounded-[10px] tw:mb-[25px]
           tw:down-760:p-5"
@@ -1043,6 +1057,7 @@ export function SettlementWorkspace({
               <div className="table-wrap tw:overflow-auto tw:[background:white] tw:[border:1px_solid_#dce0d8] tw:rounded-[10px]
           tw:[&_pre]:max-w-[36rem] tw:[&_pre]:max-h-[28rem] tw:[&_pre]:overflow-auto tw:[&_pre]:whitespace-pre-wrap
           tw:[&_pre]:[overflow-wrap:anywhere] tw:[&_pre]:text-[.8rem]">
+                {/* Show the records in labeled columns so their details can be compared row by row. */}
                 <table>
                   <thead>
                     <tr>

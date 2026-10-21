@@ -1,3 +1,4 @@
+// Bring in the tools for the login view so this file can work with the rest of the application.
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useState, type FormEvent } from "react";
@@ -5,11 +6,14 @@ import { Link } from "react-router";
 import { useAuth } from "../../contexts/AuthProvider";
 import { api } from "../../lib/api";
 
+// Choose a readable error message so the screen can explain what went wrong.
 const message = (error: unknown) =>
   error instanceof Error ? error.message : "Please try again.";
 
+// Show sign-in and password recovery so staff can access their salon workspace.
 export function Login() {
   const { login } = useAuth();
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<"login" | "request" | "reset">("login");
@@ -17,11 +21,13 @@ export function Login() {
   const [challengeId, setChallengeId] = useState("");
   const [notice, setNotice] = useState("");
   const [retryAt, setRetryAt] = useState(0);
+  // Switch between sign-in and recovery so staff can choose the access step they need.
   function changeMode(next: "login" | "request" | "reset") {
     setMode(next);
     setError("");
     setNotice("");
   }
+  // Request a verification code for the entered contact or account so access can be recovered.
   async function requestCode() {
     const remaining = Math.ceil((retryAt - Date.now()) / 1000);
     if (remaining > 0) throw new Error(`Please wait ${remaining} seconds before requesting another code.`);
@@ -33,6 +39,7 @@ export function Login() {
     setRetryAt(Date.now() + result.retryAfterSeconds * 1000);
     setMode("reset");
   }
+  // Handle the submitted form so the selected action can use the entered details.
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
@@ -85,6 +92,7 @@ export function Login() {
           src="/images/login.jpg"
           alt="A client enjoying a salon appointment"
         />
+        {/* Group the entry fields and submit action so the user can complete this step in one place. */}
         <form key={`${mode}:${challengeId}`} onSubmit={submit} className="clique-login-form tw:grid tw:gap-3.5 tw:py-6.5 tw:px-10.5 tw:[&_h1]:text-[18px] tw:[&_h1]:[margin:0_0_4px]
           tw:[&_h1]:text-[white] tw:[&_label]:m-0 tw:[&_label]:text-[12px] tw:[&_label]:gap-1.5 tw:[&_label]:text-[#eee]
           tw:[&_input]:h-13.5 tw:[&_input]:[border:1px_solid_#bfa03b] tw:[&_input]:text-[#202020]

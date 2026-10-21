@@ -1,9 +1,11 @@
+// Bring in the tools for available booking times so this file can work with the rest of the application.
 import { Router } from "express";
 import { z } from "zod";
 import type { PrismaClient } from "../../../generated/prisma/client.js";
 import { validateRequest } from "../../shared/http.js";
 import { availabilitySchema, calendarAvailabilitySchema } from "./availability.schema.js";
 import { createAvailabilityService } from "./availability.service.js";
+// Connect availability requests to validated searches so the booking screens can request suitable times.
 export function createAvailabilityRouter(prisma: PrismaClient, timeZone: string) {
   const router = Router();
   const service = createAvailabilityService(prisma, timeZone);

@@ -1,3 +1,4 @@
+// Bring in the tools for the booking confirmation view so this file can work with the rest of the application.
 import { Button } from "@/components/ui/Button";
 import { Link } from "react-router";
 import type { Appointment } from "../../types/booking";
@@ -9,6 +10,7 @@ import type { FeePayment } from "../../types/payments";
 
 import "./BookingConfirmation.css";
 
+// Show the reservation result and payment details so the customer understands the booking status.
 export function BookingConfirmation({
   appointment,
   salon,
@@ -25,10 +27,12 @@ export function BookingConfirmation({
   const payment = appointment.payments.find(
     (p) => p.status === "SUCCEEDED" && p.satisfiesObligation,
   );
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [generated, setGenerated] = useState<FeePayment["receipt"]>(null);
   const [receiptError, setReceiptError] = useState("");
   const [retry, setRetry] = useState(0);
   const receipt = payment?.receipt ?? generated;
+  // Load the information this view needs when its inputs change so the displayed results stay current.
   useEffect(() => {
     if (receipt?.receiptSnapshot || payment?.provider !== "paymongo") return;
     let active = true;
@@ -83,6 +87,7 @@ export function BookingConfirmation({
       (sum, s) => sum + Math.round(Number(s.priceSnapshot) * 100),
       0,
     ) / 100;
+  // Format the amount as Philippine pesos so prices and payments are easy to recognize.
   const money = (amount: string | number) =>
     new Intl.NumberFormat("en-PH", {
       style: "currency",
@@ -95,6 +100,7 @@ export function BookingConfirmation({
           tw:down-640:customer:px-0"
       aria-labelledby="booking-confirmed-title"
     >
+      {/* Show the page heading and its main controls so the current task is easy to identify. */}
       <header className="booking-confirmed-heading tw:customer:text-center tw:customer:mb-10 tw:customer:[&_h1]:text-[36px]
           tw:customer:[&_h1]:font-medium tw:customer:[&_h1]:tracking-[-.6px] tw:customer:[&_h1]:[margin:0_0_6px]
           tw:customer:[&_p]:m-0 tw:customer:[&_p]:text-[#777] tw:customer:[&_p]:text-[18px] tw:customer:[&_strong]:ml-3.5
@@ -173,6 +179,7 @@ export function BookingConfirmation({
             Service charges are separate. Times shown in {appointment.timeZone}.
           </p>
         </article>
+        {/* Keep the supporting information beside the main task so it stays available while the user works. */}
         <aside className="booking-confirmed-sidebar tw:customer:grid tw:customer:gap-3">
           <div className="booking-confirmed-download tw:customer:[background:#fff] tw:customer:rounded-[10px] tw:customer:py-5
           tw:customer:px-7 tw:down-640:customer:px-5">
@@ -221,6 +228,7 @@ export function BookingConfirmation({
               </>
             )}
           </div>
+          {/* Group the contact us details so the related information can be reviewed together. */}
           <section className="booking-confirmed-contact tw:customer:[background:#fff] tw:customer:rounded-[10px] tw:customer:p-7 tw:down-640:customer:p-5
           tw:customer:[&_h2]:text-[18px] tw:customer:[&_h2]:[margin:0_0_8px] tw:customer:[&_p]:block
           tw:customer:[&_a]:block tw:customer:[&_p]:text-[14px] tw:customer:[&_a]:text-[14px] tw:customer:[&_p]:my-2

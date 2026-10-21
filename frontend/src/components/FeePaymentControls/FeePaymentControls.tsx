@@ -1,3 +1,4 @@
+// Bring in the tools for the fee payment controls view so this file can work with the rest of the application.
 import { Button } from "@/components/ui/Button";
 import { createPaymentKey } from "../../utils/payment-key";
 import { useEffect, useRef, useState } from "react";
@@ -5,25 +6,33 @@ import { api } from "../../lib/api";
 import { startPaymentSync } from "../../utils/payment-sync";
 import type { FeePayment } from "../../types/payments";
 
+// Choose a readable error message so the screen can explain what went wrong.
 const message = (error: unknown) =>
   error instanceof Error ? error.message : "Please try again.";
 
+// Show the available appointment-fee actions so the customer can continue or check payment.
 export function FeePaymentControls({ bookingCode, token, onChange, pending }: { bookingCode: string; token: string; onChange: () => Promise<void>; pending?: FeePayment }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [options, setOptions] = useState<{ onlineAvailable: boolean; testMode: boolean; sandbox: boolean } | null>(null);
   const [payment, setPayment] = useState<FeePayment | null>(pending ?? null);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const key = useRef("");
   if (!key.current) key.current = createPaymentKey();
+  // Remember the current choices and screen status so the page can respond as the user works.
   const sending = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const changed = useRef(onChange); changed.current = onChange;
+  // Keep this view in step with its current inputs so changes are reflected on screen.
   useEffect(() => { if (pending) setPayment(pending); }, [pending?.id, pending?.status]);
+  // Load the information this view needs when its inputs change so the displayed results stay current.
   useEffect(() => { api<{ onlineAvailable: boolean; testMode: boolean; sandbox: boolean }>("/payments/options").then(setOptions).catch(err => setError(message(err))); }, []);
+  // Keep this view in step with its current inputs so changes are reflected on screen.
   useEffect(() => {
     if (!options?.onlineAvailable || options.testMode || payment?.status !== "PENDING") return;
     return startPaymentSync(checkPayment);
   }, [bookingCode, token, options?.onlineAvailable, options?.testMode, payment?.id, payment?.status]);
+  // Create or reuse the booking checkout so the customer can pay the required appointment fee.
   async function checkout() {
     if (sending.current) return;
     sending.current = true; setBusy(true); setError("");
@@ -35,6 +44,7 @@ export function FeePaymentControls({ bookingCode, token, onChange, pending }: { 
     } catch (err) { setError(message(err)); }
     finally { sending.current = false; setBusy(false); }
   }
+  // Run the supported test-payment path so payment behavior can be exercised in the test setup.
   async function simulate(outcome: "SUCCEEDED" | "FAILED") {
     if (!payment || sending.current) return;
     sending.current = true; setBusy(true); setError("");
@@ -45,6 +55,7 @@ export function FeePaymentControls({ bookingCode, token, onChange, pending }: { 
     } catch (err) { setError(message(err)); }
     finally { sending.current = false; setBusy(false); }
   }
+  // Reload the payment result so the booking can reflect the latest provider status.
   async function checkPayment() {
     if (!payment || sending.current) return true;
     sending.current = true; setBusy(true); setError("");
@@ -56,6 +67,7 @@ export function FeePaymentControls({ bookingCode, token, onChange, pending }: { 
     } catch (err) { setError(message(err)); return true; }
     finally { sending.current = false; setBusy(false); }
   }
+  // Show the prepared content and actions so the user can review the information and continue.
   return <div className="fee-payment tw:[&_.actions]:flex-wrap">
     {options?.onlineAvailable ? <>
       {options.testMode && <p role="note"><strong>Development payment simulator — no real money is collected.</strong></p>}

@@ -1,5 +1,7 @@
+// Bring in the tools for the checkout return view so this file can work with the rest of the application.
 import "./PaymentReturnIndicator.css";
 
+// Show payment-check progress so the customer knows the checkout result is being checked.
 export function PaymentReturnIndicator() {
   return (
     <div className="tw:fixed tw:inset-0 tw:z-[100] tw:flex tw:items-center tw:justify-center tw:bg-[#f3f4f0] tw:p-6" role="status" aria-label="Checking your payment">

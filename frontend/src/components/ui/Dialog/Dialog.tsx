@@ -1,3 +1,4 @@
+// Bring in the tools for the ui view so this file can work with the rest of the application.
 import * as React from "react"
 import { cn } from "@/lib/utils"
 import { XIcon } from "lucide-react"
@@ -5,30 +6,39 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 
 import { Button } from "@/components/ui/Button"
 
+// Provide the shared dialog wrapper so pop-up content follows a consistent open and close behavior.
 function Dialog({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Root>) {
+  // Show the prepared content and actions so the user can review the information and continue.
   return <DialogPrimitive.Root data-slot="dialog" {...props} />
 }
 
+// Provide the dialog-opening control so the user can open its related content.
 function DialogTrigger({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Trigger>) {
+  // Show the prepared content and actions so the user can review the information and continue.
   return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />
 }
 
+// Place dialog content above the page so it can appear outside the surrounding layout.
 function DialogPortal({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Portal>) {
+  // Show the prepared content and actions so the user can review the information and continue.
   return <DialogPrimitive.Portal data-slot="dialog-portal" {...props} />
 }
 
+// Provide the dialog-closing control so the user can return to the page.
 function DialogClose({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Close>) {
+  // Show the prepared content and actions so the user can review the information and continue.
   return <DialogPrimitive.Close data-slot="dialog-close" {...props} />
 }
 
+// Shade the page behind the dialog so attention stays on the open content.
 function DialogOverlay({
   className,
   ...props
@@ -45,6 +55,7 @@ function DialogOverlay({
   )
 }
 
+// Provide the dialog panel and close control so its contents can be viewed and dismissed.
 function DialogContent({
   className,
   children,
@@ -85,6 +96,7 @@ function DialogContent({
   )
 }
 
+// Group the dialog heading so its title and explanation stay together.
 function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -95,6 +107,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
+// Group the dialog actions so the available next steps are easy to find.
 function DialogFooter({
   className,
   showCloseButton = false,
@@ -122,6 +135,7 @@ function DialogFooter({
   )
 }
 
+// Provide the dialog title so its purpose can be identified by readers and assistive tools.
 function DialogTitle({
   className,
   ...props
@@ -135,6 +149,7 @@ function DialogTitle({
   )
 }
 
+// Provide the dialog explanation so its purpose and instructions can be read clearly.
 function DialogDescription({
   className,
   ...props
@@ -148,6 +163,7 @@ function DialogDescription({
   )
 }
 
+// Expose the shared parts of this file so other screens can use the same building blocks.
 export {
   Dialog,
   DialogClose,

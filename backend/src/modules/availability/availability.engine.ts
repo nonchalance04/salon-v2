@@ -1,7 +1,9 @@
+// Bring in the tools for available booking times so this file can work with the rest of the application.
 import { Temporal } from "@js-temporal/polyfill";
 import { coversIntervals, reservationWindows, overlaps, type WeeklyWindow } from "../scheduling/coverage.js";
 import type { AvailabilityInput, CalendarAvailabilityInput } from "./availability.schema.js";
 
+// Describe the information used by available booking times so different parts of the application agree on its contents.
 export type Reservation = {
   staffId: string;
   scheduledStartAt: Date;
@@ -23,6 +25,7 @@ export type AvailabilityData = {
   unavailability: { staffId: string; startsAt: Date; endsAt: Date }[];
   reservations: Reservation[];
 };
+// Decide whether a reservation still occupies time so unavailable slots are excluded.
 export function isBlocking(row: Reservation, now: Date) {
   if (row.membershipStatus !== "ACTIVE") return false;
 
@@ -53,16 +56,19 @@ function staffWorkload(staffId: string, reservations: Reservation[], day: { star
   return total;
 }
 
+// Find the start and end of the salon-local day so date checks use the salon clock.
 export function localDay(date: string, timeZone: string) {
   const day = Temporal.PlainDate.from(date).toZonedDateTime(timeZone);
   return { start: new Date(day.epochMilliseconds), end: new Date(day.add({ days: 1 }).epochMilliseconds) };
 }
+// Calculate the earliest and latest permitted booking times so searches respect booking notice rules.
 export function policyBounds(data: Pick<AvailabilityData, "now" | "timeZone" | "policy">) {
   const now = Temporal.Instant.fromEpochMilliseconds(data.now.getTime()).toZonedDateTimeISO(data.timeZone);
   // Policy days are salon-local calendar days; lead minutes are elapsed time.
   return { earliest: new Date(data.now.getTime() + data.policy.minimumBookingLeadMinutes * 60_000),
     latest: new Date(now.add({ days: data.policy.advanceBookingDays }).epochMilliseconds) };
 }
+// Combine salon hours, staff schedules and existing visits so a proposed booking can be checked.
 function createPlanner(input: AvailabilityInput, data: AvailabilityData) {
   const bounds = policyBounds(data);
   const day = localDay(input.date, data.timeZone);
@@ -71,13 +77,16 @@ function createPlanner(input: AvailabilityInput, data: AvailabilityData) {
   const workloads = new Map<string, number>();
   const blocking = data.reservations.filter(reservation => isBlocking(reservation, data.now));
 
+  // Prepare each professional's working hours and reserved workload so assignment choices use the same daily information.
   for (const staff of data.staff) {
     const weeklySchedule = data.schedules.filter(window => window.staffId === staff.id);
     schedules.set(staff.id, reservationWindows(day.start, day.end, weeklySchedule, data.timeZone));
     workloads.set(staff.id, staffWorkload(staff.id, blocking, day));
   }
 
+  // Find qualified staff who are free for the whole service so the visit can be assigned safely.
   function availableStaff(selection: AvailabilityInput["services"][number], start: Date, end: Date) {
+    // Filter professionals by skills, working hours and conflicting visits so only suitable staff remain.
     const candidates = data.staff.filter(staff => {
       if (selection.assignmentMode !== "ANY_AVAILABLE" && staff.id !== selection.staffId) return false;
 
@@ -94,6 +103,7 @@ function createPlanner(input: AvailabilityInput, data: AvailabilityData) {
       return !hasReservation;
     });
 
+    // Prefer the professional with less reserved time and use a stable tie-break so automatic assignment stays predictable.
     return candidates.sort((a, b) => {
       const workloadDifference = workloads.get(a.id)! - workloads.get(b.id)!;
       if (workloadDifference !== 0) return workloadDifference;
@@ -108,6 +118,7 @@ function createPlanner(input: AvailabilityInput, data: AvailabilityData) {
     if (start < day.start || start >= day.end) return null;
     let cursor = start;
     const plan = [];
+    // Place each service after the previous service and its buffer so the full visit fits in order.
     for (const [index, selection] of input.services.entries()) {
       const current = data.services.find(s => s.id === selection.serviceId);
       const service = current && { ...current, ...data.serviceOverrides?.[index] };
@@ -152,9 +163,11 @@ function createPlanner(input: AvailabilityInput, data: AvailabilityData) {
     };
   };
 }
+// Check one proposed start time so the caller can confirm whether that exact visit fits.
 export function planAt(input: AvailabilityInput, start: Date, data: AvailabilityData) {
   return createPlanner(input, data)(start);
 }
+// Try permitted start times so customers see visits that fit the current schedule.
 export function calculateAvailability(input: AvailabilityInput, data: AvailabilityData, limit = Infinity) {
   const resolve = createPlanner(input, data);
   if (input.startAt) {
@@ -180,6 +193,7 @@ export function calculateAvailability(input: AvailabilityInput, data: Availabili
   return result;
 }
 
+// Summarize available dates so the booking calendar can show which days offer appointments.
 export function calculateCalendarAvailability(input: CalendarAvailabilityInput, data: AvailabilityData) {
   const first = Temporal.PlainDate.from(`${input.month}-01`);
   return Array.from({ length: first.daysInMonth }, (_, index) => {

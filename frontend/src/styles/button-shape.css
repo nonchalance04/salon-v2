@@ -1,3 +1,4 @@
+/* Load the shared appearance rules so this stylesheet can reuse the application design. */
 @reference "./feature-utilities.css";
 
 /* Match the reference's rounded rectangle without adding an outline. */
@@ -10,6 +11,7 @@
   @apply tw:bg-[#e2e2e2]! tw:px-[18px]! tw:py-3! tw:no-underline!;
 }
 
+/* Show the control states clearly so the user can recognize the current choice. */
 :is(.clique-back, [data-slot="button"][data-variant="link"], .button--text):not(.clique-login-form > button):not(:disabled):hover {
   @apply tw:bg-[#d5d5d5]!;
 }

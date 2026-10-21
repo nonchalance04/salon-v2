@@ -7,6 +7,7 @@ export function startPaymentSync(
 ) {
   let stopped = false;
   let checking = false;
+  // Check payment when the page is visible so background tabs do not send unnecessary repeated requests.
   const run = async () => {
     if (stopped || checking || page.visibilityState !== "visible") return;
     checking = true;
@@ -16,8 +17,10 @@ export function startPaymentSync(
       // A transient provider/network error must not disable automatic retries.
     } finally { checking = false; }
   };
+  // Start a fresh payment check when the visitor returns so checkout progress is updated promptly.
   const returned = () => { void run(); };
   const timer = browser.setInterval(returned, 15_000);
+  // Remove the payment timer and page listeners so checks end when they are no longer needed.
   function stop() {
     stopped = true;
     browser.clearInterval(timer);

@@ -1,20 +1,26 @@
+// Bring in the tools for the receipt print button view so this file can work with the rest of the application.
 import { Button } from "@/components/ui/Button";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ReceiptContent } from "../ReceiptContent";
 import type { Receipt } from "../../types/receipt";
 
+// Offer receipt printing so the customer can make a paper or PDF copy.
 export function ReceiptPrintButton({ receipt, label = "Print receipt", className }: { receipt: Receipt; label?: string; className?: string }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [printing, setPrinting] = useState(false);
+  // Listen for relevant browser actions while this view is open so it responds when the user returns or interacts.
   useEffect(() => {
     if (!printing) return;
     const originalTitle = document.title;
     document.title = receipt.receiptNumber;
+    // Restore the page after printing so the receipt view returns to its normal state.
     const done = () => setPrinting(false);
     window.addEventListener("afterprint", done, { once: true });
     window.print();
     return () => { document.title = originalTitle; window.removeEventListener("afterprint", done); };
   }, [printing, receipt.receiptNumber]);
+  // Show the prepared content and actions so the user can review the information and continue.
   return <><Button variant="outline" type="button" className={className} onClick={() => setPrinting(true)} aria-label={`${label} ${receipt.receiptNumber}`}>{label}</Button>{printing && createPortal(<div className="receipt-print-root tw:hidden"><article className="salon-receipt tw:box-border tw:w-full tw:max-w-[680px] tw:min-w-0 tw:my-6 tw:mx-0 tw:p-8
           tw:[border:1px_solid_#ddddd7] tw:[border-top:4px_solid_#d3ae30] tw:rounded-[20px] tw:[background:#fff]
           tw:text-[#292a28] tw:[font-family:Arial,Helvetica,sans-serif] tw:text-[14px] tw:[overflow-wrap:anywhere]

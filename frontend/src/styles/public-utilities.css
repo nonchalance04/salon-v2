@@ -2,11 +2,13 @@
 @import "tailwindcss/theme.css" layer(theme) prefix(public);
 @source "../";
 
+/* Define shared colors and fonts so controls and pages use the same visual choices. */
 @theme {
   --font-sans: Arial, Helvetica, sans-serif;
   --font-serif: Georgia, "Times New Roman", serif;
 }
 
+/* Define screen-size choices so the page can adapt its layout on different devices. */
 @custom-variant up-1500 (@media (min-width: 1500px));
 @custom-variant down-1200 (@media (max-width: 1200px));
 @custom-variant down-1150 (@media (max-width: 1150px));
@@ -26,6 +28,7 @@
 @custom-variant down-520 (@media (max-width: 520px));
 @custom-variant down-480 (@media (max-width: 480px));
 
+/* Limit these appearance rules to their intended pages so shared styles are applied in the right place. */
 @scope (.customer-site) {
   @tailwind utilities;
 }

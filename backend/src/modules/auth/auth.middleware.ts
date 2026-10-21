@@ -1,3 +1,4 @@
+// Bring in the tools for staff sign-in so this file can work with the rest of the application.
 import type { RequestHandler } from "express";
 import type { PrismaClient } from "../../../generated/prisma/client.js";
 import { ApiError } from "../../shared/http.js";
@@ -5,10 +6,12 @@ import { createAuthService } from "./auth.service.js";
 import { createTokenService } from "./auth.token.js";
 import { COOKIE_NAME, cookieOptions, sessionCookie, type AuthConfig } from "./auth.security.js";
 
+// Prepare the shared sign-in and role checks so protected requests are handled consistently.
 export function createAuthMiddleware(prisma: PrismaClient, config: AuthConfig) {
   const service = createAuthService(prisma);
   const tokens = createTokenService(config.JWT_SECRET);
   const cookie = cookieOptions(config);
+  // Verify the signed-in staff member so protected actions have a current, active account.
   const authenticate: RequestHandler = async (req, res, next) => {
     const raw = sessionCookie(req.headers.cookie);
     let id: string;
@@ -26,6 +29,7 @@ export function createAuthMiddleware(prisma: PrismaClient, config: AuthConfig) {
     res.locals.user = await service.currentUser(id, sessionVersion);
     next();
   };
+  // Require an administrator account so restricted settings cannot be changed by other staff.
   const adminOnly: RequestHandler = (_req, res, next) => {
     if (res.locals.user.role !== "ADMIN") throw new ApiError(403, "FORBIDDEN", "Administrator access is required.");
     next();

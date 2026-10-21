@@ -4,6 +4,7 @@ export function centavos(value: string): number | null {
   const [whole, fraction = ""] = value.split(".");
   return Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
 }
+// Calculate change from the entered cash so the cashier can return the correct amount.
 export function cashChange(tendered: string, due: string): string | null {
   const cash = centavos(tendered); const charge = centavos(due);
   if (cash === null || charge === null || cash < charge) return null;

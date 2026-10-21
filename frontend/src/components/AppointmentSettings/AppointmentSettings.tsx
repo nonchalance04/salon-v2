@@ -1,3 +1,4 @@
+// Bring in the tools for the appointment settings view so this file can work with the rest of the application.
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Temporal } from "@js-temporal/polyfill";
 import { Button } from "@/components/ui/Button";
@@ -9,9 +10,11 @@ import { definitions } from "../Configuration/Configuration.fields";
 import { policyKeys, policyTimeline, policyValuesEqual, type PolicyKey, type PolicyRecord, type PolicyValues } from "./policy-settings";
 import "./AppointmentSettings.css";
 
+// Keep the shared values for the appointment settings view together so later steps use the same definitions.
 const fields = definitions.policies.fields.filter(field => field.key !== "effectiveFrom");
 const defaults = Object.fromEntries(fields.map(field => [field.key, String(field.initial ?? "")])) as PolicyValues;
 
+// Show booking-rule versions and their editor so administrators can schedule policy updates.
 export function AppointmentSettings({ policies, timeZone, loading, loadError, onRetry, onSaved }: {
   policies: PolicyRecord[];
   timeZone?: string;
@@ -20,6 +23,7 @@ export function AppointmentSettings({ policies, timeZone, loading, loadError, on
   onRetry: () => void;
   onSaved: (policy: PolicyRecord) => void;
 }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [now, setNow] = useState(Date.now);
   const [draft, setDraft] = useState<PolicyValues | null>(null);
   const [activation, setActivation] = useState("immediate");
@@ -36,8 +40,10 @@ export function AppointmentSettings({ policies, timeZone, loading, loadError, on
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
+  // Move keyboard focus to the active control so the user can continue without searching through the page.
   useEffect(() => { if (draft) form.current?.focus(); }, [Boolean(draft)]);
 
+  // Read the rule starting time so the editor can place the policy in its timeline.
   function effectiveTime() {
     return activation === "later" && startDate && timeZone
       ? Temporal.PlainDateTime.from(startDate).toZonedDateTime(timeZone, { disambiguation: "reject" }).toInstant().toString()
@@ -52,10 +58,12 @@ export function AppointmentSettings({ policies, timeZone, loading, loadError, on
   const targetPolicy = policyTimeline(policies, targetTime ? Date.parse(targetTime) : now).current;
   const unchanged = Boolean(draft && targetPolicy && policyValuesEqual(draft, targetPolicy));
 
+  // Prepare the date and time for display so the record can be read clearly.
   const dateTime = (value: string) => new Intl.DateTimeFormat("en-PH", {
     timeZone, dateStyle: "medium", timeStyle: "short",
   }).format(new Date(value));
 
+  // Prepare the selected record and open its editor so its current details can be reviewed.
   function open() {
     setNow(Date.now());
     const source = policyTimeline(policies, Date.now()).current;
@@ -65,10 +73,12 @@ export function AppointmentSettings({ policies, timeZone, loading, loadError, on
     setError("");
     setNotice("");
   }
+  // Close the open panel so the user can return to the surrounding screen.
   function close() {
     setDraft(null);
     window.requestAnimationFrame(() => editButton.current?.focus());
   }
+  // Check and submit the edited details so the saved record matches the form.
   async function save(event: FormEvent) {
     event.preventDefault();
     if (!draft || busy) return;
@@ -103,7 +113,9 @@ export function AppointmentSettings({ policies, timeZone, loading, loadError, on
       setBusy(false);
     }
   }
+  // Collect the edited booking rules so their values can be compared or saved.
   function values(policy: PolicyRecord) {
+    // Show the prepared content and actions so the user can review the information and continue.
     return <dl>{fields.map(field => <div key={field.key}>
       <dt>{field.label}</dt>
       <dd>{field.type === "money"
@@ -112,6 +124,7 @@ export function AppointmentSettings({ policies, timeZone, loading, loadError, on
     </div>)}</dl>;
   }
 
+  // Show the prepared content and actions so the user can review the information and continue.
   return <section aria-label="Appointment settings" className="configuration tw:[&_.section-heading]:items-start appointment-settings tw:[&_fieldset]:[border:0]
           tw:[&_fieldset]:p-0 tw:[&_fieldset]:m-0 tw:[&_fieldset]:min-w-0 tw:[&_.actions]:flex-wrap">
     <div className="section-heading tw:flex tw:justify-between tw:items-center tw:gap-5 tw:mb-5 tw:[&_.eyebrow]:mb-2.5

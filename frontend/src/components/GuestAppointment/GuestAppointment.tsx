@@ -1,3 +1,4 @@
+// Bring in the tools for the guest appointment view so this file can work with the rest of the application.
 import { Button } from "@/components/ui/Button";
 import { readGuestCredentials } from "../../utils/guest-credentials";
 import { Link, useLocation, useNavigate } from "react-router";
@@ -10,9 +11,11 @@ import type { Salon } from "../../types/salon";
 import { AppointmentView } from "../AppointmentView";
 import type { Appointment } from "../../types/booking";
 
+// Choose a readable error message so the screen can explain what went wrong.
 const message = (error: unknown) =>
   error instanceof Error ? error.message : "Please try again.";
 
+// Guide customers to their saved booking so they can manage the visit after verification.
 export function GuestAppointment({
   embedded = false,
   salon = null,
@@ -20,6 +23,7 @@ export function GuestAppointment({
 }: { embedded?: boolean; salon?: Salon | null; checkoutReturn?: boolean } = {}) {
   const location = useLocation();
   const navigate = useNavigate();
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [credentials, setCredentials] = useState(() =>
     readGuestCredentials(location),
   );
@@ -29,6 +33,7 @@ export function GuestAppointment({
   const [restoreAttempt, setRestoreAttempt] = useState(0);
   const [checkoutResolved, setCheckoutResolved] = useState(false);
   const [showReturnAnimation, setShowReturnAnimation] = useState(checkoutReturn);
+  // Keep time-based screen updates running while this view is open so its status stays current.
   useEffect(() => {
     if (!checkoutReturn) {
       setShowReturnAnimation(false);
@@ -38,17 +43,21 @@ export function GuestAppointment({
     const timer = window.setTimeout(() => setShowReturnAnimation(false), 1_000);
     return () => window.clearTimeout(timer);
   }, [checkoutReturn]);
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [result, setResult] = useState<Appointment | null>(null);
   const [token, setToken] = useState(credentials.token);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const requestGeneration = useRef(0);
+  // Clear the current appointment view and return home so the customer can leave the booking flow.
   function returnHome() {
     void api("/appointments/otp/logout", { method: "POST" })
       .then(() => navigate("/"))
       .catch((err) => setError(message(err)));
   }
+  // Listen for relevant browser actions while this view is open so it responds when the user returns or interacts.
   useEffect(() => {
+    // Handle expired appointment access so the customer can verify their booking again.
     const expired = () => {
       requestGeneration.current++;
       setResult(null);
@@ -63,6 +72,7 @@ export function GuestAppointment({
     window.addEventListener("guest-session-expired", expired);
     return () => window.removeEventListener("guest-session-expired", expired);
   }, []);
+  // Load the verified appointment so the customer can review its current details.
   async function retrieve(bookingCode: string, accessToken: string) {
     const generation = ++requestGeneration.current;
     setBusy(true);
@@ -90,6 +100,7 @@ export function GuestAppointment({
       if (generation === requestGeneration.current) setBusy(false);
     }
   }
+  // Keep this view in step with its current inputs so changes are reflected on screen.
   useEffect(() => {
     const initial = firstLocation.current;
     firstLocation.current = false;
@@ -106,16 +117,19 @@ export function GuestAppointment({
     // Keep private tokens in memory and remove the fragment before API use.
     navigate("/appointment", { replace: true });
   }, [location.pathname, location.hash, navigate]);
+  // Keep this view in step with its current inputs so changes are reflected on screen.
   useEffect(
     () => () => {
       requestGeneration.current++;
     },
     [],
   );
+  // Keep this view in step with its current inputs so changes are reflected on screen.
   useEffect(() => {
     if (credentials.token)
       void retrieve(credentials.bookingCode, credentials.token);
   }, [credentials]);
+  // Load the information this view needs when its inputs change so the displayed results stay current.
   useEffect(() => {
     if (credentials.token) {
       setRestoring(false);

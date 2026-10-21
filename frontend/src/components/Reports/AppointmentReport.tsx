@@ -1,3 +1,4 @@
+// Bring in the tools for the reports view so this file can work with the rest of the application.
 import { useCallback, useEffect, useState } from "react";
 import { CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -5,6 +6,7 @@ import { Input } from "@/components/ui/Input";
 import { NativeSelect } from "@/components/ui/NativeSelect";
 import { api } from "../../lib/api";
 
+// Describe the information used by the reports view so different parts of the application agree on its contents.
 type Person = { firstName: string; lastName: string };
 type Service = {
   serviceNameSnapshot: string; membershipStatus: string; outcome: string;
@@ -18,18 +20,23 @@ type Report = {
   rows: Booking[]; total: number; page: number; pageSize: number;
   timeZone: string;
 };
+// Define readable names for saved states so screens can explain them consistently.
 const statusLabels: Record<string, string> = {
   PENDING_PAYMENT: "Pending fee", CONFIRMED: "Confirmed", COMPLETED: "Completed",
   CANCELLED: "Cancelled", NO_SHOW: "No-show", EXPIRED: "Expired",
 };
 const outcomeLabels: Record<string, string> = { SCHEDULED: "Scheduled", PERFORMED: "Performed", NOT_PERFORMED: "Not performed" };
+// Combine the available name parts so the report can show a readable customer name.
 const name = (person: Person) => `${person.firstName} ${person.lastName}`.trim();
+// Choose the current or saved staff name so visits remain readable when staff details change.
 function staffName(service: Service) {
   return name({ firstName: service.staffFirstNameSnapshot, lastName: service.staffLastNameSnapshot })
     || (service.staff ? name(service.staff) : "Former staff");
 }
 
+// Show appointment and service outcomes so staff can review visits in the report.
 export function AppointmentReport() {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [status, setStatus] = useState("");
@@ -40,6 +47,7 @@ export function AppointmentReport() {
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
   const [retrySalon, setRetrySalon] = useState(0);
+  // Load the information this view needs when its inputs change so the displayed results stay current.
   useEffect(() => {
     let active = true;
     setBusy(true); setError("");
@@ -51,6 +59,7 @@ export function AppointmentReport() {
     return () => { active = false; };
   }, [retrySalon]);
   const validRange = Boolean(from && to && to >= from);
+  // Load the information this view needs when its inputs change so the displayed results stay current.
   useEffect(() => {
     if (!validRange) { if (timeZone) { setBusy(false); setError(""); } return; }
     let active = true;
@@ -68,11 +77,13 @@ export function AppointmentReport() {
   }, []);
   const date = new Intl.DateTimeFormat("en-PH", { timeZone: timeZone || "UTC", month: "short", day: "numeric", year: "numeric" });
   const time = new Intl.DateTimeFormat("en-PH", { timeZone: timeZone || "UTC", hour: "numeric", minute: "2-digit" });
+  // Show the prepared content and actions so the user can review the information and continue.
   return <section className="reports tw:min-w-0 tw:[&_>_.account-form_label]:mb-0 tw:[&_>_.account-form_>_button]:mt-4.5
           tw:down-640:[&_>_.account-form]:p-4.5 appointment-report" aria-busy={busy}>
     <div className="appointment-report-heading tw:flex tw:items-center tw:justify-between tw:gap-5 tw:mb-6 tw:[&_h2]:my-1.5
           tw:[&_h2]:mx-0 tw:[&_p]:m-0 tw:[&_p]:text-[#686868] tw:[&_p]:text-[14px] tw:down-640:items-start"><div><h2>Appointment Report</h2><p>Review bookings, service outcomes, and assigned staff.</p></div>
     </div>
+    {/* Group the entry fields and submit action so the user can complete this step in one place. */}
     <form className="appointment-report-filters tw:flex tw:items-end tw:flex-wrap tw:gap-4.5 tw:p-5 tw:[border:1px_solid_#e4dfd3]
           tw:[background:#fff] tw:rounded-[12px] tw:[&_label]:[flex:0_1_210px] tw:[&_label]:grid tw:[&_label]:gap-2
           tw:[&_label]:text-[13px] tw:[&_label]:font-semibold tw:[&_label]:m-0 tw:[&_p]:[margin:0_0_2px]
@@ -105,6 +116,7 @@ export function AppointmentReport() {
           tw:down-640:[.reports_&]:rounded-none tw:down-640:[.reports_&]:[background:transparent]
           tw:down-640:[.reports_&]:overflow-visible tw:down-640:[.appointment-report_&]:overflow-x-auto
           tw:down-640:[.appointment-report_&]:[background:#fff] tw:down-640:[.appointment-report_&]:rounded-[10px]" role="region" aria-label="Appointments table" tabIndex={0}>
+          {/* Show the records in labeled columns so their details can be compared row by row. */}
           <table className="report-table tw:[.reports_&]:table-fixed tw:[.reports_&]:whitespace-normal tw:[.reports_&_th]:p-4
           tw:[.reports_&_td]:p-4 tw:[.reports_&_th]:align-top tw:[.reports_&_td]:align-top
           tw:[.reports_&_th]:[overflow-wrap:anywhere] tw:[.reports_&_td]:[overflow-wrap:anywhere]
@@ -132,6 +144,7 @@ export function AppointmentReport() {
             <thead><tr>{["Booking / customer", "Schedule", "Services / staff", "Status"].map(title => <th scope="col" key={title}>{title}</th>)}</tr></thead>
             <tbody>{report.rows.map(row => {
               const activeServices = row.appointmentServices.filter(service => service.membershipStatus === "ACTIVE");
+              // Show the prepared content and actions so the user can review the information and continue.
               return <tr key={row.id}>
                 <td data-label="Booking / customer"><div><strong>{name(row.customer)}</strong><span className="appointment-report-subtext tw:block tw:text-[12px] tw:font-normal tw:text-[#686868] tw:mt-[3px]
           tw:[overflow-wrap:anywhere]">{row.bookingCode}</span></div></td>

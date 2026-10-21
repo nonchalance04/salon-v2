@@ -55,10 +55,15 @@
 .customer-site .booking-shell .account-form fieldset{border:0;padding:0;margin:0}
 .customer-site .booking-shell .account-form input{padding:12px}
 .customer-site .booking-shell .account-form .primary{border-radius:10px;width:100%}
+/* Adjust this layout for the matching screen size so its content and controls remain usable. */
 @media(max-width:1023px){.customer-site .booking-shell .booking-summary{padding:22px}}
+/* Adjust this layout for the matching screen size so its content and controls remain usable. */
 @media(max-width:820px){.customer-site .booking-shell .booking-summary{position:static}}
+/* Adjust this layout for the matching screen size so its content and controls remain usable. */
 @media(max-width:480px){.customer-site .booking-shell .service-option{padding:18px}.customer-site .booking-shell .form-grid{grid-template-columns:1fr}.customer-site .booking-shell .calendar-day{min-height:38px}}
+/* Reduce movement when requested so the page respects the visitor's motion preference. */
 @media(prefers-reduced-motion:reduce){.customer-site .booking-shell .service-option{transition:none}}
+/* Adjust this layout for the matching screen size so its content and controls remain usable. */
 @media(max-width:480px){
   .customer-site .service-family-heading>span:first-child{min-width:0;overflow-wrap:anywhere}
 }

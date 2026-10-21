@@ -1,3 +1,4 @@
+// Bring in the tools for page navigation so this file can work with the rest of the application.
 import { createBrowserRouter, Outlet, useLocation } from "react-router";
 import { useEffect } from "react";
 import { AuthProvider } from "../contexts/AuthProvider";
@@ -11,15 +12,21 @@ import { HelpPage } from "../pages/HelpPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { PublicSite } from "../layouts/PublicSite";
 
+// Check staff access before showing the workspace so protected pages require the appropriate account.
 function StaffRoute() {
+  // Show the prepared content and actions so the user can review the information and continue.
   return <AuthProvider><StaffApp /></AuthProvider>;
 }
+// Respond to page navigation so focus and scrolling follow the newly opened page.
 function NavigationEffects() {
   const { pathname } = useLocation();
+  // Keep this view in step with its current inputs so changes are reflected on screen.
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  // Show the prepared content and actions so the user can review the information and continue.
   return <Outlet />;
 }
 
+// Map page addresses to screens so visitors and staff can open the appropriate part of the salon website.
 export const router = createBrowserRouter([
   {
     element: <NavigationEffects />,

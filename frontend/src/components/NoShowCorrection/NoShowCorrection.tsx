@@ -1,18 +1,23 @@
+// Bring in the tools for the no show correction view so this file can work with the rest of the application.
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { useEffect, useState } from "react";
 import { api } from "../../lib/api";
 
+// Show the missed-visit correction form so staff can record an eligible customer arrival.
 export function NoShowCorrection({ bookingCode, customerName, onCorrected, disabled, onNavigationStateChange }: {
   bookingCode: string; customerName: string; onCorrected: () => void; disabled: boolean;
   onNavigationStateChange?: (state: { busy: boolean; dirty: boolean }) => void;
 }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [present, setPresent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // Keep this view in step with its current inputs so changes are reflected on screen.
   useEffect(() => { onNavigationStateChange?.({ busy, dirty: open && Boolean(reason.trim() || present) }); }, [busy, open, reason, present, onNavigationStateChange]);
+  // Submit the missed-visit correction so an eligible arrived customer can return to the active workflow.
   async function correct() {
     setBusy(true); setError("");
     try {
@@ -23,6 +28,7 @@ export function NoShowCorrection({ bookingCode, customerName, onCorrected, disab
     finally { setBusy(false); }
   }
   if (!open) return <Button variant="outline" disabled={disabled} onClick={() => setOpen(true)}>Correct no-show / late arrival</Button>;
+  // Show the prepared content and actions so the user can review the information and continue.
   return <form className="admin-warning tw:[.appointment-details_&]:m-0 tw:[.appointment-details_&]:text-[13px] tw:p-4.5 tw:mt-5
           tw:[border:1px_solid_#dfb783] tw:[background:#fff8e8] tw:rounded-[8px]" onSubmit={event => { event.preventDefault(); void correct(); }}><fieldset disabled={disabled || busy}>
     <legend>Restore the original appointment</legend>

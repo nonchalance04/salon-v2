@@ -1,22 +1,28 @@
+// Bring in the tools for the configuration view so this file can work with the rest of the application.
 import { CalendarDays, Clock3, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { days } from "./Configuration.fields";
 import type { ScheduleStaff } from "./ScheduleEditor";
 
+// Describe the information used by the configuration view so different parts of the application agree on its contents.
 export type ScheduleRecord = { id: string; staffId: string; dayOfWeek: string; startTime: string; endTime: string; effectiveFrom: string | null; effectiveTo: string | null; isActive: boolean };
+// Format the schedule time so work periods can be read clearly.
 export function scheduleTime(value: string) {
   const time = value.includes("T") ? value.slice(11, 19) : value;
   const [hours, minutes = "00", seconds = "00"] = time.split(":");
   const hour = Number(hours);
   return `${hour % 12 || 12}:${minutes}${seconds !== "00" ? `:${seconds}` : ""} ${hour >= 12 ? "PM" : "AM"}`;
 }
+// Format the schedule date so closures and time-off records show the right salon-local day.
 function scheduleDate(value: string) {
   return new Intl.DateTimeFormat("en-PH", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(`${value.slice(0, 10)}T00:00:00Z`));
 }
+// Show saved schedule periods so administrators can review and manage calendar settings.
 export function ScheduleList({ schedules, staff, timeZone, busy, onEdit }: {
   schedules: ScheduleRecord[]; staff: ScheduleStaff[]; timeZone: string; busy: boolean; onEdit: (id: string) => void;
 }) {
   const active = schedules.filter(row => row.isActive).length;
+  // Show the prepared content and actions so the user can review the information and continue.
   return <div className="schedule-overview tw:mt-6.5">
     <div className="schedule-overview-heading tw:flex tw:items-center tw:justify-between tw:gap-4 tw:mb-4.5 tw:[&_>_div]:flex
           tw:[&_>_div]:items-center tw:[&_>_div]:gap-[9px] tw:[&_>_div]:text-[#82702e] tw:[&_strong]:text-[#565349]
@@ -25,6 +31,7 @@ export function ScheduleList({ schedules, staff, timeZone, busy, onEdit }: {
     <div className="schedule-week-grid tw:grid tw:grid-cols-2 tw:[align-items:start] tw:gap-4.5 tw:down-760:grid-cols-[1fr]">{days.map(day => {
       const shifts = schedules.filter(row => row.dayOfWeek === day).sort((a, b) => a.startTime.localeCompare(b.startTime));
       const dayName = day.charAt(0) + day.slice(1).toLowerCase();
+      // Show the prepared content and actions so the user can review the information and continue.
       return <section className="schedule-day tw:min-w-0 tw:[background:#fff] tw:[border:1px_solid_#e5e3dc] tw:rounded-[14px] tw:overflow-hidden
           tw:[&_>_header]:flex tw:[&_>_header]:items-center tw:[&_>_header]:justify-between tw:[&_>_header]:gap-3
           tw:[&_>_header]:py-4 tw:[&_>_header]:px-5 tw:[&_>_header]:[background:#f4e6b2]
@@ -35,9 +42,11 @@ export function ScheduleList({ schedules, staff, timeZone, busy, onEdit }: {
           tw:[&_>_header_span]:[background:#fff9e7] tw:[&_>_header_span]:text-[#786122] tw:[&_>_header_span]:text-[11px]
           tw:[&_>_header_span]:font-semibold tw:[&_ul]:[list-style:none] tw:[&_ul]:m-0 tw:[&_ul]:py-0 tw:[&_ul]:px-5
           tw:[&_li]:[padding:18px_0_14px] tw:[&_>_header_h3]:leading-[1.3]" key={day} aria-label={`${dayName} schedules`}>
+        {/* Show the page heading and its main controls so the current task is easy to identify. */}
         <header><h3>{dayName}</h3><span>{shifts.length} {shifts.length === 1 ? "shift" : "shifts"}</span></header>
         {!shifts.length ? <p className="schedule-day-empty tw:m-0 tw:py-6 tw:px-5 tw:text-[#aaa596] tw:text-[12px]">No shifts configured</p> : <ul>{shifts.map(row => {
           const member = staff.find(person => person.id === row.staffId);
+          // Show the prepared content and actions so the user can review the information and continue.
           return <li key={row.id} className={row.isActive ? "" : "is-inactive"}>
             <div className="schedule-shift-heading tw:flex tw:items-center tw:gap-2.5 tw:justify-between tw:[&_>_strong]:text-[14px]
           tw:[&_>_strong]:text-[#3f403a] tw:[&_>_strong]:[overflow-wrap:anywhere]"><strong>{member?.name ?? "Unknown staff"}</strong><span className={`schedule-shift-status tw:shrink-0 tw:rounded-[20px] tw:py-[3px] tw:px-[9px] tw:text-[10px] tw:text-[#87857e] tw:[background:#f0f0ed] tw:[&.is-active]:[background:#eaf3ed] tw:[&.is-active]:text-[#37734c] ${row.isActive ? " is-active" : ""}`}>{row.isActive ? "Active" : "Inactive"}</span></div>

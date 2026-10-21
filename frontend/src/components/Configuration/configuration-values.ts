@@ -1,8 +1,11 @@
+// Bring in the tools for the configuration view so this file can work with the rest of the application.
 import { Temporal } from "@js-temporal/polyfill";
 import type { Field } from "./Configuration.fields";
 
+// Describe the information used by the configuration view so different parts of the application agree on its contents.
 type FormValues = Record<string, string | boolean>;
 
+// Convert a saved setting to an editable field value so existing records can be opened in the form.
 export function fieldEditValue(
   field: Field,
   raw: unknown,
@@ -29,6 +32,7 @@ export function fieldEditValue(
   }
 }
 
+// Convert a field entry to the expected request value so saved settings use the correct format.
 function fieldRequestValue(field: Field, value: string | boolean, timeZone: string): unknown {
   if (field.type === "active") return Boolean(value);
   if (value === "" && field.optional) return null;
@@ -48,6 +52,7 @@ function fieldRequestValue(field: Field, value: string | boolean, timeZone: stri
   }
 }
 
+// Gather the edited settings into the request so the selected record can be saved.
 export function configurationBody(fields: Field[], values: FormValues, timeZone: string) {
   const body: Record<string, unknown> = {};
   for (const field of fields) {

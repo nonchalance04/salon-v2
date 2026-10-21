@@ -1,3 +1,4 @@
+/* Group the service outcomes and payment panels so staff can follow the visit-completion workflow. */
 .clique-main .admin-settlement { --settlement-plum: #754365; }
 .admin-settlement-page-heading > button { color: var(--settlement-plum); }
 .clique-main .settlement-queue-visit[aria-current] { border-left-color: var(--settlement-plum); }
@@ -33,14 +34,17 @@
 .clique-main .admin-settlement .payment-collection-form button { display: flex; margin-left: auto; }
 .clique-main .admin-settlement .outcomes-commissions { overflow-x: auto; }
 .clique-main .admin-settlement .outcomes-payments { margin: 0; }
+/* Adjust this layout for the matching screen size so its content and controls remain usable. */
 @media (max-width: 1200px) {
   .admin-settlement-columns, .clique-main .admin-settlement .outcomes-service { grid-template-columns: minmax(0, 1fr) 90px; }
   .admin-settlement-columns > span:last-child { display: none; }
   .clique-main .admin-settlement .outcomes-service-control { grid-column: 1 / -1; }
 }
+/* Adjust this layout for the matching screen size so its content and controls remain usable. */
 @media (max-width: 900px) {
   .admin-settlement-page-heading, .settlement-queue, .admin-settlement > .error, .admin-settlement > .success, .admin-settlement-empty, .clique-main .outcomes-workspace.admin-settlement .outcomes-detail { grid-column: 1; grid-row: auto; }
 }
+/* Adjust this layout for the matching screen size so its content and controls remain usable. */
 @media (max-width: 520px) {
   .clique-main .admin-settlement .outcomes-visit-heading, .clique-main .admin-settlement .outcomes-editor, .clique-main .admin-settlement .payment-settlement-grid { padding: 18px; }
   .clique-main .admin-settlement .payment-tender-fields { grid-template-columns: 1fr; }
@@ -56,6 +60,7 @@
 .clique-main .admin-settlement .outcomes-visit-heading h3 { font-size: 28px; }
 .clique-main .admin-settlement .payment-change { color: #352b3b; font-size: 17px; font-weight: 600; background: #f0e8ee; border: 1px solid #d8ccd5; }
 .clique-main .admin-settlement .outcomes-save { padding-bottom: 0; }
+/* Adjust this layout for the matching screen size so its content and controls remain usable. */
 @media (max-width: 520px) {
   .admin-settlement-columns,
   .clique-main .admin-settlement .outcomes-service { grid-template-columns: minmax(0, 1fr) 110px; }

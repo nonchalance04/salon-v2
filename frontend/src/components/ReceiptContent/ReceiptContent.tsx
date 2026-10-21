@@ -1,11 +1,16 @@
+// Bring in the tools for the receipt content view so this file can work with the rest of the application.
 import "./ReceiptContent.css";
 
 import type { Receipt } from "../../types/receipt";
 
+// Choose a readable value so missing receipt details have a consistent display.
 const value = (input: unknown) => typeof input === "string" ? input : "";
+// Read an object-shaped value so receipt details can be checked before display.
 const object = (input: unknown): Record<string, unknown> => input && typeof input === "object" && !Array.isArray(input) ? input as Record<string, unknown> : {};
+// Turn the saved payment method into a readable name so the receipt identifies how payment was made.
 const methodName = (method: string) => ({ CASH: "Cash", GCASH: "GCash", QRPH: "QR Ph", OTHER: "Other" })[method] || method.replaceAll("_", " ");
 
+// Lay out the saved receipt details so the customer can read the proof of payment.
 export function ReceiptContent({ receipt }: { receipt: Receipt }) {
   const r = receipt.receiptSnapshot;
   const salon = object(r.salon);
@@ -21,7 +26,9 @@ export function ReceiptContent({ receipt }: { receipt: Receipt }) {
   const startAt = new Date(value(visit.startAt));
   const visitDate = !Number.isNaN(startAt.getTime()) ? new Intl.DateTimeFormat("en-PH", { timeZone, dateStyle: "medium", timeStyle: "short" }).format(startAt) : "";
   const type = r.type === "APPOINTMENT_FEE" ? "Appointment fee" : r.type === "SERVICE_PAYMENT" ? "Service payment" : value(r.type).replaceAll("_", " ");
+  // Show the prepared content and actions so the user can review the information and continue.
   return <>
+    {/* Show the page heading and its main controls so the current task is easy to identify. */}
     <header className="receipt-header tw:receipt:flex tw:receipt:items-center tw:receipt:justify-between tw:receipt:gap-5
           tw:down-480:receipt:items-start tw:down-480:receipt:gap-3"><div className="receipt-brand tw:receipt:flex tw:receipt:flex-col tw:receipt:text-[#d3ae30] tw:receipt:shrink-0
           tw:receipt:[&_span]:text-[43px] tw:receipt:[&_span]:font-black tw:receipt:[&_span]:tracking-[-2.8px]
@@ -48,6 +55,7 @@ export function ReceiptContent({ receipt }: { receipt: Receipt }) {
           tw:receipt:[&_dd]:text-[#292a28] tw:receipt:[&_dd]:text-[13px] tw:receipt:[&_dd]:font-semibold
           tw:receipt:[&_dd]:[overflow-wrap:anywhere] tw:down-480:receipt:grid-cols-[minmax(0,1fr)]
           tw:down-480:receipt:p-4 tw:down-480:receipt:gap-4"><div><dt>Receipt number</dt><dd>{receipt.receiptNumber}</dd></div><div><dt>Booking reference</dt><dd>{value(r.bookingCode)}</dd></div><div><dt>Customer</dt><dd>{value(r.customerName)}</dd></div><div><dt>Paid on</dt><dd>{paidOn || "—"}</dd></div></dl>
+    {/* Show the records in labeled columns so their details can be compared row by row. */}
     <table className="receipt-services tw:receipt:w-full tw:receipt:[margin:0_0_24px] tw:receipt:border-collapse
           tw:receipt:table-fixed tw:receipt:whitespace-normal tw:receipt:text-[13px] tw:receipt:[&_th]:py-3
           tw:receipt:[&_th]:px-2 tw:receipt:[&_td]:py-3 tw:receipt:[&_td]:px-2 tw:receipt:[&_th]:[border:0]
@@ -78,6 +86,7 @@ export function ReceiptContent({ receipt }: { receipt: Receipt }) {
           tw:receipt:text-[12px] tw:receipt:py-2 tw:receipt:px-0 tw:receipt:[border-bottom:1px_solid_#e6e1d4]
           tw:receipt:[&_span]:text-[#73756f]" key={i}><strong>{value(service.name)}</strong><span>{value(service.staffName)}</span></div>)}<p className="receipt-fee-note tw:receipt:text-[11px] tw:receipt:text-[#73756f] tw:receipt:[margin:14px_0_0]
           tw:receipt:leading-[1.5]">This receipt covers the appointment fee only. Service charges are separate and payable at the salon.</p></section>}
+    {/* Show the closing information and links so visitors can find the remaining salon details. */}
     <footer className="receipt-footer tw:receipt:[border-top:1px_solid_#ddddd7] tw:receipt:pt-5 tw:receipt:text-center
           tw:receipt:text-[#73756f] tw:receipt:[&_p]:[margin:0_0_6px] tw:receipt:[&_p]:text-[13px]
           tw:receipt:[&_small]:text-[#73756f] tw:receipt:[&_small]:text-[11px] tw:receipt:[&_small]:block"><p>Your beauty. Our passion.</p><small>Keep this e-receipt for your records.{r.issuedBy === "SYSTEM" ? " Automatically issued after verified payment." : ""}</small>{value(salon.email) && <small>{value(salon.email)}</small>}</footer>

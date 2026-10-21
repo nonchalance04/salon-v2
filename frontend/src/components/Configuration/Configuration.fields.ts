@@ -1,3 +1,4 @@
+// Describe the information used by the configuration view so different parts of the application agree on its contents.
 export type Section =
   | "profile"
   | "services"
@@ -27,6 +28,7 @@ export type Field = {
   initial?: string | boolean;
   min?: number;
 };
+// Keep the shared values for the configuration view together so later steps use the same definitions.
 const active: Field = {
   key: "isActive",
   label: "Active",

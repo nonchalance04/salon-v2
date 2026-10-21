@@ -1,9 +1,12 @@
+// Bring in the tools for the service category picker view so this file can work with the rest of the application.
 import { Button } from "@/components/ui/Button";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
+// Show service categories and their menu so customers can narrow down the offerings.
 export function ServiceCategoryPicker({ categories, active, onSelect }: {
   categories: string[]; active: string; onSelect: (category: string) => void;
 }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -15,6 +18,7 @@ export function ServiceCategoryPicker({ categories, active, onSelect }: {
     const tabs = tabsRef.current;
     if (!tabs) return;
     const pills = Array.from(tabs.querySelectorAll<HTMLButtonElement>("button"));
+    // Measure the category control so its open menu can be positioned beside it.
     function measure() {
       const available = tabs!.clientWidth;
       const gap = Number.parseFloat(getComputedStyle(tabs!).columnGap) || 0;
@@ -34,15 +38,18 @@ export function ServiceCategoryPicker({ categories, active, onSelect }: {
     pills.forEach(pill => observer.observe(pill));
     return () => observer.disconnect();
   }, [categoryKey]);
+  // Listen for relevant browser actions while this view is open so it responds when the user returns or interacts.
   useEffect(() => {
     if (!open) return;
     activeRef.current?.focus();
+    // Close the category menu when appropriate so it does not remain open after the user moves away.
     function dismiss(event: PointerEvent) {
       if (!menuRef.current?.contains(event.target as Node)) setOpen(false);
     }
     document.addEventListener("pointerdown", dismiss);
     return () => document.removeEventListener("pointerdown", dismiss);
   }, [open]);
+  // Show the prepared content and actions so the user can review the information and continue.
   return <nav className="service-categories tw:customer:flex tw:customer:items-center tw:customer:gap-3 tw:customer:[margin:0_0_26px]
           tw:customer:relative tw:customer:z-[2] tw:customer:min-w-0
           tw:customer:[&_button:focus-visible]:[outline:2px_solid_#85702f]

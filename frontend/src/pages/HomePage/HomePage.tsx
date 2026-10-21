@@ -1,13 +1,16 @@
+// Bring in the tools for the home page view so this file can work with the rest of the application.
 import { Link, useOutletContext } from "react-router";
 import { SalonArtwork } from "../../components/SalonArtwork";
 import { SalonAbout } from "../../components/SalonAbout";
 import { ServiceCards } from "../../components/ServiceCards";
 import type { PublicContext } from "../../layouts/PublicSite/PublicSite.context";
 
+// Show the salon introduction, featured services and booking links so visitors can start planning a visit.
 export function HomePage() {
   const { services, salon, catalogStatus } = useOutletContext<PublicContext>();
   return (
       <>
+        {/* Introduce the salon and its booking links so visitors can start planning a visit. */}
         <section className="container public:w-[min(1280px,calc(100%_-_96px))] public:mx-auto public:down-1023:w-[calc(100%_-_48px)]
           public:down-639:w-[calc(100%_-_36px)] hero public:min-h-[495px] public:[background:#ebebe7]
           public:rounded-[22px] public:overflow-hidden public:[&_h1]:text-[clamp(42px,4.2vw,61px)]
@@ -42,6 +45,7 @@ export function HomePage() {
           </div>
           <SalonArtwork />
         </section>
+        {/* Show the service choices together so the customer can compare the available offerings. */}
         <section className="container public:w-[min(1280px,calc(100%_-_96px))] public:mx-auto public:down-1023:w-[calc(100%_-_48px)]
           public:down-639:w-[calc(100%_-_36px)] services-section public:pt-19 public:pb-20 public:down-639:pt-[49px]
           public:down-639:pb-[45px]">

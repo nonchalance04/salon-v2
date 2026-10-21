@@ -1,3 +1,4 @@
+/* Arrange the appointment-details dialog so staff can review a visit in one readable panel. */
 .appointment-details[data-slot="dialog-content"] {
   width: calc(100% - 2rem);
   max-width: 720px;
@@ -12,6 +13,7 @@
 .appointment-details-title[data-slot="dialog-title"] { margin: 0; font-size: 26px; line-height: 1.25; letter-spacing: -.025em; }
 .appointment-details-reference[data-slot="dialog-description"] { margin: 0; font-size: 13px; color: #686868; }
 .appointment-details-services li + li { border-top: 1px solid #eee; }
+/* Adjust this layout for the matching screen size so its content and controls remain usable. */
 @media (max-width: 580px) {
   .appointment-details-header[data-slot="dialog-header"] { padding: 24px 44px 20px 20px; }
   .appointment-details-title[data-slot="dialog-title"] { font-size: 23px; }
@@ -32,6 +34,7 @@
 .admin-bookings td:nth-child(3) > div + div { margin-top: 8px; }
 .admin-bookings td button { color: var(--bookings-accent); }
 .admin-bookings-pagination button { color: var(--bookings-accent); }
+/* Adjust this layout for the matching screen size so its content and controls remain usable. */
 @media (max-width: 700px) {
   .admin-bookings thead { clip-path: inset(50%); }
   .admin-bookings td::before { content: attr(data-label); display: block; margin-bottom: 6px; font-size: 10px; color: #77717c; }

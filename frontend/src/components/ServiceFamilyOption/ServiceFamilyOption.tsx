@@ -1,3 +1,4 @@
+// Bring in the tools for the service family option view so this file can work with the rest of the application.
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { useId, useRef, useState } from "react";
@@ -6,17 +7,21 @@ import type { CatalogService } from "../../types/salon";
 import type { ServiceFamily } from "../../utils/service-variants";
 import { serviceMenuCategory } from "../../utils/service-categories";
 
+// Show a grouped service choice so related options can be selected together.
 export function ServiceFamilyOption({ family, selectedIds, onSelect, onRemove }: {
   family: ServiceFamily<CatalogService>; selectedIds: string[]; onSelect: (service: CatalogService) => void; onRemove: (service: CatalogService) => void;
 }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const optionsId = useId();
   const selected = family.options.find(option => selectedIds.includes(option.service.id));
   const multiple = family.options.length > 1;
   const minimumPrice = Math.min(...family.options.map(option => Number(option.service.price)));
+  // Describe one service variant so the customer can select the specific offering.
   function option(service: CatalogService, label: string) {
     const isSelected = selectedIds.includes(service.id);
+    // Show the prepared content and actions so the user can review the information and continue.
     return <Button variant="outline" type="button" className={`service-option tw:customer:flex tw:customer:[align-items:end] tw:customer:justify-between tw:customer:gap-4.5 tw:customer:text-left tw:customer:[&_h3]:mb-1.5 tw:customer:[&_strong]:text-[14px]  ${isSelected ? "selected" : ""}`} key={service.id}
       aria-label={`${isSelected ? "Remove" : "Select"} ${service.name} (${service.category})`} aria-pressed={isSelected} onClick={() => { if (isSelected) onRemove(service); else onSelect(service); setOpen(false); }}>
       <div><h3>{label}</h3><p className="service-duration tw:customer:flex tw:customer:gap-2.5 tw:customer:items-center tw:customer:text-[12px]
@@ -29,6 +34,7 @@ export function ServiceFamilyOption({ family, selectedIds, onSelect, onRemove }:
     </Button>;
   }
   if (!multiple) return option(family.options[0].service, family.options[0].service.name);
+  // Show the prepared content and actions so the user can review the information and continue.
   return <section className={`service-family tw:customer:[border:1px_solid_#e0e0d9] tw:customer:rounded-[14px] tw:customer:[background:#fff] tw:customer:overflow-hidden  ${selected ? "selected" : ""}`} aria-label={family.name}>
     <div className="service-family-controls tw:customer:flex tw:customer:items-center"><Button variant="outline" ref={triggerRef} type="button" className="service-family-heading tw:customer:flex tw:customer:items-center tw:customer:justify-between tw:customer:gap-4
           tw:customer:w-full tw:customer:p-[23px] tw:customer:[background:transparent] tw:customer:[border:0]
@@ -51,9 +57,11 @@ export function ServiceFamilyOption({ family, selectedIds, onSelect, onRemove }:
   </section>;
 }
 
+// Show the service variants in a dialog so the customer can choose the specific option.
 function ServiceOptionsDialog({ id, name, triggerRef, onClose, children }: {
   id: string; name: string; triggerRef: React.RefObject<HTMLButtonElement | null>; onClose: () => void; children: React.ReactNode;
 }) {
+  // Show the prepared content and actions so the user can review the information and continue.
   return <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
     <DialogContent id={id} className="service-options-dialog tw:customer:fixed tw:customer:[inset:auto] tw:customer:top-[50%] tw:customer:left-[50%]
           tw:customer:m-0 tw:customer:w-[min(520px,calc(100%_-_32px))] tw:customer:max-h-[calc(100dvh_-_40px)]

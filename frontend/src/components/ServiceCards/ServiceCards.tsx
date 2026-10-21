@@ -1,7 +1,9 @@
+// Bring in the tools for the service cards view so this file can work with the rest of the application.
 import { Link } from "react-router";
 import { money } from "../../utils/money";
 import type { CatalogService } from "../../types/salon";
 
+// Show the service menu as cards so customers can browse the available offerings.
 export function ServiceCards({ services }: { services: CatalogService[] }) {
   return (
     <div className="service-grid tw:customer:grid tw:customer:grid-cols-4 tw:customer:gap-5 tw:down-1023:customer:grid-cols-2

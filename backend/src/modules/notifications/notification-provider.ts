@@ -1,3 +1,4 @@
+// Describe the information used by customer notifications so different parts of the application agree on its contents.
 export type NotificationMessage = {
   id: string;
   channel: "EMAIL" | "SMS";
@@ -14,15 +15,18 @@ export interface NotificationProvider {
 // Only controlled codes are persisted. Provider responses can contain contact data
 // and credentials and must never be copied to queue errors or operational logs.
 export class NotificationFailure extends Error {
+  // function Object() { [native code] }
   constructor(public readonly code: string, public readonly retryable = true) {
     super(code);
   }
 }
 
+// Provide a controllable message sender so notification behavior can be checked without live delivery.
 export function createTestNotificationProvider(onSend: (message: NotificationMessage) => void = () => {}): NotificationProvider {
   return { async send(message) { onSend(message); } };
 }
 
+// Normalize the SMS destination so the message provider receives a supported phone number.
 export function smsRecipient(value: string) {
   const normalized = value.replace(/[\s()-]/g, "");
   const international = /^09\d{9}$/.test(normalized) ? `+63${normalized.slice(1)}` : normalized;
@@ -30,6 +34,7 @@ export function smsRecipient(value: string) {
   return international;
 }
 
+// Prepare the TextBee message sender so queued salon texts can reach customer phones.
 export function createTextBeeProvider(apiKey: string, deviceId: string, request: typeof fetch = fetch): NotificationProvider {
   return { async send(message, signal) {
     if (message.channel !== "SMS") throw new NotificationFailure("CHANNEL_MISMATCH", false);

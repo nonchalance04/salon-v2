@@ -1,3 +1,4 @@
+// Bring in the tools for the salon assistant so this file can work with the rest of the application.
 import type { RequestHandler } from "express";
 import { ApiError } from "../../shared/http.js";
 

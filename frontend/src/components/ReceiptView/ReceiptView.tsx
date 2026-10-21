@@ -1,8 +1,11 @@
+// Bring in the tools for the receipt view view so this file can work with the rest of the application.
 import { ReceiptContent } from "../ReceiptContent";
 import { ReceiptPrintButton } from "../ReceiptPrintButton";
 import type { Receipt } from "../../types/receipt";
 
+// Show the receipt in a focused view so its saved payment details can be reviewed.
 export function ReceiptView({ receipt }: { receipt: Receipt }) {
+  // Show the prepared content and actions so the user can review the information and continue.
   return <article className="salon-receipt tw:box-border tw:w-full tw:max-w-[680px] tw:min-w-0 tw:my-6 tw:mx-0 tw:p-8
           tw:[border:1px_solid_#ddddd7] tw:[border-top:4px_solid_#d3ae30] tw:rounded-[20px] tw:[background:#fff]
           tw:text-[#292a28] tw:[font-family:Arial,Helvetica,sans-serif] tw:text-[14px] tw:[overflow-wrap:anywhere]

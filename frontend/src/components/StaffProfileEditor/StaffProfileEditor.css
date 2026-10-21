@@ -1,2 +1,3 @@
+/* Separate profile sections and align photo controls so administrators can review the public profile clearly. */
 .staff-profile-editor .staff-profile-section + .staff-profile-section { border-top: 1px solid #eeece5; margin-top: 26px; padding-top: 24px; }
 .profile-photo-input > svg { transform: translateY(-50%); }

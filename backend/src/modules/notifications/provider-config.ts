@@ -1,7 +1,9 @@
+// Bring in the tools for customer notifications so this file can work with the rest of the application.
 import { createGmailProvider } from "./gmail-provider.js";
 import type { parseEnv } from "../../config/env.schema.js";
 import { createTextBeeProvider, createTestNotificationProvider, type NotificationProvider } from "./notification-provider.js";
 
+// Choose the enabled message providers so delivery follows the server settings.
 export function configuredNotificationProviders(env: ReturnType<typeof parseEnv>) {
   const providers: Partial<Record<"EMAIL" | "SMS", NotificationProvider>> = {};
   // Test delivery logs only the queue identity and channel, never message/contact data.

@@ -1,8 +1,10 @@
+// Bring in the tools for the ui view so this file can work with the rest of the application.
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 import * as Slot from "@radix-ui/react-slot"
 
+// Define the supported appearance choices so shared controls keep a consistent look.
 const badgeVariants = cva(
   "inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-full border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3",
   {
@@ -25,6 +27,7 @@ const badgeVariants = cva(
   }
 )
 
+// Show a reusable status label so short record states have a consistent appearance.
 function Badge({
   className,
   variant = "default",
@@ -44,4 +47,5 @@ function Badge({
   )
 }
 
+// Expose the shared parts of this file so other screens can use the same building blocks.
 export { Badge, badgeVariants }

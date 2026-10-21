@@ -1,3 +1,4 @@
+/* Highlight selected professionals and arrange their profiles so customers can compare their choices. */
 .customer-site .professional-service-group+.professional-service-group{margin-top:30px}
 .customer-site .professional-card{transition:border-color .15s,box-shadow .15s}
 .customer-site .professional-card:hover{box-shadow:0 4px 14px #292a2806}
@@ -5,5 +6,6 @@
 .customer-site .professional-select{box-shadow:0 2px 12px #292a2826}
 .customer-site .is-selected .professional-select{background:#d3ae30;color:#292a28;box-shadow:0 3px 12px #b3943040}
 .customer-site .professional-dialog{box-shadow:0 24px 90px #0003}
+/* Reduce movement when requested so the page respects the visitor's motion preference. */
 @media(prefers-reduced-motion:reduce){.customer-site .professional-card{transition:none}}
 .customer-site .professional-dialog .profile-select{margin-top:24px}

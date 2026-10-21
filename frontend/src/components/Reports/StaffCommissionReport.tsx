@@ -1,9 +1,11 @@
+// Bring in the tools for the reports view so this file can work with the rest of the application.
 import { useEffect, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { NativeSelect } from "@/components/ui/NativeSelect";
 import { api } from "../../lib/api";
 
+// Describe the information used by the reports view so different parts of the application agree on its contents.
 type Filters = { from: string; to: string; staffId: string };
 type Staff = { staffId: string; name: string; state: string };
 type Totals = { currency: string; serviceCount: number; commissionBase: string; commissionAmount: string };
@@ -12,16 +14,20 @@ type Report = {
   from: string; to: string; timeZone: string; staffOptions: Staff[]; rows: (Staff & Totals)[]; totals: Totals[];
   details: Detail[]; total: number; page: number; pageSize: number;
 };
+// Format the amount as Philippine pesos so prices and payments are easy to recognize.
 function money(value: string, currency: string) {
   const negative = value.startsWith("-");
   const [whole, cents = "00"] = value.replace(/^-/, "").split(".");
   return `${negative ? "−" : ""}${currency === "PHP" ? "₱" : `${currency} `}${whole!.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}.${cents}`;
 }
+// Format the selected date so the report shows a readable calendar day.
 function day(value: string) {
   return new Intl.DateTimeFormat("en-PH", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" }).format(new Date(`${value}T00:00:00Z`));
 }
 
+// Show finalized commission totals so administrators can review staff earnings.
 export function StaffCommissionReport() {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [draft, setDraft] = useState<Filters>({ from: "", to: "", staffId: "" });
   const [applied, setApplied] = useState<Filters | null>(null);
   const [staffOptions, setStaffOptions] = useState<Staff[]>([]);
@@ -33,6 +39,7 @@ export function StaffCommissionReport() {
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
   const [showDetails, setShowDetails] = useState(false);
+  // Load the information this view needs when its inputs change so the displayed results stay current.
   useEffect(() => {
     let active = true;
     setBusy(true); setError("");
@@ -44,6 +51,7 @@ export function StaffCommissionReport() {
     }).catch(err => { if (active) { setError(err instanceof Error ? err.message : "Unable to load salon date."); setBusy(false); } });
     return () => { active = false; };
   }, [salonRetry]);
+  // Load the information this view needs when its inputs change so the displayed results stay current.
   useEffect(() => {
     if (!applied) return;
     let active = true;
@@ -56,6 +64,7 @@ export function StaffCommissionReport() {
       .finally(() => { if (active) setBusy(false); });
     return () => { active = false; };
   }, [applied, page, revision]);
+  // Handle the submitted form so the selected action can use the entered details.
   function submit(event: FormEvent) {
     event.preventDefault();
     const days = (Date.parse(draft.to) - Date.parse(draft.from)) / 86_400_000;
@@ -65,18 +74,23 @@ export function StaffCommissionReport() {
     setPage(1); setApplied({ ...draft });
   }
   const pendingFilters = applied && (draft.from !== applied.from || draft.to !== applied.to || draft.staffId !== applied.staffId);
+  // Choose a readable staff label so commission rows identify the right professional.
   function staffLabel(staff: Staff) {
     const duplicate = staffOptions.some(other => other.staffId !== staff.staffId && other.name === staff.name);
     return `${staff.name}${staff.state === "Active" ? "" : ` · ${staff.state}`}${duplicate ? ` · ${staff.staffId.slice(0, 8)}` : ""}`;
   }
+  // Arrange the report amounts for display so the totals can be compared consistently.
   function amounts(row: Totals) {
+    // Show the prepared content and actions so the user can review the information and continue.
     return <><td>{row.serviceCount}</td><td>{money(row.commissionBase, row.currency)}</td><td>{money(row.commissionAmount, row.currency)}</td></>;
   }
+  // Show the prepared content and actions so the user can review the information and continue.
   return <section className="reports tw:min-w-0 tw:[&_>_.account-form_label]:mb-0 tw:[&_>_.account-form_>_button]:mt-4.5
           tw:down-640:[&_>_.account-form]:p-4.5 commission-report" aria-busy={busy}>
     <div className="appointment-report-heading tw:flex tw:items-center tw:justify-between tw:gap-5 tw:mb-6 tw:[&_h2]:my-1.5
           tw:[&_h2]:mx-0 tw:[&_p]:m-0 tw:[&_p]:text-[#686868] tw:[&_p]:text-[14px] tw:down-640:items-start"><div><h2>Staff Commission Report</h2><p>Review finalized commissions by staff member.</p></div>
     </div>
+    {/* Group the entry fields and submit action so the user can complete this step in one place. */}
     <form className="appointment-report-filters tw:flex tw:items-end tw:flex-wrap tw:gap-4.5 tw:p-5 tw:[border:1px_solid_#e4dfd3]
           tw:[background:#fff] tw:rounded-[12px] tw:[&_label]:grid tw:[&_label]:gap-2 tw:[&_label]:text-[13px]
           tw:[&_label]:font-semibold tw:[&_label]:m-0 tw:[&_p]:[margin:0_0_2px] tw:[&_p]:text-[12px]
@@ -101,6 +115,7 @@ export function StaffCommissionReport() {
           tw:[&_pre]:whitespace-pre-wrap tw:[&_pre]:[overflow-wrap:anywhere] tw:[&_pre]:text-[.8rem] sales-table-wrap
           tw:max-w-full tw:overflow-x-auto tw:my-4 tw:mx-0 tw:[border:1px_solid_#e4dfd3] tw:rounded-[10px]
           tw:[background:#fff] tw:focus-visible:[outline:3px_solid_#987b1f] tw:focus-visible:outline-offset-[3px]" role="region" aria-label="Staff commission summary table" tabIndex={0}>
+          {/* Show the records in labeled columns so their details can be compared row by row. */}
           <table className="sales-table tw:w-full tw:min-w-[800px] tw:border-collapse tw:text-[13px] tw:[&_th]:p-4 tw:[&_td]:p-4
           tw:[&_th]:[border-bottom:1px_solid_#e4dfd3] tw:[&_td]:[border-bottom:1px_solid_#e4dfd3] tw:[&_th]:text-right
           tw:[&_td]:text-right tw:[&_th]:tabular-nums tw:[&_td]:tabular-nums tw:[&_thead_th]:[background:#f5f3eb]
@@ -122,6 +137,7 @@ export function StaffCommissionReport() {
           tw:[&_pre]:whitespace-pre-wrap tw:[&_pre]:[overflow-wrap:anywhere] tw:[&_pre]:text-[.8rem] sales-table-wrap
           tw:max-w-full tw:overflow-x-auto tw:my-4 tw:mx-0 tw:[border:1px_solid_#e4dfd3] tw:rounded-[10px]
           tw:[background:#fff] tw:focus-visible:[outline:3px_solid_#987b1f] tw:focus-visible:outline-offset-[3px]" role="region" aria-label="Commission details table" tabIndex={0}>
+            {/* Show the records in labeled columns so their details can be compared row by row. */}
             <table className="sales-table tw:w-full tw:min-w-[800px] tw:border-collapse tw:text-[13px] tw:[&_th]:p-4 tw:[&_td]:p-4
           tw:[&_th]:[border-bottom:1px_solid_#e4dfd3] tw:[&_td]:[border-bottom:1px_solid_#e4dfd3] tw:[&_th]:text-right
           tw:[&_td]:text-right tw:[&_th]:tabular-nums tw:[&_td]:tabular-nums tw:[&_thead_th]:[background:#f5f3eb]

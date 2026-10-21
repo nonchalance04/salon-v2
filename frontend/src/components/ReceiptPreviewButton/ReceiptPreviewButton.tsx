@@ -1,3 +1,4 @@
+// Bring in the tools for the receipt preview button view so this file can work with the rest of the application.
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import {
@@ -12,6 +13,7 @@ import { ReceiptPrintButton } from "../ReceiptPrintButton";
 import { ReceiptDownloadButton } from "../ReceiptDownloadButton/ReceiptDownloadButton";
 import type { Receipt } from "../../types/receipt";
 
+// Offer a receipt preview so the customer can review its details before printing.
 export function ReceiptPreviewButton({
   receipt,
   label = "View E-Receipt",
@@ -21,6 +23,7 @@ export function ReceiptPreviewButton({
   label?: string;
   className?: string;
 }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [open, setOpen] = useState(false);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -56,6 +59,7 @@ export function ReceiptPreviewButton({
           tw:[&_*]:box-border tw:[&_.receipt-save-hint]:text-[#73756f] tw:[&_.receipt-save-hint]:text-center
           tw:[&_.receipt-save-hint]:text-[11px] tw:[&_.receipt-save-hint]:[margin:12px_0_0] tw:down-480:py-5.5
           tw:down-480:px-4.5 tw:down-480:rounded-[16px] tw:leading-[1.5]">
+          {/* Lay out the saved receipt details so the customer can read the proof of payment. */}
           <ReceiptContent receipt={receipt} />
           <div className="receipt-actions tw:receipt:mt-6">
             <ReceiptDownloadButton receipt={receipt} />

@@ -1,3 +1,4 @@
+// Bring in the tools for the checkout return view so this file can work with the rest of the application.
 import { Button } from "@/components/ui/Button";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../lib/api";
@@ -5,18 +6,22 @@ import type { Appointment } from "../../types/booking";
 import { startPaymentSync } from "../../utils/payment-sync";
 import { checkCheckoutReturn } from "./check-checkout-return";
 
+// Check the returning payment session so the customer can see the matching booking outcome.
 export function CheckoutReturn({ appointment, token, onResolved }: {
   appointment: Appointment;
   token: string;
   onResolved: (appointment: Appointment) => void;
 }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const latest = useRef(appointment);
   const resolved = useRef(onResolved);
   resolved.current = onResolved;
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [attempt, setAttempt] = useState(0);
   const [delayed, setDelayed] = useState(false);
   const [error, setError] = useState("");
 
+  // Check the returning payment while this view is open so the customer can see when the booking result arrives.
   useEffect(() => {
     let active = true;
     const controller = new AbortController();

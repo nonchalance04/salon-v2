@@ -1,3 +1,4 @@
+// Bring in the tools for the admin appointments view so this file can work with the rest of the application.
 import { CalendarDays, Clock3, Search, Scissors, UserRound } from "lucide-react";
 import "./AdminAppointments.css";
 import { Button } from "@/components/ui/Button";
@@ -12,15 +13,18 @@ import { api } from "../../lib/api";
 import type { Appointment } from "../../types/booking";
 import type { AppointmentFilters } from "../../types/appointment-filters";
 
+// Choose a readable error message so the screen can explain what went wrong.
 const message = (error: unknown) => error instanceof Error ? error.message : "Please try again.";
 const statusLabels: Record<string, string> = {
   PENDING_PAYMENT: "Pending payment", CONFIRMED: "Confirmed", COMPLETED: "Completed",
   CANCELLED: "Cancelled", NO_SHOW: "No-show", EXPIRED: "Expired",
 };
 
+// Show appointment records and actions so administrators can review and manage visits.
 export function AdminAppointments({ initialFilters = {} }: {
   initialFilters?: AppointmentFilters;
 }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [rows, setRows] = useState<Appointment[]>([]);
   const [filters, setFilters] = useState<AppointmentFilters>(initialFilters);
   const [search, setSearch] = useState(initialFilters.search ?? "");
@@ -36,6 +40,7 @@ export function AdminAppointments({ initialFilters = {} }: {
   const generation = useRef(0);
   const detailsTrigger = useRef<HTMLButtonElement | null>(null);
 
+  // Load the saved information so the screen can show current salon records.
   async function load(next?: string, queryFilters = filters, targetPage = 0) {
     const attempt = ++generation.current;
     setBusy(true);
@@ -55,6 +60,7 @@ export function AdminAppointments({ initialFilters = {} }: {
       if (attempt === generation.current) setBusy(false);
     }
   }
+  // Prepare the initial screen data so the appointment list can be shown.
   async function initialize() {
     const attempt = ++generation.current;
     setBusy(true);
@@ -72,10 +78,12 @@ export function AdminAppointments({ initialFilters = {} }: {
       if (attempt === generation.current) { setError(message(err)); setBusy(false); }
     }
   }
+  // Keep this view in step with its current inputs so changes are reflected on screen.
   useEffect(() => {
     void initialize();
     return () => { generation.current++; };
   }, []);
+  // Load the information this view needs when its inputs change so the displayed results stay current.
   useEffect(() => {
     if (!ready) return;
     setRows([]);
@@ -86,12 +94,15 @@ export function AdminAppointments({ initialFilters = {} }: {
     void load(undefined, filters);
     return () => { generation.current++; };
   }, [filters, ready]);
+  // Keep time-based screen updates running while this view is open so its status stays current.
   useEffect(() => {
     if (search.trim() === (filters.search ?? "")) return;
     const timer = window.setTimeout(() => setFilters(previous => ({ ...previous, search: search.trim() || undefined })), 350);
     return () => window.clearTimeout(timer);
   }, [search, filters.search]);
+  // Reload the latest information so the next view or action reflects the current saved state.
   const refresh = () => ready ? load(pageStarts[page], filters, page) : initialize();
+  // Submit the selected appointment status action so the list can reflect the saved result.
   async function mark(code: string) {
     setBusy(true);
     setError("");
@@ -130,6 +141,7 @@ export function AdminAppointments({ initialFilters = {} }: {
         <div><h2 id="appointments-title">Appointments</h2><p>Find and review salon bookings{zone ? ` · ${zone}` : ""}</p></div>
       </div>
       <div className="admin-bookings-panel tw:[background:#fff] tw:[border:1px_solid_#e5e3e8] tw:rounded-[12px] tw:overflow-hidden">
+        {/* Group the entry fields and submit action so the user can complete this step in one place. */}
         <form className="admin-bookings-filters tw:grid tw:grid-cols-[minmax(200px,1fr)_175px_190px_auto] tw:gap-4 tw:[align-items:end]
           tw:p-6 tw:[border-bottom:1px_solid_#eae7ed] tw:[&_label]:m-0 tw:[&_label]:min-w-0 tw:[&_label]:text-[12px]
           tw:[&_label]:font-medium tw:[&_label]:gap-1.5 tw:[&_input]:min-h-10.5 tw:[&_select]:min-h-10.5
@@ -225,6 +237,7 @@ export function AdminAppointments({ initialFilters = {} }: {
                 <small>{current.timeZone}</small>
               </div>
             </dl>
+            {/* Show the service choices together so the customer can compare the available offerings. */}
             <section className="appointment-details-services tw:[&_ol]:[list-style:none] tw:[&_ol]:m-0 tw:[&_ol]:py-0 tw:[&_ol]:px-4
           tw:[&_ol]:[border:1px_solid_#e8e8e8] tw:[&_ol]:rounded-[12px] tw:[&_li]:flex tw:[&_li]:items-center
           tw:[&_li]:gap-3 tw:[&_li]:py-4 tw:[&_li]:px-0 tw:down-580:[&_li]:flex-wrap" aria-label="Booked services">
@@ -336,6 +349,7 @@ export function AdminAppointments({ initialFilters = {} }: {
             </div>
           )}
           </div>
+          {/* Show the closing information and links so visitors can find the remaining salon details. */}
           <footer className="appointment-details-footer tw:flex tw:items-center tw:justify-between tw:gap-3 tw:py-4.5 tw:px-7
           tw:[background:#fafafa] tw:[border-top:1px_solid_#e9e9e9] tw:[&_button]:text-[12px] tw:down-580:py-4
           tw:down-580:px-5 tw:down-580:flex-col-reverse tw:down-580:items-stretch tw:shrink-0 tw:flex-wrap

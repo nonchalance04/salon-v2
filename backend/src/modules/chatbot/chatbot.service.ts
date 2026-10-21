@@ -1,5 +1,7 @@
+// Bring in the tools for the salon assistant so this file can work with the rest of the application.
 import type { ChatHistory } from "./chatbot.schema.js";
 import type { createConfigurationService } from "../configuration/configuration.service.js";
+// Describe the information used by the salon assistant so different parts of the application agree on its contents.
 type Configuration = ReturnType<typeof createConfigurationService>;
 export type ChatbotSource = { [K in "publicSalon" | "publicServices" | "publicPolicy"]: () => Promise<Awaited<ReturnType<Configuration[K]>>> };
 // Recognize common Tagalog/Taglish phrasing; ambiguous short replies inherit the
@@ -13,6 +15,7 @@ export function chatbotLanguage(message: string, history: ChatHistory = []): "en
   }
   return "en";
 }
+// Identify the salon topic so the question can use the matching guidance.
 export function chatbotTopic(message: string) {
   const text = message.toLowerCase();
   if (/\b(cancel|cancellation|kanselahin|ikansela|kanselasyon)\b/.test(text)) return "cancel";

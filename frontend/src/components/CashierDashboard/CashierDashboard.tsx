@@ -1,3 +1,4 @@
+// Bring in the tools for the cashier dashboard view so this file can work with the rest of the application.
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ReceiptText, Search, Wallet } from "lucide-react";
@@ -6,7 +7,9 @@ import type { FormEvent } from "react";
 import { SettlementWorkspace } from "../SettlementWorkspace";
 import { ConfirmedServices } from "../ConfirmedServices";
 
+// Describe the information used by the cashier dashboard view so different parts of the application agree on its contents.
 type View = "services" | "payments";
+// Show the cashier overview and appointment search so staff can find visits ready for payment.
 export function CashierDashboard({ admin = false, mode, bookingCode, onNavigate, onNavigationStateChange }: {
   admin?: boolean;
   mode: View;
@@ -14,11 +17,13 @@ export function CashierDashboard({ admin = false, mode, bookingCode, onNavigate,
   onNavigate: (view: View, code?: string) => void;
   onNavigationStateChange: (state: { busy: boolean; dirty: boolean }) => void;
 }) {
+  // Search saved appointments so the cashier can find the visit to settle.
   function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const code = String(new FormData(event.currentTarget).get("code")).trim();
     if (code) onNavigate(mode, code);
   }
+  // Open the selected appointment so its settlement details can be reviewed.
   const select = (code: string) => onNavigate(mode, code);
   const adminPayments = admin && mode === "payments";
   return (
@@ -65,9 +70,11 @@ export function CashierDashboard({ admin = false, mode, bookingCode, onNavigate,
           tw:[&_svg]:text-[#757575] tw:[&_svg]:pointer-events-none tw:[.admin-payments_&_input]:pl-9.5
           tw:[.admin-payments_&_input]:h-10.5"><Search size={17} aria-hidden="true" /><Input name="code" required maxLength={100} placeholder="Enter booking code" /></span></label><Button variant="outline">Find booking </Button></form>}
           {mode === "services" && <ConfirmedServices admin={admin} arrivalOnly onSelect={select} />}
+          {/* Show confirmed service rows so staff can review the scheduled work and recorded outcomes. */}
           <ConfirmedServices paymentDesk={adminPayments} key={mode} admin={admin && mode !== "payments"} manageOutcomes={mode === "services"} onSelect={select} />
           {!adminPayments && <details>
             <summary>{mode === "services" ? "Find an appointment or correct a no-show by booking code" : "Find a payment or receipt by booking code"}</summary>
+            {/* Group the entry fields and submit action so the user can complete this step in one place. */}
             <form className="account-form tw:[border:1px_solid_#dce0d8] tw:[background:white] tw:p-7 tw:rounded-[10px] tw:mb-[25px]
           tw:down-760:p-5 cashier-search tw:flex tw:items-end tw:gap-4 tw:mt-6 tw:[&_label]:flex-1 tw:[&_label]:m-0
           tw:down-600:items-stretch tw:down-600:flex-col tw:[.confirmed-services_&]:[margin:16px_0_22px]" onSubmit={search}>

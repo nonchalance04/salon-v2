@@ -1,3 +1,4 @@
+/* Style the overview figures and appointment table so administrators can scan daily activity. */
 .admin-overview { --overview-accent: #754365; }
 .admin-overview-metric { box-shadow: 0 2px 8px #24242403; }
 .admin-overview-icon { color: var(--overview-accent); }
@@ -9,6 +10,7 @@
 .admin-overview td:nth-child(3) > div + div { margin-top: 6px; }
 .admin-overview td:nth-child(3) span { color: #6b6570; }
 .admin-overview td button { color: var(--overview-accent); }
+/* Adjust this layout for the matching screen size so its content and controls remain usable. */
 @media (max-width: 700px) {
   .admin-overview thead { clip-path: inset(50%); }
   .admin-overview td::before { content: attr(data-label); display: block; font-size: 10px; color: #77717c; margin-bottom: 4px; }

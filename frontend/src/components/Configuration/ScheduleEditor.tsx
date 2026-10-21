@@ -1,3 +1,4 @@
+// Bring in the tools for the configuration view so this file can work with the rest of the application.
 import { useEffect, useRef, type FormEvent, type ReactNode } from "react";
 import { CalendarDays, Clock3, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -7,14 +8,18 @@ import { StaffManagementDialog } from "../StaffManagementDialog/StaffManagementD
 import { days } from "./Configuration.fields";
 import { scheduleTime } from "./ScheduleList";
 
+// Describe the information used by the configuration view so different parts of the application agree on its contents.
 export type ScheduleStaff = { id: string; name: string; isActive: boolean };
+// Show the schedule fields so an administrator can enter a work period or closure.
 export function ScheduleEditor({ editing, values, staff, timeZone, busy, error, errorDetails, onChange, onSubmit, onClose, onRestoreFocus }: {
   editing: boolean; values: Record<string, string | boolean>; staff: ScheduleStaff[]; timeZone: string;
   busy: boolean; error: string; errorDetails?: ReactNode;
   onChange: (key: string, value: string | boolean) => void;
   onSubmit: (event: FormEvent) => void; onClose: () => void; onRestoreFocus: () => void;
 }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const errorPanel = useRef<HTMLDivElement>(null);
+  // Bring the relevant content into view so the user can find the new information or error.
   useEffect(() => { if (error) errorPanel.current?.scrollIntoView({ block: "nearest" }); }, [error]);
   const start = String(values.startTime ?? "");
   const end = String(values.endTime ?? "");
@@ -25,7 +30,9 @@ export function ScheduleEditor({ editing, values, staff, timeZone, busy, error, 
   const day = String(values.dayOfWeek ?? "MONDAY");
   const dayName = day.charAt(0) + day.slice(1).toLowerCase();
   const member = staff.find(row => row.id === values.staffId);
+  // Show the prepared content and actions so the user can review the information and continue.
   return <StaffManagementDialog title={editing ? "Edit staff schedule" : "Add staff schedule"} description={editing ? "Adjust the shift hours or active status for this schedule." : "Set a recurring weekly shift and when it applies."} name={member?.name ?? "Weekly availability"} icon={<CalendarDays size={23} />} busy={busy} onClose={onClose} onRestoreFocus={onRestoreFocus}>
+    {/* Group the entry fields and submit action so the user can complete this step in one place. */}
     <form className="staff-management-form tw:flex tw:flex-col tw:min-h-0 schedule-editor tw:[&_label_>_small]:text-[10px]
           tw:[&_label_>_small]:font-normal tw:[&_label_>_small]:text-[#a19884] tw:[&_label_>_small]:leading-[1.5]" aria-busy={busy} onSubmit={event => { if (invalidTime || invalidDates) event.preventDefault(); else onSubmit(event); }}>
       <div className="staff-management-body tw:py-6 tw:px-7 tw:overflow-y-auto tw:min-h-0 tw:down-540:py-5.5 tw:down-540:px-5" tabIndex={-1}>

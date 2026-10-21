@@ -1,3 +1,4 @@
+// Bring in the tools for salon settings so this file can work with the rest of the application.
 import { Router, raw } from "express";
 import { z } from "zod";
 import type { PrismaClient } from "../../../generated/prisma/client.js";
@@ -8,6 +9,7 @@ import { createConfigurationService } from "./configuration.service.js";
 import { createPortfolioImagesService, MAX_PORTFOLIO_IMAGE_BYTES } from "./portfolio-images.service.js";
 import { staffSkillsSchema, staffPublicProfileSchema, profileSchema, serviceSchema, staffSchema, staffUpdateSchema, qualificationSchema, hoursSchema, dayHoursSchema, days, scheduleSchema, closureRequestSchema, unavailabilitySchema, policySchema, recordId } from "./configuration.schema.js";
 
+// Connect salon settings requests to access checks and validation so administrators can manage configuration.
 export function createConfigurationRouter(prisma: PrismaClient, config: AuthConfig) {
   const router = Router();
   const service = createConfigurationService(prisma, config.SALON_TIMEZONE);

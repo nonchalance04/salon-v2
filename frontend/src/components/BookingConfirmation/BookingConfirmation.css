@@ -1,2 +1,3 @@
+/* Adjust the confirmation artwork and receipt text so the booking result has a consistent appearance. */
 .customer-site .booking-confirmed-scissors{transform:rotate(-30deg)}
 .customer-site .booking-confirmed-receipt{font:inherit}

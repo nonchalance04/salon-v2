@@ -1,19 +1,25 @@
+// Bring in the tools for staff sign-in so this file can work with the rest of the application.
 import type { CookieOptions, RequestHandler } from "express";
 import type { z } from "zod";
 import type { envSchema } from "../../config/env.schema.js";
 import { ApiError } from "../../shared/http.js";
 
+// Describe the information used by staff sign-in so different parts of the application agree on its contents.
 export type AuthConfig = z.infer<typeof envSchema>;
+// Keep the shared values for staff sign-in together so later steps use the same definitions.
 export const COOKIE_NAME = "salon_session";
+// Choose how the browser stores sign-in details so access follows the configured security settings.
 export function cookieOptions(config: AuthConfig): CookieOptions {
   return { httpOnly: true, secure: config.NODE_ENV === "production", sameSite: config.COOKIE_SAME_SITE, path: "/api" };
 }
+// Prepare the sign-in cookie so the browser can identify the staff session on later requests.
 export function sessionCookie(header: string | undefined) {
   const values = (header ?? "").split(";").map(part => part.trim()).filter(part => part.startsWith(`${COOKIE_NAME}=`));
   if (values.length !== 1) return undefined;
   try { return decodeURIComponent(values[0]!.slice(COOKIE_NAME.length + 1)); } catch { return undefined; }
 }
 
+// Check where browser requests came from so unapproved websites cannot submit protected actions.
 export function browserSecurity(origins: string[]): RequestHandler {
   return (req, res, next) => {
     const origin = req.get("origin");

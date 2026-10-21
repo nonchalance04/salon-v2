@@ -7,6 +7,7 @@
 @import "tailwindcss/utilities.css";
 @source "../";
 
+/* Define shared colors and fonts so controls and pages use the same visual choices. */
 @theme {
   --font-sans: Arial, Helvetica, sans-serif;
   --font-serif: Georgia, "Times New Roman", serif;

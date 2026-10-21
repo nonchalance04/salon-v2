@@ -1,7 +1,9 @@
+// Bring in the tools for the salon about view so this file can work with the rest of the application.
 import { Link } from "react-router";
 import { SalonArtwork } from "../SalonArtwork";
 import type { Salon } from "../../types/salon";
 
+// Show the salon introduction and contact details so visitors can learn about the business.
 export function SalonAbout({ salon }: { salon: Salon | null }) {
   return (
     <section className="container public:w-[min(1280px,calc(100%_-_96px))] public:mx-auto public:down-1023:w-[calc(100%_-_48px)]

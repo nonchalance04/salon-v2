@@ -1,12 +1,16 @@
+// Bring in the tools for the dashboard clock view so this file can work with the rest of the application.
 import { useEffect, useState } from "react";
 import { api } from "../../lib/api";
 
+// Keep the displayed clock current so staff can read the present salon time.
 export function DashboardClock() {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [now, setNow] = useState(() => new Date());
   const [timeZone, setTimeZone] = useState(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone,
   );
 
+  // Keep time-based screen updates running while this view is open so its status stays current.
   useEffect(() => {
     const controller = new AbortController();
     void api<{ timeZone: string }>("/salon", { signal: controller.signal })

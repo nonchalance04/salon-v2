@@ -1,3 +1,4 @@
+// Bring in the tools for the configuration view so this file can work with the rest of the application.
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -22,6 +23,7 @@ import { configurationBody, fieldEditValue } from "./configuration-values";
 import { api, ApiError } from "../../lib/api";
 import { definitions, days, closureIntervalFields, type Section, type Field } from "./Configuration.fields";
 
+// Describe the information used by the configuration view so different parts of the application agree on its contents.
 type Row = { id: string; [key: string]: unknown };
 type Snapshot = { timeZone: string; profile: Row | null; policies: PolicyRecord[]; qualifications: Row[] } & Record<
   Exclude<Section, "profile" | "policies">,
@@ -33,9 +35,11 @@ type Conflict = {
   startAt: string;
   reservedUntilAt: string;
 };
+// Turn a saved label into readable words so the screen can present it clearly.
 const titleCase = (text: string) =>
   text.charAt(0) + text.slice(1).toLowerCase();
 
+// Show salon configuration and editors so administrators can maintain services, staff and schedules.
 export function Configuration({
   initialSection = "profile",
   onReviewBooking,
@@ -43,6 +47,7 @@ export function Configuration({
   initialSection?: Section;
   onReviewBooking?: (code: string) => void;
 }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [data, setData] = useState<Snapshot | null>(null);
   const [section, setSection] = useState<Section>(initialSection);
   const [edit, setEdit] = useState<{
@@ -60,34 +65,44 @@ export function Configuration({
   const errorPanel = useRef<HTMLDivElement>(null);
   const editorTrigger = useRef<HTMLElement | null>(null);
   const saving = useRef(false);
+  // Move keyboard focus to the active control so the user can continue without searching through the page.
   useEffect(() => {
     if (edit) form.current?.focus();
   }, [edit?.id, Boolean(edit)]);
+  // Bring the relevant content into view so the user can find the new information or error.
   useEffect(() => {
     if (error) errorPanel.current?.scrollIntoView({ block: "nearest" });
   }, [error]);
   const definition = definitions[section];
   const fields = section === "closures" && edit?.customHours ? closureIntervalFields : definition.fields;
+  // Recognize the closure date so a whole-day record can use the date-only editor.
   const closureDate = (row: Row) => allDayClosureDate(String(row.startsAt), String(row.endsAt), data!.timeZone);
+  // Choose the fields for the selected setting so its editor matches the record being changed.
   const recordFields = (row: Row) => section === "closures" && !closureDate(row) ? closureIntervalFields : definition.fields;
+  // Load the saved information so the screen can show current salon records.
   async function load() {
     setData(await api<Snapshot>("/configuration"));
   }
+  // Load the information this view needs when its inputs change so the displayed results stay current.
   useEffect(() => {
     void load().catch((err) => setError(err.message));
   }, []);
+  // Look up the staff name so the settings list identifies the selected professional.
   const staffName = (id: unknown) => {
     const row = data?.staff.find((r) => r.id === id);
     return row ? `${row.firstName} ${row.lastName}` : "Unknown staff";
   };
+  // Look up the service name so the settings screen shows an offering instead of its internal reference.
   const serviceName = (id: unknown) =>
     String(data?.services.find((r) => r.id === id)?.name ?? "Unknown service");
+  // Prepare the date and time for display so the record can be read clearly.
   const dateTime = (value: unknown) =>
     new Intl.DateTimeFormat("en-PH", {
       timeZone: data!.timeZone,
       dateStyle: "medium",
       timeStyle: "short",
     }).format(new Date(String(value)));
+  // Choose a readable setting value so the configuration list is easy to review.
   function display(field: Field, value: unknown): string {
     if (value === null || value === undefined || value === "") return "—";
     if (field.type === "active") return value ? "Active" : "Inactive";
@@ -105,6 +120,7 @@ export function Configuration({
     if (field.type === "day") return titleCase(String(value));
     return String(value);
   }
+  // Prepare the selected record and open its editor so its current details can be reviewed.
   function open(row?: Row) {
     editorTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setProfileStaff(null);
@@ -122,6 +138,7 @@ export function Configuration({
     setNotice("");
     setConflicts([]);
   }
+  // Show the failure message so the user understands why the action could not finish.
   function fail(err: unknown) {
     setError(
       err instanceof Error ? err.message : "The change could not be saved.",
@@ -135,6 +152,7 @@ export function Configuration({
     )
       setConflicts(err.details.appointments);
   }
+  // Check and submit the edited details so the saved record matches the form.
   async function save(event: FormEvent) {
     event.preventDefault();
     if (!edit || !data || saving.current) return;
@@ -160,6 +178,7 @@ export function Configuration({
       setBusy(false);
     }
   }
+  // Process the selected removal so the screen can reflect the saved result.
   async function remove(id: string) {
     if (section === "staff" && !window.confirm(
       `Delete ${staffName(id)}? This will mark the staff member inactive and prevent new bookings. Appointment and commission history will be preserved. You can reactivate them using Edit.`,
@@ -429,6 +448,7 @@ export function Configuration({
           <div className="form-grid tw:grid tw:grid-cols-[1fr_1fr] tw:gap-[0_24px] tw:down-760:grid-cols-[1fr]">
             {fields.map((field) => {
               const value = edit.values[field.key] ?? "";
+              // Update the edited selection so the screen reflects the latest choices.
               const update = (next: string | boolean) =>
                 setEdit({
                   ...edit,
@@ -680,6 +700,7 @@ export function Configuration({
                           const service = data.services.find(
                             (s) => s.id === q.serviceId,
                           )!;
+                          // Show the prepared content and actions so the user can review the information and continue.
                           return <span className="staff-member-skill tw:max-w-full tw:py-[5px] tw:px-[9px] tw:[background:#f7f6f0] tw:[border:1px_solid_#eceae0]
           tw:rounded-[6px] tw:text-[#706747] tw:text-[11px] tw:[overflow-wrap:anywhere]" key={q.id} title={String(service.category ?? "Other")}>{String(service.name)}</span>;
                         })

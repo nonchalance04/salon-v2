@@ -1,7 +1,9 @@
+// Bring in the tools for the fee payment history view so this file can work with the rest of the application.
 import { ReceiptPreviewButton } from "../ReceiptPreviewButton";
 import { paymentStatusLabel } from "../../utils/payment-presentation";
 import type { FeePayment } from "../../types/payments";
 
+// Show the recorded fee payments so staff can review the appointment payment history.
 export function FeePaymentHistory({ payments }: { payments: FeePayment[] }) {
   return payments.length ? <section aria-label="Appointment-fee payments"><h3>Appointment-fee payments</h3>{payments.map(p => <div key={p.id} className="payment-record tw:py-3 tw:px-0 tw:[border-bottom:1px_solid_#dce0d8] tw:[&_summary]:cursor-pointer
           tw:[&_summary]:[overflow-wrap:anywhere] tw:[&_dl]:mt-3 tw:[&_dt]:font-semibold tw:[&_dd]:[margin:0_0_10px]

@@ -1,3 +1,4 @@
+// Bring in the tools for the workspace layout view so this file can work with the rest of the application.
 import {
   Link,
   Navigate,
@@ -23,6 +24,7 @@ import { AdminDashboard } from "../../components/AdminDashboard";
 import type { AppointmentFilters } from "../../types/appointment-filters";
 import { DashboardClock } from "../../components/DashboardClock";
 
+// Describe the information used by the workspace layout view so different parts of the application agree on its contents.
 type Page =
   | "dashboard"
   | "master"
@@ -47,6 +49,7 @@ type IconName =
   | "scissors"
   | "clock"
   | "check";
+// Define staff navigation destinations so workspace links and page headings stay consistent.
 const paths: Record<IconName, ReactNode> = {
   grid: (
     <>
@@ -115,6 +118,7 @@ const paths: Record<IconName, ReactNode> = {
     </>
   ),
 };
+// Choose the navigation icon so workspace links have a recognizable visual cue.
 function Icon({ name }: { name: IconName }) {
   return (
     <svg
@@ -132,6 +136,7 @@ function Icon({ name }: { name: IconName }) {
     </svg>
   );
 }
+// Describe the information used by the workspace layout view so different parts of the application agree on its contents.
 type Card = {
   title: string;
   description: string;
@@ -140,6 +145,7 @@ type Card = {
   section?: Section;
   kind?: string;
 };
+// Keep the shared values for the workspace layout view together so later steps use the same definitions.
 const masterCards: Card[] = [
   {
     title: "Services",
@@ -273,6 +279,7 @@ const headings: Partial<Record<Page, [string, string]>> = {
     "Record outcomes and close visits with no performed services",
   ],
 };
+// Arrange staff navigation and the selected page so daily salon tools share one workspace.
 export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
   const { user, logout } = useAuth();
   const admin = user?.role === "ADMIN";
@@ -310,6 +317,7 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
       params.has(key) ? [[key, params.get(key)!]] : [],
     ),
   );
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [cashierNavigation, setCashierNavigation] = useState({
     busy: false,
     dirty: false,
@@ -320,6 +328,7 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
       (currentLocation.pathname !== nextLocation.pathname ||
         currentLocation.search !== nextLocation.search),
   );
+  // Keep this view in step with its current inputs so changes are reflected on screen.
   useEffect(() => {
     if (blocker.state !== "blocked") return;
     if (
@@ -329,6 +338,7 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
       blocker.proceed();
     else blocker.reset();
   }, [blocker, cashierNavigation.busy]);
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -339,8 +349,10 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
     pathname: string;
     section: string;
   } | null>(null);
+  // Listen for relevant browser actions while this view is open so it responds when the user returns or interacts.
   useEffect(() => {
     if (!open) return;
+    // Close the open navigation panel when Escape is pressed so keyboard users can dismiss it.
     const escape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setOpen(false);
@@ -350,6 +362,7 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
     window.addEventListener("keydown", escape);
     return () => window.removeEventListener("keydown", escape);
   }, [open]);
+  // Move keyboard focus to the active control so the user can continue without searching through the page.
   useEffect(() => {
     if (!bookingCode) setCashierNavigation({ busy: false, dirty: false });
     setOpen(false);
@@ -364,6 +377,7 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
       content.current?.focus({ preventScroll: true });
     previousContentLocation.current = { pathname: location.pathname, section };
   }, [location.key]);
+  // Open the chosen workspace destination so the selected staff tool becomes visible.
   function navigate(
     next: Page,
     code?: string,
@@ -376,6 +390,7 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
       search: search.toString(),
     });
   }
+  // Open the appointment view with its filters so staff can inspect the relevant visits.
   function openAppointments(filters: AppointmentFilters) {
     navigate(
       "appointments",
@@ -387,6 +402,7 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
       ),
     );
   }
+  // Apply the selected navigation choice so the appropriate workspace page can open.
   function choose(card: Card) {
     navigate(card.page, undefined, {
       ...(card.section ? { section: card.section } : {}),
@@ -479,6 +495,7 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
           onClick={() => setOpen(false)}
         />
       )}
+      {/* Keep the supporting information beside the main task so it stays available while the user works. */}
       <aside
         id="workspace-navigation"
         className={`clique-sidebar tw:w-[292px] tw:[flex:0_0_292px] tw:text-[#f2f2f2] tw:[padding:20px_18px_16px] tw:flex tw:flex-col tw:sticky tw:top-0 tw:h-dvh tw:overflow-y-auto tw:[&_nav]:flex tw:[&_nav]:flex-col tw:[&_nav]:gap-3 tw:[&_nav]:mt-4.5 tw:[&_button_svg]:shrink-0 tw:[&_button:hover]:[background:#333] tw:[&_button:hover]:text-[white] tw:[&_button[aria-current]]:text-[#1b1b1b] tw:down-1100:w-[240px] tw:down-1100:[flex-basis:240px] tw:down-1100:px-3 tw:down-760:fixed tw:down-760:left-0 tw:down-760:top-0 tw:down-760:z-[35] tw:down-760:w-[280px] tw:down-760:h-dvh tw:down-760:invisible tw:down-760:pt-17.5 tw:down-760:[&.is-open]:visible ${open ? " is-open" : ""}`}
@@ -496,6 +513,7 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
             <strong>{admin ? "ADMIN ACCOUNT" : "CASHIER ACCOUNT"}</strong>
           </div>
         </div>
+        {/* Group the page links so the user can find the next area to open. */}
         <nav aria-label={admin ? "Admin workspace" : "Cashier workspace"}>
           {(admin ? adminNav : cashierNav).map((item) => (
             <button
@@ -546,6 +564,7 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
         </div>
       </aside>
       <div className="clique-content tw:flex-1 tw:min-w-0 tw:flex tw:flex-col">
+        {/* Show the page heading and its main controls so the current task is easy to identify. */}
         <header
           className={`clique-topbar tw:text-[white] tw:py-7.5 tw:px-9 tw:min-h-[146px] tw:flex tw:items-center tw:justify-between tw:gap-6 tw:[&_h1]:text-[32px] tw:[&_h1]:m-0 tw:[&_p]:[margin:10px_0_0] tw:[&_p]:text-[13px] tw:[&_p]:text-[#ccc] tw:[&.is-dashboard]:text-[#fff] tw:[&.is-dashboard_h1]:text-[27px] tw:[&.is-dashboard_p]:text-[#ccc] tw:up-1500:px-12 tw:down-1100:py-7 tw:down-1100:px-6 tw:down-1100:[&_h1]:text-[28px] tw:down-760:[padding:76px_22px_24px] tw:down-760:min-h-[170px] tw:down-760:[&_h1]:text-[25px] tw:down-760:[&.is-dashboard_h1]:text-[25px] tw:down-760:flex-wrap tw:down-760:items-start tw:down-760:[&_>_div]:[flex:1_1_240px] tw:[&_h1]:leading-[1.2] ${page === "dashboard" ? " is-dashboard" : ""}`}
         >
@@ -748,6 +767,7 @@ export function WorkspaceLayout({ accounts }: { accounts: ReactNode }) {
             </>
           )}
         </main>
+        {/* Show the closing information and links so visitors can find the remaining salon details. */}
         <footer className="clique-content-footer tw:py-5 tw:px-8 tw:text-[#737373] tw:down-760:py-5 tw:down-760:px-4.5">
           Clique Salon · {admin ? "Admin" : "Cashier"} workspace
         </footer>

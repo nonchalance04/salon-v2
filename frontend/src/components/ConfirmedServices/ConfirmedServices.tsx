@@ -1,3 +1,4 @@
+// Bring in the tools for the confirmed services view so this file can work with the rest of the application.
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
@@ -5,6 +6,7 @@ import { AppointmentCheckIn } from "../AppointmentCheckIn";
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { api } from "../../lib/api";
 
+// Describe the information used by the confirmed services view so different parts of the application agree on its contents.
 type ConfirmedBookings = {
   timeZone: string;
   page: number;
@@ -26,6 +28,7 @@ type ConfirmedBookings = {
   }[];
 };
 
+// Show confirmed service rows so staff can review the scheduled work and recorded outcomes.
 export function ConfirmedServices({
   admin,
   onSelect,
@@ -42,6 +45,7 @@ export function ConfirmedServices({
   paymentDesk?: boolean;
 }) {
   const heading = useId();
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [data, setData] = useState<ConfirmedBookings | null>(null);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -49,6 +53,7 @@ export function ConfirmedServices({
   const [refresh, setRefresh] = useState(0);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
+  // Load the information this view needs when its inputs change so the displayed results stay current.
   useEffect(() => {
     const controller = new AbortController();
     setBusy(true);
@@ -88,7 +93,9 @@ export function ConfirmedServices({
       });
     return () => controller.abort();
   }, [page, search, refresh, admin, arrivalOnly, manageOutcomes]);
+  // Keep time-based screen updates running while this view is open so its status stays current.
   useEffect(() => {
+    // Update the edited selection so the screen reflects the latest choices.
     const update = () => {
       if (document.visibilityState === "visible")
         setRefresh((value) => value + 1);
@@ -102,6 +109,7 @@ export function ConfirmedServices({
       document.removeEventListener("visibilitychange", update);
     };
   }, []);
+  // Handle the submitted form so the selected action can use the entered details.
   function submit(event: FormEvent) {
     event.preventDefault();
     setData(null);
@@ -134,6 +142,7 @@ export function ConfirmedServices({
         </div>
         {paymentDesk && <Button variant="outline" disabled={busy || disabled} onClick={() => setRefresh(value => value + 1)}>{busy ? "Refreshing…" : "Refresh list"}</Button>}
       </div>
+      {/* Group the entry fields and submit action so the user can complete this step in one place. */}
       <form className="cashier-search tw:flex tw:items-end tw:gap-4 tw:mt-6 tw:[&_label]:flex-1 tw:[&_label]:m-0
           tw:down-600:items-stretch tw:down-600:flex-col tw:[.confirmed-services_&]:[margin:16px_0_22px]" onSubmit={submit}>
         <label>
@@ -182,6 +191,7 @@ export function ConfirmedServices({
             <div className="table-wrap tw:overflow-auto tw:[background:white] tw:[border:1px_solid_#dce0d8] tw:rounded-[10px]
           tw:[&_pre]:max-w-[36rem] tw:[&_pre]:max-h-[28rem] tw:[&_pre]:overflow-auto tw:[&_pre]:whitespace-pre-wrap
           tw:[&_pre]:[overflow-wrap:anywhere] tw:[&_pre]:text-[.8rem]">
+              {/* Show the records in labeled columns so their details can be compared row by row. */}
               <table>
                 <thead>
                   <tr>

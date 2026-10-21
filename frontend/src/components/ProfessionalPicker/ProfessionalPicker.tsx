@@ -1,24 +1,32 @@
+// Bring in the tools for the professional picker view so this file can work with the rest of the application.
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { useState } from "react";
 import type { StaffPublicProfile } from "../../utils/staff-profile";
 import type { CatalogService } from "../../types/salon";
 
+// Describe the information used by the professional picker view so different parts of the application agree on its contents.
 export type BookingStaff = { id: string; firstName: string; lastName: string; serviceIds: string[]; publicProfile?: StaffPublicProfile | null; statistics?: { appointmentsCompleted: number; clientsServed: number } };
 type Selection = { key: number; serviceId: string; staffId: string };
+// Keep the shared values for the professional picker view together so later steps use the same definitions.
 const tabs = ["Profile", "Portfolio"] as const;
 
+// Show the staff portrait or its fallback so the professional still has a recognizable profile.
 function Portrait({ person, large = false }: { person: BookingStaff; large?: boolean }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
   if (person.publicProfile?.photoUrl && failedPhoto !== person.publicProfile.photoUrl) return <img className={`professional-portrait tw:customer:relative tw:customer:block tw:customer:w-14.5 tw:customer:h-14.5 tw:customer:shrink-0 tw:customer:rounded-[50%] tw:customer:[background:#e9e8df] tw:customer:text-[#484b47] tw:customer:overflow-hidden tw:customer:[&_svg]:block tw:customer:[&_svg]:w-full tw:customer:[&_svg]:h-full tw:customer:[&>span]:absolute tw:customer:[&>span]:bottom-[3px] tw:customer:[&>span]:left-0 tw:customer:[&>span]:w-full tw:customer:[&>span]:text-center tw:customer:[&>span]:text-[9px] tw:customer:[&>span]:tracking-[.1em] tw:customer:[&>span]:text-[white] tw:customer:[&>span]:font-semibold tw:down-480:customer:w-11.5 tw:down-480:customer:h-11.5 tw:customer:[img&]:object-cover ${large ? " portrait-large tw:customer:w-[116px] tw:customer:h-[116px] tw:customer:[margin:0_auto_18px] tw:customer:[&>span]:text-[14px] tw:customer:[&>span]:bottom-[9px] tw:down-480:customer:w-[104px] tw:down-480:customer:h-[104px] " : ""}`} src={person.publicProfile.photoUrl} alt="" referrerPolicy="no-referrer" onError={() => setFailedPhoto(person.publicProfile!.photoUrl)} />;
   const hue = Array.from(person.id).reduce((sum, char) => sum + char.charCodeAt(0), 0) % 4;
+  // Show the prepared content and actions so the user can review the information and continue.
   return <span className={`professional-portrait tw:customer:relative tw:customer:block tw:customer:w-14.5 tw:customer:h-14.5 tw:customer:shrink-0 tw:customer:rounded-[50%] tw:customer:[background:#e9e8df] tw:customer:text-[#484b47] tw:customer:overflow-hidden tw:customer:[&_svg]:block tw:customer:[&_svg]:w-full tw:customer:[&_svg]:h-full tw:customer:[&>span]:absolute tw:customer:[&>span]:bottom-[3px] tw:customer:[&>span]:left-0 tw:customer:[&>span]:w-full tw:customer:[&>span]:text-center tw:customer:[&>span]:text-[9px] tw:customer:[&>span]:tracking-[.1em] tw:customer:[&>span]:text-[white] tw:customer:[&>span]:font-semibold tw:down-480:customer:w-11.5 tw:down-480:customer:h-11.5 tw:customer:[img&]:object-cover  portrait-tone-${hue}${large ? " portrait-large tw:customer:w-[116px] tw:customer:h-[116px] tw:customer:[margin:0_auto_18px] tw:customer:[&>span]:text-[14px] tw:customer:[&>span]:bottom-[9px] tw:down-480:customer:w-[104px] tw:down-480:customer:h-[104px] " : ""}`} aria-hidden="true">
     <svg viewBox="0 0 80 80" fill="none"><path d="M10 80c0-21 12-32 30-32s30 11 30 32" fill="currentColor"/><ellipse cx="40" cy="32" rx="16" ry="19" fill="#e8c7ac"/><path d="M23 31c-3-17 6-23 17-23 14 0 21 11 17 26l-7-16c-7 8-15 8-27 13Z" fill="#35332f"/><path d="M34 47h12v10l-6 6-6-6" fill="#e8c7ac"/></svg>
     <span>{person.firstName[0]}{person.lastName[0]}</span>
   </span>;
 }
 
+// Show a portfolio photo with a fallback so an unavailable picture does not break the profile.
 function PortfolioImage({ url, title }: { url: string; title: string }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   return failedUrl === url ? <div className="portfolio-art tw:customer:grid tw:customer:place-items-center tw:customer:[aspect-ratio:1]
           tw:customer:[background:#e9dfcb] tw:customer:text-[#8b7241] portfolio-unavailable tw:customer:text-[11px]
@@ -26,10 +34,13 @@ function PortfolioImage({ url, title }: { url: string; title: string }) {
           tw:customer:rounded-[12px]" src={url} alt={title} loading="lazy" referrerPolicy="no-referrer" onError={() => setFailedUrl(url)} />;
 }
 
+// Show the selected professional details so the customer can review their background and work.
 function Profile({ person, services, trigger, onClose, onSelect }: { person: BookingStaff; services: CatalogService[]; trigger: HTMLButtonElement; onClose: () => void; onSelect: () => void }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [tab, setTab] = useState<(typeof tabs)[number]>("Profile");
   const profile = person.publicProfile;
   const qualified = services.filter(service => person.serviceIds.includes(service.id));
+  // Show the prepared content and actions so the user can review the information and continue.
   return <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
     <DialogContent className="professional-dialog tw:customer:fixed tw:customer:[inset:auto] tw:customer:top-[50%] tw:customer:left-[50%]
           tw:customer:m-0 tw:customer:w-[min(500px,calc(100%_-_32px))] tw:customer:max-h-[calc(100dvh_-_48px)]
@@ -40,6 +51,7 @@ function Profile({ person, services, trigger, onClose, onSelect }: { person: Boo
     <div className="professional-modal-content tw:customer:relative tw:customer:p-9 tw:down-480:customer:[padding:30px_22px_24px]"><Button variant="outline" type="button" className="profile-close tw:customer:absolute tw:customer:top-4 tw:customer:right-4 tw:customer:w-9 tw:customer:h-9
           tw:customer:p-0 tw:customer:[border:0] tw:customer:rounded-[50%] tw:customer:[background:#f0f0eb]
           tw:customer:grid tw:customer:place-items-center tw:customer:text-[25px] tw:customer:font-normal" aria-label="Close profile" onClick={onClose} autoFocus>×</Button>
+      {/* Show the page heading and its main controls so the current task is easy to identify. */}
       <header className="professional-profile-header tw:customer:text-center tw:customer:pt-2.5 tw:customer:[&_h2]:text-[24px]
           tw:customer:[&_h2]:[margin:0_0_6px] tw:customer:[&_p]:text-[14px] tw:customer:[&_p]:text-[#73756f]
           tw:customer:[&_p]:[margin:0_0_12px] tw:down-480:customer:[&_h2]:text-[22px]"><Portrait person={person} large /><DialogTitle asChild><h2>{person.firstName} {person.lastName}</h2></DialogTitle><p>{profile?.title || "Salon professional"}</p></header>
@@ -76,13 +88,17 @@ function Profile({ person, services, trigger, onClose, onSelect }: { person: Boo
   </DialogContent></Dialog>;
 }
 
+// Show eligible professionals so the customer can choose who will provide the service.
 export function ProfessionalPicker({ selections, staff, services, onSelect }: { selections: Selection[]; staff: BookingStaff[]; services: CatalogService[]; onSelect: (key: number, staffId: string) => void }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [profile, setProfile] = useState<{ person: BookingStaff; rowKey: number; trigger: HTMLButtonElement } | null>(null);
+  // Show the prepared content and actions so the user can review the information and continue.
   return <div className="professional-picker"><p className="professional-guidance tw:customer:text-[13px] tw:customer:text-[#73756f] tw:customer:mb-6
           tw:customer:leading-[1.7]">Choose a professional for each service, or keep your options open with any available professional.</p>
     {selections.map((row, i) => {
       const people = staff.filter(person => person.serviceIds.includes(row.serviceId));
       const service = services.find(service => service.id === row.serviceId);
+      // Show the prepared content and actions so the user can review the information and continue.
       return <section className="professional-service-group" aria-label={`Professional for service ${i + 1}: ${service?.name}`} key={row.key}>
         <div className="professional-service-title tw:customer:flex tw:customer:justify-between tw:customer:items-baseline
           tw:customer:gap-3 tw:customer:mb-3.5 tw:customer:[&_h2]:text-[16px] tw:customer:[&_h2]:m-0

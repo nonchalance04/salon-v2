@@ -1,3 +1,4 @@
+/* Arrange staff management fields and tabs so the selected professional can be edited in one dialog. */
 .staff-management-dialog[data-slot="dialog-content"] { display: flex; flex-direction: column; width: calc(100% - 2rem); max-width: 780px; padding: 0; gap: 0; border: 1px solid #e5e3dc; border-radius: 20px; background: #fff; color: #292a28; overflow: hidden; box-shadow: 0 24px 90px #19170e30; }
 .staff-management-header[data-slot="dialog-header"] { display: flex; flex-direction: row; align-items: center; flex-shrink: 0; gap: 16px; padding: 26px 28px; text-align: left; border-bottom: 1px solid #eceae3; background: linear-gradient(115deg, #fcf9ed, #fff 85%); }
 .staff-management-dialog [data-slot="dialog-title"] { margin: 0 0 7px; font-size: 25px; line-height: 1.2; letter-spacing: -.03em; }
@@ -5,6 +6,7 @@
 .staff-management-body { overscroll-behavior: contain; }
 .staff-management-dialog input[data-slot="input"], .staff-management-dialog textarea, .staff-management-dialog select { border-color: #deded7; border-radius: 9px; background: #fff; color: #30302b; font-size: 13px; box-shadow: 0 1px 2px #24221103; }
 .staff-management-dialog input::placeholder, .staff-management-dialog textarea::placeholder { color: #a1a097; }
+/* Adjust this layout for the matching screen size so its content and controls remain usable. */
 @media (max-width: 540px) {
   .staff-management-dialog[data-slot="dialog-content"] { width: calc(100% - 1rem); max-height: calc(100dvh - 1rem); border-radius: 16px; }
   .staff-management-header[data-slot="dialog-header"] { padding: 20px; gap: 12px; }

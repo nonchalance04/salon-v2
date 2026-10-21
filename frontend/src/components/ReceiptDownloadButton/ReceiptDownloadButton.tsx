@@ -1,10 +1,14 @@
+// Bring in the tools for the receipt download button view so this file can work with the rest of the application.
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import type { Receipt } from "../../types/receipt";
 
+// Offer a receipt download so the customer can keep a PDF copy.
 export function ReceiptDownloadButton({ receipt }: { receipt: Receipt }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // Build and save the receipt PDF so the customer can keep a copy of the payment record.
   async function download() {
     if (busy) return;
     setBusy(true);
@@ -18,6 +22,7 @@ export function ReceiptDownloadButton({ receipt }: { receipt: Receipt }) {
       setBusy(false);
     }
   }
+  // Show the prepared content and actions so the user can review the information and continue.
   return <>
     <Button type="button" variant="outline" className="receipt-print tw:receipt:w-full tw:receipt:py-3 tw:receipt:px-5 tw:receipt:[border:1px_solid_#d3ae30]
           tw:receipt:rounded-[99px] tw:receipt:[background:#d3ae30] tw:receipt:text-[#292a28] tw:receipt:cursor-pointer

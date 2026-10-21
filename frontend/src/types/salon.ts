@@ -1,3 +1,4 @@
+// Describe the information used by salon details so different parts of the application agree on its contents.
 export type CatalogService = {
   id: string;
   category: string;

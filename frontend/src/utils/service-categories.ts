@@ -5,6 +5,7 @@ export const menuCategories = [
   "Nail Services", "Spa & Relaxation",
 ] as const;
 
+// Choose the service category so the offering appears under the appropriate menu group.
 export function serviceMenuCategory(service: { category: string; description: string | null }): string {
   const label = service.description?.trim();
   const aliases: Record<string, string> = { hair: "Hair Services", nails: "Nail Services" };

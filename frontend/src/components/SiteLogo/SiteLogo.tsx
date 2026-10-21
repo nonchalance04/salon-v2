@@ -1,6 +1,8 @@
+// Bring in the tools for the site logo view so this file can work with the rest of the application.
 import { Link } from "react-router";
 import type { Salon } from "../../types/salon";
 
+// Show the salon logo and its link so visitors can recognize the business and return home.
 export function SiteLogo() {
   return (
     <Link className="logo public:inline-flex public:flex-col public:shrink-0 public:[&_span]:text-[43px]

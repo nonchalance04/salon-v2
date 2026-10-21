@@ -1,3 +1,4 @@
+// Bring in the tools for the accounts view so this file can work with the rest of the application.
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/NativeSelect";
@@ -6,17 +7,21 @@ import { useEffect, useState, type FormEvent } from "react";
 import { api, type User } from "../../lib/api";
 import { useAuth } from "../../contexts/AuthProvider";
 
+// Choose a readable error message so the screen can explain what went wrong.
 const message = (error: unknown) =>
   error instanceof Error ? error.message : "Please try again.";
 
+// Show staff accounts and their editing controls so administrators can manage sign-in access.
 export function Accounts() {
   const { user, refresh } = useAuth();
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<User | "new" | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  // Load the saved information so the screen can show current salon records.
   async function load() {
     setLoading(true);
     setError("");
@@ -28,9 +33,11 @@ export function Accounts() {
       setLoading(false);
     }
   }
+  // Load the information this view needs when its inputs change so the displayed results stay current.
   useEffect(() => {
     void load();
   }, []);
+  // Check and submit the edited details so the saved record matches the form.
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
@@ -216,6 +223,7 @@ export function Accounts() {
         <div className="table-wrap tw:overflow-auto tw:[background:white] tw:[border:1px_solid_#dce0d8] tw:rounded-[10px]
           tw:[&_pre]:max-w-[36rem] tw:[&_pre]:max-h-[28rem] tw:[&_pre]:overflow-auto tw:[&_pre]:whitespace-pre-wrap
           tw:[&_pre]:[overflow-wrap:anywhere] tw:[&_pre]:text-[.8rem]">
+          {/* Show the records in labeled columns so their details can be compared row by row. */}
           <table>
             <thead>
               <tr>

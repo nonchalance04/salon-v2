@@ -1,12 +1,15 @@
+// Bring in the tools for customer notifications so this file can work with the rest of the application.
 import type { NotificationQueue } from "../../../generated/prisma/client.js";
 import { smsRecipient, type NotificationMessage } from "./notification-provider.js";
 
+// Decide which routine text messages to omit so SMS follows the configured notification approach.
 export function suppressRoutineSms(row: Pick<NotificationQueue, "channel" | "eventType" | "payload">) {
   if (row.channel !== "SMS") return false;
   if (row.eventType === "APPOINTMENT_REMINDER" || row.eventType === "APPOINTMENT_COMPLETED") return true;
   // Financial exceptions still need a separate notice; they must never claim confirmation.
   return row.eventType === "PAYMENT_RECEIVED" && !(row.payload && typeof row.payload === "object" && !Array.isArray(row.payload) && row.payload.reconciliationRequired === true);
 }
+// Compose a short booking confirmation so the customer receives the key visit details by text.
 export function confirmationSms(row: Pick<NotificationQueue, "id" | "recipient">, appointment: {
   startAt: Date; endAt: Date; bookingCode: string;
   customer: { firstName: string; lastName: string };

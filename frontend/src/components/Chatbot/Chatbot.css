@@ -1,3 +1,4 @@
+/* Arrange the conversation, topic choices and message controls so visitors can use salon help comfortably. */
 .salon-guide.chat-page { max-width:1200px; padding-top:42px; padding-bottom:40px; color:#292a28; }
 .chat-page-heading h1 { font-family:Georgia,'Times New Roman',serif; font-weight:400; font-size:clamp(32px,3.4vw,46px); line-height:1.12; letter-spacing:-.04em; margin:0 0 14px; }
 .chat-page-heading p:last-child { font-size:14px; color:#6c6e66; margin:0; }
@@ -15,12 +16,16 @@
 .chat-page .chat-composer textarea { font:inherit; }
 .chat-composer textarea::placeholder { color:#828478; }
 .chat-page .chat-composer button:hover:not(:disabled) { background:#c19c23; }
+/* Define the animation movements so the status illustration can show its progress. */
 @keyframes chat-pulse { to { opacity:.3; transform:translateY(-3px); } }
 .customer-site .chat-launcher { box-shadow:0 6px 24px #35322130; }
 .chat-widget { box-shadow:0 16px 60px #35322130; }
+/* Prepare the receipt for paper so printing shows the payment record clearly. */
 @media print { .customer-site .chat-launcher,.chat-widget[open] { display:none; } }
 .chat-page--compact .chat-layout { box-shadow:none; }
+/* Reduce movement when requested so the page respects the visitor's motion preference. */
 @media(prefers-reduced-motion:reduce) { .chat-thinking i { animation:none; } }
+/* Adjust this layout for the matching screen size so its content and controls remain usable. */
 @media(max-width:639px) { .salon-guide.chat-page { padding-top:26px; padding-bottom:24px; }.chat-page-heading h1 { font-size:31px; }.chat-page-heading p:last-child { font-size:12px; }.chat-topics button > span:nth-child(2) { flex:initial; }.chat-topics button > span:last-child { display:none; }.chat-welcome > p:last-child { font-size:12px; } }
 
 /* Reserve the complete reply layout while words fade in, avoiding scroll jumps. */
@@ -28,8 +33,11 @@
 .chat-answer-word { animation:chat-word-reveal 220ms ease-out both; animation-delay:var(--word-delay, 0ms); }
 .chat-assistant-message--entering .chat-recommendation,
 .chat-assistant-message--entering .chat-reply-links { animation:chat-answer-enter 380ms ease-out 350ms both; }
+/* Define the animation movements so the status illustration can show its progress. */
 @keyframes chat-word-reveal { from { opacity:0; } to { opacity:1; } }
+/* Define the animation movements so the status illustration can show its progress. */
 @keyframes chat-answer-enter { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+/* Reduce movement when requested so the page respects the visitor's motion preference. */
 @media(prefers-reduced-motion:reduce) {
   .chat-assistant-message--entering,
   .chat-answer-word,

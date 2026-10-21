@@ -1,12 +1,15 @@
+// Bring in the tools for the services page view so this file can work with the rest of the application.
 import { Input } from "@/components/ui/Input";
 import { useOutletContext, useSearchParams } from "react-router";
 import { ServiceCards } from "../../components/ServiceCards";
 import type { PublicContext } from "../../layouts/PublicSite/PublicSite.context";
 
+// Show the service catalog and filters so visitors can find an offering they want to book.
 export function ServicesPage() {
   const { services, loading, error, catalogStatus } = useOutletContext<PublicContext>();
   const [params, setParams] = useSearchParams();
   const query = params.get("q") ?? "";
+  // Update the service search in the page address so the selected filter can be revisited.
   const setQuery = (q: string) => setParams(previous => { previous.set("q", q); return previous; }, { replace: true });
   return (
       <section className="container public:w-[min(1280px,calc(100%_-_96px))] public:mx-auto public:down-1023:w-[calc(100%_-_48px)]

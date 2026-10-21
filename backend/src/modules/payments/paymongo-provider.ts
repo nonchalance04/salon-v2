@@ -1,8 +1,10 @@
+// Bring in the tools for booking payments so this file can work with the rest of the application.
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { ApiError } from "../../shared/http.js";
 import type { PaymentProvider, PaymentRequest, VerifiedPayment } from "./payment-provider.js";
 
+// Check the provider reference format so payment lookups use a supported reference.
 const id = (prefix: string) => z.string().regex(new RegExp(`^${prefix}_[A-Za-z0-9]+$`));
 // V2 creation returns a summary, not the full retrieved CheckoutSession.
 const createdSessionSchema = z.object({ data: z.object({
@@ -19,22 +21,29 @@ const sessionSchema = z.object({ id: id("cs"), type: z.literal("checkout_session
   line_items: z.array(z.object({ amount: z.number().int().positive().max(999999999999), currency: z.literal("PHP"), quantity: z.literal(1) })).length(1),
   payments: z.array(paymentSchema).default([]),
 }) });
+// Prepare a provider-unavailable response so a failed payment request receives a clear explanation.
 const unavailable = () => new ApiError(503, "PAYMENT_PROVIDER_UNAVAILABLE", "PayMongo could not complete the request. Check payment status before trying another payment.");
+// Prepare the rejection for invalid details so the caller receives a consistent explanation.
 const invalid = () => new ApiError(400, "INVALID_PAYMENT_EVENT", "The PayMongo payment details could not be verified.");
+// Convert the amount to whole centavos so payment calculations avoid rounding from fractional pesos.
 export function centavos(amount: string) {
   if (!/^(0|[1-9]\d{0,9})\.\d{2}$/.test(amount)) throw invalid();
   const value = Number(BigInt(amount.replace(".", "")));
   if (value <= 0) throw invalid();
   return value;
 }
+// Convert the provider amount to pesos so stored money uses the expected currency unit.
 function pesos(amount: number) { return `${Math.floor(amount / 100)}.${String(amount % 100).padStart(2, "0")}`; }
+// Keep the PayMongo connection details together so checkout and verification share the same provider settings.
 export class PayMongoProvider implements PaymentProvider {
   readonly name = "paymongo";
   readonly live: boolean;
+  // function Object() { [native code] }
   constructor(private readonly config: { secretKey: string; webhookSecret: string; returnUrl: string; trustedOrigins?: string[] },
     private readonly request: typeof fetch = fetch) {
     this.live = config.secretKey.startsWith("sk_live_");
   }
+  // Send the authenticated request to PayMongo so provider operations share the same timeout and failure handling.
   private async api(path: string, body?: unknown) {
     try {
       const response = await this.request(`https://api.paymongo.com${path}`, { method: body === undefined ? "GET" : "POST",
@@ -46,6 +55,7 @@ export class PayMongoProvider implements PaymentProvider {
       return await response.json() as unknown;
     } catch { throw unavailable(); }
   }
+  // Check the returned provider details so only the expected checkout information is used.
   private parse(body: unknown) {
     const parsed = z.object({ data: sessionSchema }).safeParse(body);
     if (!parsed.success || parsed.data.data.attributes.livemode !== this.live) throw invalid();
@@ -53,6 +63,7 @@ export class PayMongoProvider implements PaymentProvider {
     if (session.attributes.reference_number !== session.attributes.metadata.paymentId) throw invalid();
     return session;
   }
+  // Create the provider checkout for the saved fee so the customer can pay for the reserved visit.
   async createPayment(request: PaymentRequest) {
     const amount = centavos(request.amount);
     // Keep the host-only appointment session on the browser's starting origin.
@@ -84,6 +95,7 @@ export class PayMongoProvider implements PaymentProvider {
     if (url.origin !== "https://checkout.paymongo.com" || url.username || url.password) throw invalid();
     return { reference: session.id, checkoutUrl };
   }
+  // Read and verify the provider checkout result so the salon uses trusted payment details.
   async getPaymentStatus(reference: string): Promise<VerifiedPayment> {
     if (!id("cs").safeParse(reference).success) throw invalid();
     const session = this.parse(await this.api(`/v1/checkout_sessions/${reference}`));
@@ -103,6 +115,7 @@ export class PayMongoProvider implements PaymentProvider {
       paidAt: capture ? new Date(capture.attributes.paid_at! * 1000).toISOString() : null,
       ...(capture ? { providerMethod: capture.attributes.source.type } : {}) };
   }
+  // Verify the payment-event signature and retrieve its result so untrusted notices cannot confirm a booking.
   async verifyPayment(raw: Buffer, header: string | undefined): Promise<VerifiedPayment | null> {
     const parts = new Map<string, string>();
     for (const part of (header ?? "").split(",")) {
@@ -131,6 +144,7 @@ export class PayMongoProvider implements PaymentProvider {
     if (verified.status !== "SUCCEEDED") throw unavailable();
     return verified;
   }
+  // Ask the provider to close the checkout so an expired session cannot accept another payment.
   async expirePayment(reference: string) {
     if (!id("cs").safeParse(reference).success) throw invalid();
     await this.api(`/v1/checkout_sessions/${reference}/expire`, {});

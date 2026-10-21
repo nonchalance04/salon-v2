@@ -1,3 +1,4 @@
+// Bring in the tools for the configuration view so this file can work with the rest of the application.
 import { Temporal } from "@js-temporal/polyfill";
 
 // Only an exact salon-local midnight-to-next-midnight period is a single

@@ -1,3 +1,4 @@
+// Bring in the tools for the admin dashboard view so this file can work with the rest of the application.
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { CalendarDays, Check, Coins, CreditCard, Scissors, TriangleAlert, UsersRound, X, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -6,6 +7,7 @@ import type { Appointment } from "../../types/booking";
 import type { AppointmentFilters } from "../../types/appointment-filters";
 import "./AdminDashboard.css";
 
+// Describe the information used by the admin dashboard view so different parts of the application agree on its contents.
 type Dashboard = {
   timeZone: string;
   appointments: { status: string; count: number }[];
@@ -18,15 +20,18 @@ type Collections = {
   typeTotals: { currency: string; type: string; captured: string }[];
 };
 type Snapshot = { dashboard: Dashboard; collections: Collections; appointments: Appointment[]; date: string; updated: Date };
+// Format the amount as Philippine pesos so prices and payments are easy to recognize.
 const money = (value: string, currency = "PHP") => new Intl.NumberFormat("en-PH", { style: "currency", currency }).format(Number(value));
 const statusLabels: Record<string, string> = {
   PENDING_PAYMENT: "Pending payment", CONFIRMED: "Confirmed", COMPLETED: "Completed",
   CANCELLED: "Cancelled", NO_SHOW: "No-show", EXPIRED: "Expired",
 };
 
+// Show one overview figure so staff can quickly understand a part of salon activity.
 function Metric({ icon: Icon, label, value, tone = "plum", children }: {
   icon: LucideIcon; label: string; value: string | number; tone?: string; children?: ReactNode;
 }) {
+  // Show the prepared content and actions so the user can review the information and continue.
   return <article className="admin-overview-metric tw:[background:#fff] tw:[border:1px_solid_#e7e5e8] tw:rounded-[12px] tw:py-[23px] tw:px-5
           tw:min-w-0 tw:[&_p]:text-[14px] tw:[&_p]:[margin:0_0_7px] tw:[&_p]:text-[#55515c] tw:[&_strong]:block
           tw:[&_strong]:text-[clamp(23px,2.2vw,33px)] tw:[&_strong]:tracking-[-.035em] tw:[&_strong]:tabular-nums
@@ -42,14 +47,17 @@ function Metric({ icon: Icon, label, value, tone = "plum", children }: {
   </article>;
 }
 
+// Show salon totals and current appointments so administrators can review daily activity.
 export function AdminDashboard({ onAppointments }: {
   onAppointments: (filters: AppointmentFilters) => void;
 }) {
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
   const activeRequest = useRef<AbortController | null>(null);
   const inFlight = useRef(false);
+  // Load the saved information so the screen can show current salon records.
   async function load() {
     inFlight.current = true;
     activeRequest.current?.abort();
@@ -88,8 +96,10 @@ export function AdminDashboard({ onAppointments }: {
       if (!controller.signal.aborted) { inFlight.current = false; setBusy(false); }
     }
   }
+  // Keep time-based screen updates running while this view is open so its status stays current.
   useEffect(() => {
     void load();
+    // Reload the latest information so the next view or action reflects the current saved state.
     const refresh = () => { if (document.visibilityState === "visible" && !inFlight.current) void load(); };
     const timer = window.setInterval(refresh, 30000);
     window.addEventListener("focus", refresh);
@@ -97,9 +107,11 @@ export function AdminDashboard({ onAppointments }: {
     return () => { activeRequest.current?.abort(); window.clearInterval(timer); window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh); };
   }, []);
   const data = snapshot?.dashboard;
+  // Count the matching appointment records so the overview can show their total.
   const count = (status: string) => data?.appointments.find(row => row.status === status)?.count ?? 0;
   const total = data?.appointments.reduce((sum, row) => sum + row.count, 0) ?? 0;
   const preview = snapshot?.appointments.slice(0, 3) ?? [];
+  // Show the prepared content and actions so the user can review the information and continue.
   return <section className="admin-overview tw:grid tw:gap-7 tw:min-w-0 tw:workspace-main:[&_h2]:text-[21px]
           tw:workspace-main:[&_h2]:[margin:0_0_16px] tw:workspace-main:[&_h2]:tracking-[-.025em]
           tw:[&_table]:whitespace-normal tw:[&_table]:table-fixed tw:workspace-main:[&_th]:[background:#f6f4f7]
@@ -124,6 +136,7 @@ export function AdminDashboard({ onAppointments }: {
           tw:text-[14px]" role="alert">{error} {snapshot && "Showing the last successful update."} <Button variant="outline" disabled={busy} onClick={() => void load()}>Retry</Button></div>}
     {busy && !snapshot && <p role="status">Loading today’s dashboard…</p>}
     {snapshot && data && <>
+      {/* Group the appointments today details so the related information can be reviewed together. */}
       <section aria-labelledby="admin-overview-appointments-title">
         <h2 id="admin-overview-appointments-title">Appointments today</h2>
         <div className="admin-overview-stats tw:grid tw:grid-cols-4 tw:gap-4 tw:down-1200:grid-cols-2">
@@ -133,6 +146,7 @@ export function AdminDashboard({ onAppointments }: {
           <Metric icon={X} label="Cancelled / No-show" value={`${count("CANCELLED")} / ${count("NO_SHOW")}`} tone="rose" />
         </div>
       </section>
+      {/* Group the financial summary · today details so the related information can be reviewed together. */}
       <section aria-labelledby="admin-overview-financial-title">
         <h2 id="admin-overview-financial-title">Financial summary · Today</h2>
         <div className="admin-overview-finances tw:grid tw:grid-cols-3 tw:gap-4 tw:down-1200:grid-cols-2 tw:down-700:grid-cols-[1fr]">

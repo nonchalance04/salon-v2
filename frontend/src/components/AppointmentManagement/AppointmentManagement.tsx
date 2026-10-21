@@ -1,3 +1,4 @@
+// Bring in the tools for the appointment management view so this file can work with the rest of the application.
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -7,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../../lib/api";
 import type { Appointment } from "../../types/booking";
 
+// Describe the information used by the appointment management view so different parts of the application agree on its contents.
 type Selection = {
   key: number;
   serviceId: string;
@@ -26,9 +28,11 @@ type Slot = {
   endAt: string;
   services: { serviceName: string; staffName: string }[];
 };
+// Choose a readable error message so the screen can explain what went wrong.
 const message = (error: unknown) =>
   error instanceof Error ? error.message : "Please try again.";
 
+// Show booking change and cancellation choices so the visit can be managed within its rules.
 export function AppointmentManagement({
   appointment,
   token,
@@ -43,6 +47,7 @@ export function AppointmentManagement({
   onRescheduled?: (appointment: Appointment) => void;
 }) {
   const recovery = appointment.status === "NO_SHOW";
+  // Remember the current choices and screen status so the page can respond as the user works.
   const [editing, setEditing] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [services, setServices] = useState<Catalog[]>([]);
@@ -54,10 +59,12 @@ export function AppointmentManagement({
   const [startAt, setStartAt] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // Keep this view in step with its current inputs so changes are reflected on screen.
   useEffect(() => {
     onBusyChange?.(busy);
     return () => onBusyChange?.(false);
   }, [busy, onBusyChange]);
+  // Remember the current choices and screen status so the page can respond as the user works.
   const key = useRef(0);
   const generation = useRef(0);
   const policy = appointment.bookingPolicyVersion;
@@ -79,23 +86,27 @@ export function AppointmentManagement({
     now <=
       Date.parse(appointment.startAt) -
         policy.cancellationCutoffHours * 3_600_000;
+  // Format the visit time for display so the schedule can be read in the salon time zone.
   const format = (value: string) =>
     new Intl.DateTimeFormat(undefined, {
       timeZone: appointment.timeZone,
       dateStyle: "medium",
       timeStyle: "short",
     }).format(new Date(value));
+  // Convert the time to the format needed here so salon schedule values are handled consistently.
   const time = (value: string) =>
     new Intl.DateTimeFormat(undefined, {
       timeZone: appointment.timeZone,
       hour: "numeric",
       minute: "2-digit",
     }).format(new Date(value));
+  // Clear results that depend on earlier choices so an outdated visit cannot be selected.
   function invalidate() {
     generation.current++;
     setSlots(null);
     setStartAt("");
   }
+  // Load the booking change choices so the customer can choose an eligible replacement visit.
   async function open() {
     setBusy(true);
     setError("");
@@ -128,6 +139,7 @@ export function AppointmentManagement({
       setBusy(false);
     }
   }
+  // Gather the current visit choices so the request uses the latest selection.
   const body = () => ({
     bookingCode: appointment.bookingCode,
     token,
@@ -143,6 +155,7 @@ export function AppointmentManagement({
         : { assignmentMode: "ANY_AVAILABLE" }),
     })),
   });
+  // Find the matching choices so the person using this feature can review the available results.
   async function search() {
     const request = ++generation.current;
     setBusy(true);
@@ -161,6 +174,7 @@ export function AppointmentManagement({
       setBusy(false);
     }
   }
+  // Check and submit the edited details so the saved record matches the form.
   async function save() {
     setBusy(true);
     setError("");
@@ -183,6 +197,7 @@ export function AppointmentManagement({
       setBusy(false);
     }
   }
+  // Submit the booking cancellation so the customer sees the updated appointment result.
   async function cancel() {
     setBusy(true);
     setError("");

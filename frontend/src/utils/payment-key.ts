@@ -1,5 +1,6 @@
 // getRandomValues is available on HTTP LAN origins, where randomUUID is not.
 export function createPaymentKey(): string {
+  // Generate a fresh random payment reference so repeated requests can be recognized without reusing another payment's identity.
   const bytes = crypto.getRandomValues(new Uint8Array(16));
   bytes[6] = (bytes[6] & 0x0f) | 0x40;
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
