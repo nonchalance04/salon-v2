@@ -14,6 +14,7 @@ import { SignJWT } from "jose";
 import { createApp } from "../../src/app/app.js";
 import { createAuthRouter } from "../../src/modules/auth/auth.routes.js";
 import { parseEnv } from "../../src/config/env.schema.js";
+import { createAvailabilityService } from "../../src/modules/availability/availability.service.js";
 
 const run = promisify(execFile);
 // Intentionally never load .env or fall back to DATABASE_URL.
@@ -78,7 +79,7 @@ test("migrations apply and development seeding is repeatable with hashed passwor
     prisma.user.count(), prisma.salonProfile.count(), prisma.bookingPolicyVersion.count(),
     prisma.salonOperatingHour.count(), prisma.service.count(), prisma.staff.count(),
     prisma.staffService.count(), prisma.staffSchedule.count(),
-  ]), [2, 1, 1, 7, 30, 5, 125, 35]);
+  ]), [2, 1, 1, 7, 30, 5, 58, 35]);
   const adminUser = await prisma.user.findUniqueOrThrow({ where: { email: fixtureEnv.SEED_ADMIN_EMAIL } });
   assert.ok(await bcrypt.compare(fixtureEnv.SEED_ADMIN_PASSWORD, adminUser.passwordHash));
   const policy = await prisma.bookingPolicyVersion.findFirstOrThrow();
@@ -96,23 +97,45 @@ test("migrations apply and development seeding is repeatable with hashed passwor
   assert.equal((await prisma.service.findFirstOrThrow({ where: { name: "Eyebrow Shaping" } })).category, "Hair Services");
 });
 
-test("seed configures Mildred for explicit nail services and reconciles stale qualifications on rerun", async () => {
+test("seed gives each staff member only their approved bookable services", async () => {
+  const services = await prisma.service.findMany();
+  const catalog = await createAvailabilityService(prisma, "Asia/Manila").catalog();
+  const expected: Record<string, string[]> = {
+    "Mary Grace": [],
+    Maris: [],
+    Mildred: ["Hair Services", "Hair Color & Styling", "Hair Treatments"],
+    "Rose Ann": ["Nail Services"],
+    Bea: [...new Set(services.map(row => row.category))],
+  };
+  for (const [name, categories] of Object.entries(expected)) {
+    const staff = catalog.staff.find(row => row.firstName === name)!;
+    assert.ok(staff, name);
+    assert.deepEqual(staff.serviceIds.sort(), services.filter(row => categories.includes(row.category)).map(row => row.id).sort(), name);
+  }
+});
+
+test("seed reconciles stale staff skills without deleting qualifications", async () => {
   const mildred = await prisma.staff.findFirstOrThrow({ where: { firstName: "Mildred" } });
   const active = () => prisma.staffService.findMany({ where: { staffId: mildred.id, isActive: true }, include: { service: true } });
-  const expected = ["Manicure", "Pedicure", "Manicure & Pedicure", "Gel Polish", "Nail Art"].sort();
+  const expected = (await prisma.service.findMany({ where: { category: { in: ["Hair Services", "Hair Color & Styling", "Hair Treatments"] } } })).map(row => row.name).sort();
   assert.deepEqual((await active()).map(row => row.service.name).sort(), expected);
+  const nail = await prisma.service.findFirstOrThrow({ where: { name: "Manicure" } });
+  const stale = await prisma.staffService.create({ data: { staffId: mildred.id, serviceId: nail.id, commissionRate: "0.4" } });
   const hair = await prisma.service.findFirstOrThrow({ where: { category: "Hair Services" } });
-  const stale = await prisma.staffService.create({ data: { staffId: mildred.id, serviceId: hair.id, commissionRate: "0.4" } });
-  const manicure = (await active()).find(row => row.service.name === "Manicure")!;
-  await prisma.staffService.update({ where: { id: manicure.id }, data: { isActive: false, commissionRate: "0.5" } });
+  const original = (await active()).find(row => row.serviceId === hair.id)!;
+  await prisma.staffService.update({ where: { id: original.id }, data: { isActive: false, commissionRate: "0.5" } });
+  const nonHairStaff = await prisma.staff.findMany({ where: { firstName: { in: ["Mary Grace", "Maris", "Rose Ann"] } } });
+  const staleOthers = await Promise.all(nonHairStaff.map(staff => prisma.staffService.create({ data: { staffId: staff.id, serviceId: hair.id, commissionRate: "0.4" } })));
   await seed();
   assert.deepEqual((await active()).map(row => row.service.name).sort(), expected);
-  assert.equal((await prisma.staffService.findUniqueOrThrow({ where: { id: stale.id } })).isActive, false);
-  const restored = await prisma.staffService.findUniqueOrThrow({ where: { id: manicure.id } });
+  for (const row of [stale, ...staleOthers]) {
+    assert.equal((await prisma.staffService.findUniqueOrThrow({ where: { id: row.id } })).isActive, false);
+  }
+  const restored = await prisma.staffService.findUniqueOrThrow({ where: { id: original.id } });
   assert.equal(restored.isActive, true);
   assert.equal(restored.commissionRate.toFixed(4), "0.4000");
   await seed();
-  assert.equal(await prisma.staffService.count({ where: { staffId: mildred.id } }), 6);
+  assert.equal(await prisma.staffService.count({ where: { staffId: mildred.id } }), 24);
 });
 
 test("seed refuses production execution and rolls back when another salon profile exists", async () => {

@@ -262,22 +262,28 @@ type SeedStaffFixture = {
   id: string; firstName: string; lastName: string;
   serviceNames: readonly SeedServiceName[]; commissionRate: string;
 };
-// Keep the other staff's existing development assignments until their actual
-// skills are specified. Replace these lists with exact catalog service names.
+// Approved staff assignments. Resolve these catalog groups to individual
+// service qualifications; categories themselves do not grant booking access.
 const allServiceNames = services.map(service => service.name);
+const hairServiceNames = services
+  .filter(service => (["Hair Services", "Hair Color & Styling", "Hair Treatments"] as readonly string[]).includes(service.description))
+  .map(service => service.name);
+const nailServiceNames = services
+  .filter(service => service.description === "Nail Services")
+  .map(service => service.name);
 const staffFixtures: readonly SeedStaffFixture[] = [
   {
     id: seedUuid(4, 1),
     firstName: "Mary Grace",
     lastName: "",
-    serviceNames: allServiceNames,
+    serviceNames: [],
     commissionRate: "0.4000",
   },
   {
     id: seedUuid(4, 2),
     firstName: "Maris",
     lastName: "",
-    serviceNames: allServiceNames,
+    serviceNames: [],
     commissionRate: "0.4000",
   },
   {
@@ -291,14 +297,14 @@ const staffFixtures: readonly SeedStaffFixture[] = [
     id: seedUuid(4, 4),
     firstName: "Rose Ann",
     lastName: "",
-    serviceNames: allServiceNames,
+    serviceNames: nailServiceNames,
     commissionRate: "0.4000",
   },
   {
     id: seedUuid(4, 5),
     firstName: "Mildred",
     lastName: "",
-    serviceNames: ["Manicure", "Pedicure", "Manicure & Pedicure", "Gel Polish", "Nail Art"],
+    serviceNames: hairServiceNames,
     commissionRate: "0.4000",
   },
 ] as const;
