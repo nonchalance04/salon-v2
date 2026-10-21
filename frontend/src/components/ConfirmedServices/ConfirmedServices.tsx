@@ -111,10 +111,13 @@ export function ConfirmedServices({
   }
   return (
     <section
-      className={`confirmed-services dashboard-list${paymentDesk ? " payment-ready-list" : ""}`}
+      className={`confirmed-services dashboard-list tw:workspace-main:min-w-0 tw:workspace-main:p-6 tw:workspace-main:my-6 tw:workspace-main:mx-0 tw:workspace-main:[background:#fff] tw:workspace-main:rounded-[14px] tw:workspace-main:[overflow-wrap:anywhere] tw:[&_.section-heading]:items-start tw:[&_.section-heading]:gap-6 tw:[&_.section-heading_>_div]:min-w-0 tw:[&_.section-heading_>_div]:flex-1 tw:[&_.section-heading_h3]:[margin:0_0_8px] tw:[&_.section-heading_p]:max-w-[72ch] tw:[&_.section-heading_p]:text-[13px] tw:[&_.section-heading_>_button]:shrink-0 tw:[&_.cashier-search_label]:[flex:1_1_260px] tw:[&_.cashier-search_label]:min-w-0 tw:[&_.cashier-search_label]:m-0 tw:[&_.cashier-search_input]:min-h-11 tw:[&_.cashier-search_input]:m-0 tw:[&_.cashier-search_button]:min-h-11 tw:[&_.table-wrap]:w-full tw:[&_.table-wrap]:mt-4 tw:[&_table]:table-fixed tw:[&_table]:whitespace-normal tw:workspace-main:[&_th]:p-4 tw:workspace-main:[&_th]:align-top tw:workspace-main:[&_td]:align-top tw:workspace-main:[&_th]:[overflow-wrap:anywhere] tw:workspace-main:[&_td]:[overflow-wrap:anywhere] tw:workspace-main:[&_th]:min-w-0 tw:[&_th]:text-[10px] tw:[&_td_small]:inline-block tw:[&_td_small]:text-[12px] tw:[&_td_small]:mt-1 tw:[&_tbody_tr:hover]:[background:#fdfbf4] tw:[&_table]:block tw:[&_table]:min-w-0 tw:[&_thead]:absolute tw:[&_thead]:w-[1px] tw:[&_thead]:h-[1px] tw:[&_thead]:overflow-hidden tw:[&_tbody]:grid tw:[&_tbody]:gap-4 tw:[&_tr]:grid tw:[&_tr]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.5fr)_190px] tw:[&_tr]:rounded-[12px] tw:[&_tr]:overflow-hidden tw:[&_tr]:[background:#fff] tw:workspace-main:[&_td]:block tw:workspace-main:[&_td]:min-w-0 tw:workspace-main:[&_td]:w-auto tw:workspace-main:[&_td]:[border:0] tw:workspace-main:[&_td]:p-5 tw:[&_td_strong]:text-[16px] tw:[&_td_.error]:block tw:[&_td_.error]:mt-2.5 tw:[&_td_.error]:py-2 tw:[&_td_.error]:px-2.5 tw:[&_td_.error]:text-[12px] tw:[@media(min-width:_761px)_and_(max-width:_1200px)]:[&_tr]:grid-cols-2 tw:down-1100:[&_.section-heading]:flex-col tw:down-1100:[&_.section-heading]:gap-3.5 tw:down-760:workspace-main:p-4 tw:down-760:[&_.table-wrap]:[border:0] tw:down-760:[&_.table-wrap]:[background:transparent] tw:down-760:[&_.table-wrap]:overflow-visible tw:down-760:[&_table]:block tw:down-760:[&_table]:min-w-0 tw:down-760:[&_thead]:absolute tw:down-760:[&_thead]:w-[1px] tw:down-760:[&_thead]:h-[1px] tw:down-760:[&_thead]:overflow-hidden tw:down-760:[&_tbody]:grid tw:down-760:[&_tbody]:gap-4 tw:down-760:[&_tr]:block tw:down-760:[&_tr]:rounded-[10px] tw:down-760:[&_tr]:overflow-hidden tw:down-760:workspace-main:[&_td]:block tw:down-760:workspace-main:[&_td]:w-auto tw:down-760:workspace-main:[&_td]:min-w-0 tw:down-760:workspace-main:[&_td]:py-3 tw:down-760:workspace-main:[&_td]:px-4 tw:down-760:workspace-main:[&_td]:[border:0] tw:down-760:workspace-main:[&_td]:[border-bottom:1px_solid_#eee] tw:down-760:[&_.cashier-search_label]:[flex:auto] tw:[&_.section-heading_p]:leading-[1.6] tw:[&_th]:leading-[1.5] tw:[&_td]:leading-[1.6] ${paymentDesk ? " payment-ready-list tw:[.admin-payments_&]:rounded-[14px] tw:[.admin-payments_&_tr]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.4fr)_180px] tw:down-1150:[.admin-payments_&_tr]:grid-cols-[1fr_1fr] tw:down-600:[.admin-payments_&_tr]:grid-cols-[1fr] " : ""}`}
       aria-labelledby={heading}
     >
-      <div className="section-heading">
+      <div className="section-heading tw:flex tw:justify-between tw:items-center tw:gap-5 tw:mb-5 tw:[&_.eyebrow]:mb-2.5
+          tw:[&_h2]:text-[30px] tw:down-760:items-start tw:down-760:flex-col
+          tw:down-600:[.confirmed-services_&]:items-start tw:down-600:[.confirmed-services_&]:flex-col
+          tw:[.admin-scheduling-grid_&]:gap-2.5 tw:[.admin-scheduling-grid_&]:flex-wrap">
         <div>
           <h3 id={heading}>
             {arrivalOnly
@@ -131,7 +134,8 @@ export function ConfirmedServices({
         </div>
         {paymentDesk && <Button variant="outline" disabled={busy || disabled} onClick={() => setRefresh(value => value + 1)}>{busy ? "Refreshing…" : "Refresh list"}</Button>}
       </div>
-      <form className="cashier-search" onSubmit={submit}>
+      <form className="cashier-search tw:flex tw:items-end tw:gap-4 tw:mt-6 tw:[&_label]:flex-1 tw:[&_label]:m-0
+          tw:down-600:items-stretch tw:down-600:flex-col tw:[.confirmed-services_&]:[margin:16px_0_22px]" onSubmit={submit}>
         <label>
           Search customer or booking code
           <Input
@@ -159,7 +163,8 @@ export function ConfirmedServices({
         )}
       </form>
       {error && (
-        <p role="alert" className="error">
+        <p role="alert" className="error tw:[background:#fff0ed] tw:[border:1px_solid_#ecc5ba] tw:text-[#963923] tw:py-3 tw:px-4 tw:rounded-[6px]
+          tw:text-[14px]">
           {error}{" "}
           <Button variant="outline" onClick={() => setRefresh((value) => value + 1)}>
             Retry
@@ -169,12 +174,14 @@ export function ConfirmedServices({
       {busy && !data && <p role="status">Loading confirmed services…</p>}
       {data && (
         <>
-          <p className={paymentDesk ? "payment-list-count" : undefined} aria-live="polite">
+          <p className={paymentDesk ? "payment-list-count tw:[.admin-payments_&]:text-[12px] tw:[.admin-payments_&]:font-semibold tw:[.admin-payments_&]:text-[#686868] tw:[.admin-payments_&]:py-1 " : undefined} aria-live="polite">
             {data.total} {paymentDesk ? (data.total === 1 ? "visit ready for payment" : "visits ready for payment") : `confirmed ${data.total === 1 ? "booking" : "bookings"}`} ·{" "}
             {data.timeZone}
           </p>
           {data.rows.length ? (
-            <div className="table-wrap">
+            <div className="table-wrap tw:overflow-auto tw:[background:white] tw:[border:1px_solid_#dce0d8] tw:rounded-[10px]
+          tw:[&_pre]:max-w-[36rem] tw:[&_pre]:max-h-[28rem] tw:[&_pre]:overflow-auto tw:[&_pre]:whitespace-pre-wrap
+          tw:[&_pre]:[overflow-wrap:anywhere] tw:[&_pre]:text-[.8rem]">
               <table>
                 <thead>
                   <tr>
@@ -201,7 +208,8 @@ export function ConfirmedServices({
                           {row.customer.firstName} {row.customer.lastName}
                         </strong>
                         <br />
-                        <Badge variant="secondary" className="badge active">Confirmed</Badge>
+                        <Badge variant="secondary" className="badge tw:inline-block tw:py-1 tw:px-2.5 tw:rounded-[20px] tw:[background:#eeece8] tw:text-[12px]
+          tw:text-[#65675f] tw:[&.active]:[background:#e6efe4] tw:[&.active]:text-[#365c3c] active">Confirmed</Badge>
                       </td>
                       <td data-label="Services / staff">
                         {row.appointmentServices.map((service) => (
@@ -230,7 +238,7 @@ export function ConfirmedServices({
                           />
                         )}
                         {!arrivalOnly && (
-                          <Button variant={paymentDesk ? "default" : "outline"} className={paymentDesk ? "primary" : undefined}
+                          <Button variant={paymentDesk ? "default" : "outline"} className={paymentDesk ? "primary tw:[background:#203c34] tw:text-[white] tw:[border-color:#203c34] tw:hover:[background:#31584c] tw:[.login-card_&]:w-full tw:[.login-card_&]:mt-1.5 " : undefined}
                             disabled={disabled || busy}
                             onClick={() => onSelect(row.bookingCode)}
                           >
@@ -254,7 +262,9 @@ export function ConfirmedServices({
                     : "No visits ready for payment. Record all service outcomes before collection."}
             </p>
           )}
-          <div className="actions cashier-pagination">
+          <div className="actions tw:flex tw:gap-3 cashier-pagination tw:my-5.5 tw:mx-0 tw:items-center tw:flex-wrap
+          tw:down-600:justify-between tw:[.dashboard-list_&_span]:mr-auto tw:down-760:[.dashboard-list_&_span]:[order:-1]
+          tw:down-760:[.dashboard-list_&_span]:[flex-basis:100%] tw:down-760:[.dashboard-list_&_span]:m-0">
             <Button variant="outline"
               disabled={disabled || busy || page === 1}
               onClick={() => {

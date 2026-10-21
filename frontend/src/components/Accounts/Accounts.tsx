@@ -86,14 +86,19 @@ export function Accounts() {
   const selected = editing && editing !== "new" ? editing : null;
   return (
     <section aria-labelledby="accounts-title">
-      <div className="section-heading">
+      <div className="section-heading tw:flex tw:justify-between tw:items-center tw:gap-5 tw:mb-5 tw:[&_.eyebrow]:mb-2.5
+          tw:[&_h2]:text-[30px] tw:down-760:items-start tw:down-760:flex-col
+          tw:down-600:[.confirmed-services_&]:items-start tw:down-600:[.confirmed-services_&]:flex-col
+          tw:[.admin-scheduling-grid_&]:gap-2.5 tw:[.admin-scheduling-grid_&]:flex-wrap">
         <div>
-          <p className="eyebrow">WORKSPACE ACCESS</p>
+          <p className="eyebrow public:text-[12px] public:tracking-[0.17em] public:font-bold public:text-[#987b1f]
+          public:down-639:text-[11px] tw:text-[11px] tw:tracking-[.18em] tw:font-bold tw:mb-5 tw:[.cashier-main>&]:mb-2.5">WORKSPACE ACCESS</p>
           <h2 id="accounts-title">People & permissions</h2>
           <p className="muted">Manage Admin and Cashier accounts.</p>
         </div>
         <Button variant="default"
-          className="primary"
+          className="primary tw:[background:#203c34] tw:text-[white] tw:[border-color:#203c34] tw:hover:[background:#31584c]
+          tw:[.login-card_&]:w-full tw:[.login-card_&]:mt-1.5"
           onClick={() => {
             setEditing("new");
             setError("");
@@ -104,24 +109,27 @@ export function Accounts() {
         </Button>
       </div>
       {error && (
-        <p role="alert" className="error">
+        <p role="alert" className="error tw:[background:#fff0ed] tw:[border:1px_solid_#ecc5ba] tw:text-[#963923] tw:py-3 tw:px-4 tw:rounded-[6px]
+          tw:text-[14px]">
           {error}{" "}
           {!editing && <Button variant="outline" onClick={() => void load()}>Retry</Button>}
         </p>
       )}
       {notice && (
-        <p role="status" className="success">
+        <p role="status" className="success tw:[.admin-settlement_>_&]:[grid-column:2] tw:[.admin-settlement_>_&]:m-0 tw:[background:#eaf2e9]
+          tw:py-3 tw:px-4 tw:rounded-[6px] tw:[.clique-login-form_&]:text-[#203c34]">
           {notice}
         </p>
       )}
       {editing && (
         <form
-          className="account-form"
+          className="account-form tw:[border:1px_solid_#dce0d8] tw:[background:white] tw:p-7 tw:rounded-[10px] tw:mb-[25px]
+          tw:down-760:p-5"
           onSubmit={save}
           key={selected?.id ?? "new"}
         >
           <h3>{selected ? "Edit account" : "New account"}</h3>
-          <div className="form-grid">
+          <div className="form-grid tw:grid tw:grid-cols-[1fr_1fr] tw:gap-[0_24px] tw:down-760:grid-cols-[1fr]">
             <label>
               Full name
               <Input
@@ -169,7 +177,7 @@ export function Accounts() {
                 At least 12 characters; no more than 72 UTF-8 bytes.
               </small>
             </label>
-            <label className="checkbox">
+            <label className="checkbox tw:flex-row tw:items-center tw:[&_input]:w-4.5 tw:[&_input]:h-4.5 tw:[&_input]:[accent-color:#203c34]">
               <input
                 name="isActive"
                 type="checkbox"
@@ -184,8 +192,9 @@ export function Accounts() {
               access immediately.
             </p>
           )}
-          <div className="actions">
-            <Button variant="default" className="primary" disabled={busy}>
+          <div className="actions tw:flex tw:gap-3">
+            <Button variant="default" className="primary tw:[background:#203c34] tw:text-[white] tw:[border-color:#203c34] tw:hover:[background:#31584c]
+          tw:[.login-card_&]:w-full tw:[.login-card_&]:mt-1.5" disabled={busy}>
               {busy ? "Saving…" : "Save account"}
             </Button>
             <Button variant="outline"
@@ -204,7 +213,9 @@ export function Accounts() {
       {loading ? (
         <p role="status">Loading accounts…</p>
       ) : (
-        <div className="table-wrap">
+        <div className="table-wrap tw:overflow-auto tw:[background:white] tw:[border:1px_solid_#dce0d8] tw:rounded-[10px]
+          tw:[&_pre]:max-w-[36rem] tw:[&_pre]:max-h-[28rem] tw:[&_pre]:overflow-auto tw:[&_pre]:whitespace-pre-wrap
+          tw:[&_pre]:[overflow-wrap:anywhere] tw:[&_pre]:text-[.8rem]">
           <table>
             <thead>
               <tr>
@@ -214,7 +225,7 @@ export function Accounts() {
                 <th>Role</th>
                 <th>Status</th>
                 <th>
-                  <span className="sr-only">Actions</span>
+                  <span className="sr-only tw:absolute tw:w-[1px] tw:h-[1px] tw:overflow-hidden">Actions</span>
                 </th>
               </tr>
             </thead>
@@ -226,7 +237,7 @@ export function Accounts() {
                       {account.firstName} {account.lastName}
                     </strong>
                     {account.id === user?.id && (
-                      <small className="you">You</small>
+                      <small className="you tw:ml-2.5 tw:text-[10px]">You</small>
                     )}
                   </td>
                   <td>{account.username}</td>
@@ -234,7 +245,7 @@ export function Accounts() {
                   <td>{account.role === "ADMIN" ? "Admin" : "Cashier"}</td>
                   <td>
                     <Badge variant="secondary"
-                      className={`badge ${account.isActive ? "active" : ""}`}
+                      className={`badge tw:inline-block tw:py-1 tw:px-2.5 tw:rounded-[20px] tw:[background:#eeece8] tw:text-[12px] tw:text-[#65675f] tw:[&.active]:[background:#e6efe4] tw:[&.active]:text-[#365c3c]  ${account.isActive ? "active" : ""}`}
                     >
                       {account.isActive ? "Active" : "Inactive"}
                     </Badge>

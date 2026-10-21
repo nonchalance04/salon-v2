@@ -29,8 +29,9 @@ export function BookingForm({ plan, onBusy, onBooked }: { plan: BookingPlan; onB
     } catch (err) { setError(message(err)); }
     finally { sending.current = false; setBusy(false); onBusy(false); }
   }
-  return <form className="account-form" onSubmit={submit}><h3>Your contact details</h3>
-    <fieldset disabled={busy}><div className="form-grid">
+  return <form className="account-form tw:[border:1px_solid_#dce0d8] tw:[background:white] tw:p-7 tw:rounded-[10px] tw:mb-[25px]
+          tw:down-760:p-5" onSubmit={submit}><h3>Your contact details</h3>
+    <fieldset disabled={busy}><div className="form-grid tw:grid tw:grid-cols-[1fr_1fr] tw:gap-[0_24px] tw:down-760:grid-cols-[1fr]">
       <label>First name<Input name="firstName" required maxLength={100} autoComplete="given-name" /></label>
       <label>Last name<Input name="lastName" required maxLength={100} autoComplete="family-name" /></label>
       <label>Phone (optional)<PhoneInput name="phone" required={false} /></label>
@@ -39,7 +40,9 @@ export function BookingForm({ plan, onBusy, onBooked }: { plan: BookingPlan; onB
     <p>Enter an email address or phone number. If you provide both, notifications will be sent to both.</p>
     <p>Submitting reserves a temporary hold. Your booking is confirmed only after appointment-fee payment.</p>
     <p className="muted">Availability, fees, and Any Available staff assignments are checked again when you submit.</p>
-    {error && <p role="alert" className="error">{error}</p>}
-    <Button variant="default" className="primary" disabled={busy}>{busy ? "Reserving your visit…" : "Reserve a temporary hold"}</Button>
+    {error && <p role="alert" className="error tw:[background:#fff0ed] tw:[border:1px_solid_#ecc5ba] tw:text-[#963923] tw:py-3 tw:px-4 tw:rounded-[6px]
+          tw:text-[14px]">{error}</p>}
+    <Button variant="default" className="primary tw:[background:#203c34] tw:text-[white] tw:[border-color:#203c34] tw:hover:[background:#31584c]
+          tw:[.login-card_&]:w-full tw:[.login-card_&]:mt-1.5" disabled={busy}>{busy ? "Reserving your visit…" : "Reserve a temporary hold"}</Button>
   </form>;
 }

@@ -8,13 +8,13 @@ export function StaffApp() {
   const { user, loading, error, refresh } = useAuth();
   if (loading)
     return (
-      <main className="loading" role="status">
+      <main className="loading tw:min-h-screen tw:flex tw:flex-col tw:items-center tw:justify-center tw:p-7.5" role="status">
         Opening your workspace…
       </main>
     );
   if (error)
     return (
-      <main className="loading">
+      <main className="loading tw:min-h-screen tw:flex tw:flex-col tw:items-center tw:justify-center tw:p-7.5">
         <h1>Unable to connect</h1>
         <p role="alert">{error}</p>
         <Button variant="outline" onClick={() => void refresh()}>Try again</Button>

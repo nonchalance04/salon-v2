@@ -24,7 +24,11 @@ export function DashboardClock() {
   }, []);
 
   return (
-    <time className="clique-dashboard-clock" dateTime={now.toISOString()}>
+    <time className="clique-dashboard-clock tw:flex tw:flex-col tw:items-end tw:gap-[3px] tw:shrink-0 tw:py-3.5 tw:px-5
+          tw:rounded-[10px] tw:text-[#fff] tw:text-right tw:tabular-nums tw:[&_>_span]:text-[13px]
+          tw:[&_>_strong]:text-[24px] tw:[&_>_strong]:whitespace-nowrap tw:[&_>_small]:text-[11px]
+          tw:[&_>_small]:text-[inherit] tw:[&_>_small]:opacity-[0.75] tw:down-760:ml-auto
+          tw:down-760:[&_>_strong]:text-[20px] tw:[&_>_strong]:leading-[1.3]" dateTime={now.toISOString()}>
       <span>
         {new Intl.DateTimeFormat("en-PH", {
           timeZone,

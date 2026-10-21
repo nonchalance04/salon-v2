@@ -1,5 +1,1 @@
-.appointment-settings fieldset { border:0; padding:0; margin:0; min-width:0; }
-.appointment-settings .policy-section { margin-top:28px; }
-.appointment-settings .policy-history > summary { cursor:pointer; font-weight:600; padding:12px 0; }
-.appointment-settings .policy-history > summary:focus-visible { outline:3px solid var(--ring, #b67a3d); outline-offset:3px; }
-.appointment-settings .actions { flex-wrap:wrap; }
+.appointment-settings .policy-history > summary:focus-visible { outline:3px solid var(--ring, #b67a3d); }

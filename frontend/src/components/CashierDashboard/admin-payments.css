@@ -1,85 +1,32 @@
-.admin-payments { max-width: 1320px; margin-inline: auto; min-width: 0; }
-.admin-payments .payment-page-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
 .admin-payments .payment-page-heading .eyebrow { margin-bottom: 8px; }
-.admin-payments .payment-page-heading h2 { margin-bottom: 10px; font-size: 30px; }
 .admin-payments .payment-page-heading p:last-child { margin: 0; font-size: 14px; }
-.payment-heading-icon, .payment-lookup-icon { display: grid; place-items: center; flex-shrink: 0; width: 54px; height: 54px; background: #f5edce; color: #796018; border-radius: 14px; }
-.admin-payments .payment-lookup { display: flex; align-items: center; gap: 18px; padding: 24px; background: white; border: 1px solid var(--line); border-radius: 14px; margin-bottom: 28px; }
-.payment-lookup > div { flex: 1; }
-.payment-lookup h3 { font-size: 16px; margin: 0 0 4px; }
-.payment-lookup p { font-size: 13px; margin: 0; }
-.admin-payments .payment-lookup label { flex: 1; max-width: 300px; margin: 0; }
-.payment-code-input { position: relative; display: block; }
-.payment-code-input svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #757575; pointer-events: none; }
-.admin-payments .payment-code-input input { padding-left: 38px; height: 42px; }
-.admin-payments .payment-lookup button { height: 42px; }
-.admin-payments .payment-ready-list { border-radius: 14px; }
+.admin-payments .payment-lookup { border: 1px solid var(--line); }
+.payment-code-input svg { transform: translateY(-50%); }
 .admin-payments .payment-ready-list .section-heading { padding-bottom: 20px; border-bottom: 1px solid var(--line); }
 .admin-payments .payment-ready-list .section-heading h3 { font-size: 21px; }
 .admin-payments .payment-ready-list .section-heading p { max-width: 68ch; }
 .admin-payments .payment-ready-list .cashier-search { border: 0; background: #f7f7f8; padding: 16px; }
-.admin-payments .payment-list-count { font-size: 12px; font-weight: 600; color: #686868; padding-block: 4px; }
-.admin-payments .payment-ready-list tr { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) 180px; }
 .admin-payments .payment-ready-list td:last-child { display: flex; flex-direction: column; justify-content: center; background: #faf8f0; }
 .admin-payments .payment-ready-list td:last-child::before { display: none; }
 .admin-payments .payment-ready-list td:last-child > button { width: 100%; margin: 0; white-space: normal; height: auto; min-height: 40px; }
-.admin-payments .admin-payment-detail > button { margin-bottom: 20px; }
 .clique-main .admin-payments .outcomes-detail { margin-top: 0; padding: 28px; }
-.admin-payment-detail .outcomes-visit-heading { padding-bottom: 24px; border-bottom: 1px solid var(--line); }
-.admin-payment-detail .settlement-steps { margin-bottom: 24px; }
-.admin-payment-detail .outcomes-financial-summary { background: #faf8f0; border-color: #e8dfbd; }
+.admin-payment-detail .outcomes-visit-heading { border-bottom: 1px solid var(--line); }
 .admin-payment-detail .outcomes-financial-summary > div:nth-child(2) { border-left: 1px solid #e8dfbd; padding-left: 24px; }
 .admin-payment-detail .outcomes-financial-summary > div:nth-child(2) strong { font-size: 32px; }
-.admin-payment-detail .payment-settlement-grid { display: grid; gap: 20px; align-items: start; }
 .admin-payment-detail .payment-settlement-grid:has(.payment-collection-form) { grid-template-columns: minmax(0, 1fr) minmax(320px, .9fr); grid-template-rows: auto 1fr; gap: 20px 28px; }
-.admin-payment-detail .payment-settlement-grid > * { min-width: 0; grid-column: 1; }
-.admin-payment-detail .payment-settlement-grid > button { justify-self: start; }
 .admin-payment-detail .payment-settlement-grid > .payment-collection-form { grid-column: 2; grid-row: 1 / span 6; }
-.admin-payment-detail .payment-section-title { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.admin-payment-detail .payment-section-title h4 { font-size: 17px; margin: 0; }
-.admin-payment-detail .payment-section-title > span { font-size: 12px; }
-.admin-payment-detail .payment-recorded-services ul { list-style: none; padding: 0; margin: 16px 0 0; }
-.admin-payment-detail .payment-recorded-services li { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 18px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
-.admin-payment-detail .payment-recorded-services li > div { flex: 1; min-width: 140px; }
-.admin-payment-detail .payment-recorded-services small { display: block; margin-top: 6px; }
-.admin-payment-detail .payment-service-price { font-variant-numeric: tabular-nums; }
-.admin-payment-detail .payment-collection-form { padding: 24px; background: #f7f7f8; border: 1px solid var(--line); border-radius: 12px; }
-.admin-payment-detail .payment-collection-form fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
-.admin-payment-detail .payment-collection-form legend { font-weight: 700; font-size: 18px; margin-bottom: 16px; padding: 0; }
-.admin-payment-detail .payment-charge-lines { padding-left: 18px; font-size: 13px; color: #686868; margin: 0 0 16px; }
-.admin-payment-detail .payment-amount-due { padding: 18px 0; margin-bottom: 20px; border-block: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
-.admin-payment-detail .payment-amount-due span { font-size: 12px; color: #686868; }
-.admin-payment-detail .payment-amount-due strong { font-size: 30px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.admin-payment-detail .payment-tender-fields { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; }
-.admin-payment-detail .payment-tender-fields label { margin-bottom: 12px; min-width: 0; }
-.admin-payment-detail .payment-tender-fields input, .admin-payment-detail .payment-tender-fields select { height: 42px; width: 100%; }
-.admin-payment-detail .payment-change { grid-column: 1 / -1; padding: 12px; border-radius: 8px; background: #eaeef0; font-size: 13px; }
-.admin-payment-detail .payment-collection-form fieldset > p { font-size: 12px; color: #686868; line-height: 1.6; }
+.admin-payment-detail .payment-recorded-services li { border-bottom: 1px solid var(--line); }
+.admin-payment-detail .payment-collection-form { border: 1px solid var(--line); }
+.admin-payment-detail .payment-amount-due { border-block: 1px solid var(--line); }
 .admin-payment-detail .payment-collection-form .checkbox { flex-direction: row; align-items: flex-start; font-size: 13px; line-height: 1.6; margin-block: 20px; gap: 10px; }
 .admin-payment-detail .payment-collection-form .checkbox input { width: 16px; height: 16px; flex-shrink: 0; margin-top: 3px; accent-color: #796018; }
 .admin-payment-detail .payment-collection-form .primary { width: 100%; min-height: 44px; height: auto; white-space: normal; }
-.admin-payment-detail .outcomes-payments { margin-top: 28px; }
 @media (max-width: 1150px) {
-  .admin-payments .payment-lookup { flex-wrap: wrap; }
-  .admin-payments .payment-lookup > div { flex-basis: calc(100% - 80px); }
-  .admin-payments .payment-lookup label { max-width: none; }
-  .admin-payments .payment-ready-list tr { grid-template-columns: 1fr 1fr; }
   .admin-payments .payment-ready-list td:last-child { border-left: 0; }
   .admin-payment-detail .payment-settlement-grid:has(.payment-collection-form) { grid-template-columns: 1fr; }
   .admin-payment-detail .payment-settlement-grid > .payment-collection-form { grid-column: 1; grid-row: auto; }
 }
 @media (max-width: 600px) {
-  .admin-payments .payment-page-heading h2 { font-size: 25px; }
-  .payment-heading-icon { display: none; }
-  .admin-payments .payment-lookup { padding: 18px; gap: 14px; }
-  .payment-lookup-icon { width: 42px; height: 42px; border-radius: 10px; }
-  .admin-payments .payment-lookup > div { flex-basis: calc(100% - 60px); }
-  .admin-payments .payment-lookup label { flex-basis: 100%; }
-  .admin-payments .payment-lookup button { width: 100%; }
-  .admin-payments .payment-ready-list tr { grid-template-columns: 1fr; }
   .clique-main .admin-payments .outcomes-detail { padding: 18px; }
   .admin-payment-detail .outcomes-financial-summary > div:nth-child(2) { border-left: 0; border-top: 1px solid #e8dfbd; padding: 16px 0 0; }
-  .admin-payment-detail .payment-collection-form { padding: 18px; }
-  .admin-payment-detail .payment-tender-fields { grid-template-columns: 1fr; }
-  .admin-payment-detail .outcomes-visit-heading > button { width: 100%; }
 }

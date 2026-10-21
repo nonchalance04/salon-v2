@@ -72,7 +72,8 @@ export function AppointmentOtp({ onVerified, restoreSession = true }: { onVerifi
     } catch (err) { setError(err instanceof Error ? err.message : "Please try again."); }
     finally { sending.current = false; setBusy(false); }
   }
-  return <section className="account-form" aria-label="Verify appointment">
+  return <section className="account-form tw:[border:1px_solid_#dce0d8] tw:[background:white] tw:p-7 tw:rounded-[10px] tw:mb-[25px]
+          tw:down-760:p-5" aria-label="Verify appointment">
     {channels.length > 0 && <><h3>Find your appointment</h3>
       <p>Enter your booking code and choose how to receive your verification code. Use the email address or phone number you provided when booking.</p>
       <form onSubmit={requestCode}><fieldset disabled={busy || Boolean(challengeId)}>
@@ -85,17 +86,20 @@ export function AppointmentOtp({ onVerified, restoreSession = true }: { onVerifi
           ? <label>Email address<Input type="email" required autoComplete="email" maxLength={254} value={email} onChange={e => setEmail(e.target.value)} /></label>
           : <label>Phone number<PhoneInput value={phone} onChange={setPhone} /></label>}
         <p className="muted">{channel === "EMAIL" ? "Email verification requires an email address saved on your booking. Check your inbox and spam folder for the code." : "We’ll send the code by SMS to the phone number saved on your booking."}</p>
-        {!challengeId && <Button variant="default" className="primary" disabled={busy || cooldown > 0}>{busy ? "Requesting code…" : cooldown ? `Wait ${cooldown}s` : `Send code by ${channel === "EMAIL" ? "email" : "SMS"}`}</Button>}
+        {!challengeId && <Button variant="default" className="primary tw:[background:#203c34] tw:text-[white] tw:[border-color:#203c34] tw:hover:[background:#31584c]
+          tw:[.login-card_&]:w-full tw:[.login-card_&]:mt-1.5" disabled={busy || cooldown > 0}>{busy ? "Requesting code…" : cooldown ? `Wait ${cooldown}s` : `Send code by ${channel === "EMAIL" ? "email" : "SMS"}`}</Button>}
       </fieldset></form>
       {notice && <p role="status">{notice}</p>}
       {challengeId && <form onSubmit={verify}>
         <label>Verification code<Input required inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ""))} /></label>
-        <Button variant="default" className="primary" disabled={busy}>{busy ? "Please wait…" : "Verify and view appointment"}</Button>
+        <Button variant="default" className="primary tw:[background:#203c34] tw:text-[white] tw:[border-color:#203c34] tw:hover:[background:#31584c]
+          tw:[.login-card_&]:w-full tw:[.login-card_&]:mt-1.5" disabled={busy}>{busy ? "Please wait…" : "Verify and view appointment"}</Button>
         <Button variant="outline" type="button" disabled={busy || cooldown > 0} onClick={() => void requestCode()}>{cooldown ? `Resend in ${cooldown}s` : "Resend code"}</Button>
         <Button variant="outline" type="button" disabled={busy} onClick={() => { setChallengeId(""); setNotice(""); setCode(""); setError(""); }}>Change booking details or method</Button>
         <p className="muted">Your appointment stays accessible on this browser for two hours. Use “Back to home” to end your appointment session when finished on a shared device.</p>
       </form>}
     </>}
-    {error && <p role="alert" className="error">{error}</p>}
+    {error && <p role="alert" className="error tw:[background:#fff0ed] tw:[border:1px_solid_#ecc5ba] tw:text-[#963923] tw:py-3 tw:px-4 tw:rounded-[6px]
+          tw:text-[14px]">{error}</p>}
   </section>;
 }

@@ -26,6 +26,7 @@ export function AppointmentCheckIn({ bookingCode, customerName, startAt, checked
     {confirming ? <fieldset disabled={busy || disabled}><legend>Confirm customer arrival</legend><p>Has {customerName} arrived for booking {bookingCode}? Check-in records arrival; service completion is recorded separately.</p><Button variant="outline" onClick={() => void checkIn()}>Confirm arrival</Button><Button variant="outline" onClick={() => setConfirming(false)}>Cancel</Button></fieldset>
       : <Button variant="outline" disabled={busy || disabled} onClick={() => setConfirming(true)}>Check in customer</Button>}
     {busy && <p role="status">Recording arrival…</p>}
-    {error && <p role="alert" className="error">{error}</p>}
+    {error && <p role="alert" className="error tw:[background:#fff0ed] tw:[border:1px_solid_#ecc5ba] tw:text-[#963923] tw:py-3 tw:px-4 tw:rounded-[6px]
+          tw:text-[14px]">{error}</p>}
   </div>;
 }

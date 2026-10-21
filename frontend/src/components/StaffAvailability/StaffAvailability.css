@@ -1,8 +1,2 @@
-.availability-tabs { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; margin-bottom: 28px; padding: 5px; border: 1px solid #e2dfd4; border-radius: 12px; background: #eaeae5; }
-.clique-workspace .availability-tabs button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 10px 18px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: #858071; font-size: 12px; font-weight: 600; white-space: nowrap; transition: background .15s, color .15s; }
-.clique-workspace .availability-tabs button[aria-selected="true"] { border-color: #e6dfc6; background: #fffdf5; color: #80691f; box-shadow: 0 2px 5px #53471909; }
-.clique-workspace .availability-tabs button:hover { background: #f7f4e9; color: #80691f; }
-@media (max-width: 540px) {
-  .availability-tabs { display: flex; width: 100%; margin-bottom: 22px; }
-  .clique-workspace .availability-tabs button { flex: 1; padding: 10px 12px; font-size: 11px; }
-}
+.clique-workspace .availability-tabs button { transition: background .15s, color .15s; }
+.clique-workspace .availability-tabs button[aria-selected="true"] { box-shadow: 0 2px 5px #53471909; }

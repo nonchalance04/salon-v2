@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/NativeSelect";
-import { ArrowRight, ArrowUp, CalendarDays, Check, Clock3, LoaderCircle, Plus, Scissors, Trash2 } from "lucide-react";
+import { CalendarDays, Check, Clock3, LoaderCircle, Plus, Scissors, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../lib/api";
 import type { Appointment } from "../../types/booking";
@@ -218,47 +218,106 @@ export function AppointmentManagement({
       ? "All allowed schedule changes for this booking have been used."
       : "Rescheduling is unavailable for this booking’s current status or policy deadline.";
   return (
-    <section className="appointment-manager" aria-label="Manage appointment" aria-busy={busy}>
-      <div className="appointment-manager-policy">
+    <section className="appointment-manager tw:customer:text-[13px] tw:customer:min-w-0 tw:customer:[&_h3]:text-[16px]
+          tw:customer:[&_h3]:font-semibold tw:customer:[&_h3]:[margin:0_0_6px] tw:customer:[&_h3]:tracking-[-.2px]
+          tw:customer:[&_p]:m-0 tw:customer:[&_p]:text-[#74766f] tw:customer:[&_p]:text-[13px]
+          tw:customer:[&_button]:rounded-[9px] tw:customer:[&_button]:text-[12px] tw:customer:[&_button]:cursor-pointer
+          tw:customer:[&_button]:max-w-full tw:customer:[&_button:disabled]:cursor-default
+          tw:customer:[&_button:disabled]:opacity-[.55] tw:customer:[&_label]:m-0 tw:customer:[&_label]:flex
+          tw:customer:[&_label]:flex-col tw:customer:[&_label]:gap-2 tw:customer:[&_label]:min-w-0
+          tw:customer:[&_label]:text-[12px] tw:customer:[&_label]:font-semibold tw:customer:[&_label]:text-[#51564b]
+          tw:customer:[&_select]:w-full tw:customer:[&_input]:w-full tw:customer:[&_textarea]:w-full
+          tw:customer:[&_select]:min-w-0 tw:customer:[&_input]:min-w-0 tw:customer:[&_textarea]:min-w-0
+          tw:customer:[&_select]:max-w-full tw:customer:[&_input]:max-w-full tw:customer:[&_textarea]:max-w-full
+          tw:customer:[&_select]:[border:1px_solid_#dcded3] tw:customer:[&_input]:[border:1px_solid_#dcded3]
+          tw:customer:[&_textarea]:[border:1px_solid_#dcded3] tw:customer:[&_select]:rounded-[9px]
+          tw:customer:[&_input]:rounded-[9px] tw:customer:[&_textarea]:rounded-[9px]
+          tw:customer:[&_select]:[background:white] tw:customer:[&_input]:[background:white]
+          tw:customer:[&_textarea]:[background:white] tw:customer:[&_select]:text-[13px]
+          tw:customer:[&_input]:text-[13px] tw:customer:[&_textarea]:text-[13px] tw:customer:[&_select]:text-[#30332d]
+          tw:customer:[&_input]:text-[#30332d] tw:customer:[&_textarea]:text-[#30332d] tw:customer:[&_select]:py-[11px]
+          tw:customer:[&_select]:px-3 tw:customer:[&_input]:py-[11px] tw:customer:[&_input]:px-3
+          tw:customer:[&_textarea]:py-[11px] tw:customer:[&_textarea]:px-3 tw:customer:[&_select]:m-0
+          tw:customer:[&_input]:m-0 tw:customer:[&_textarea]:m-0 tw:customer:[&_select]:pr-8
+          tw:customer:[&_select]:min-h-11 tw:customer:[&_select]:[text-overflow:ellipsis]
+          tw:customer:[&_textarea]:resize-y tw:customer:[&_textarea]:min-h-21 tw:customer:leading-[1.6]
+          tw:customer:[&_h3]:leading-[1.4] tw:customer:[&_p]:leading-[1.7]" aria-label="Manage appointment" aria-busy={busy}>
+      <div className="appointment-manager-policy tw:customer:flex tw:customer:justify-between tw:customer:flex-wrap
+          tw:customer:gap-[6px_16px] tw:customer:[padding:0_0_20px] tw:customer:text-[11px] tw:customer:text-[#7c7d74]">
         <span>{appointment.rescheduleCount} of {policy.maxReschedules} schedule changes used</span>
         {!recovery && <span>Reschedule at least {policy.rescheduleCutoffHours} hours before your visit</span>}
       </div>
       {appointment.carriedAppointmentFeePaymentId && <p className="appointment-manager-notice">Your appointment fee is covered by credit from the missed booking. No additional appointment-fee payment is due.</p>}
       {appointment.recoveryAppointment && <p className="appointment-manager-notice">Replacement booking: <strong>{appointment.recoveryAppointment.bookingCode}</strong>. Verify your phone number on Your appointment to manage it.</p>}
-      {!editing && !confirmCancel && <div className="appointment-manager-options">
-        <div className="appointment-manager-option">
-          <span className="appointment-manager-option-icon" aria-hidden="true"><CalendarDays size={22} /></span>
+      {!editing && !confirmCancel && <div className="appointment-manager-options tw:customer:grid tw:customer:gap-3.5">
+        <div className="appointment-manager-option tw:customer:[border:1px_solid_#e4e1d6] tw:customer:rounded-[14px] tw:customer:p-5.5
+          tw:customer:[background:white] tw:customer:grid tw:customer:grid-cols-[36px_minmax(0,1fr)] tw:customer:gap-3.5
+          tw:customer:[&>button]:[grid-column:2] tw:customer:[&>button]:[justify-self:start]
+          tw:customer:[&>button]:mt-[3px] tw:down-600:customer:p-4.5 tw:down-600:customer:grid-cols-[26px_minmax(0,1fr)]
+          tw:down-600:customer:gap-2.5 tw:down-600:customer:[&>button]:[grid-column:1/-1]
+          tw:down-600:customer:[&>button]:[justify-self:stretch]">
+          <span className="appointment-manager-option-icon tw:customer:text-[#92752f] tw:customer:pt-0.5" aria-hidden="true"><CalendarDays size={22} /></span>
           <div><h3>{recovery ? "Plan a replacement visit" : "Reschedule your visit"}</h3><p>{canChange ? "Choose your services, preferred professional, and a new available time." : changeUnavailable}</p></div>
           {canChange && <Button className="appointment-manager-primary" disabled={busy} onClick={() => void open()}>{recovery ? "Request a recovery booking" : "Reschedule or change services"}</Button>}
         </div>
-        {canCancel && <div className="appointment-manager-option appointment-manager-cancel-option">
+        {canCancel && <div className="appointment-manager-option tw:customer:[border:1px_solid_#e4e1d6] tw:customer:rounded-[14px] tw:customer:p-5.5
+          tw:customer:grid tw:customer:gap-3.5 tw:customer:[&>button]:[justify-self:start] tw:down-600:customer:p-4.5
+          tw:down-600:customer:gap-2.5 tw:down-600:customer:[&>button]:[grid-column:1/-1]
+          tw:down-600:customer:[&>button]:[justify-self:stretch] appointment-manager-cancel-option
+          tw:customer:grid-cols-[minmax(0,1fr)_auto] tw:customer:items-center tw:customer:[background:transparent]
+          tw:customer:py-5 tw:customer:px-5.5 tw:customer:[&>button]:[grid-column:auto] tw:customer:[&>button]:m-0
+          tw:customer:[&>button]:text-[12px] tw:customer:[&_h3]:text-[14px]
+          tw:down-600:customer:grid-cols-[minmax(0,1fr)]">
           <div><h3>Cancel this appointment</h3><p>Release your reserved time. Your collected appointment fee remains unchanged.</p></div>
           <Button variant="outline" disabled={busy} onClick={() => setConfirmCancel(true)}>Cancel appointment</Button>
         </div>}
         {!canChange && !canCancel && !appointment.recoveryAppointment && <p className="appointment-manager-help">Please contact the salon for assistance.</p>}
       </div>}
-      {confirmCancel && <fieldset className="appointment-manager-cancel" disabled={busy}>
+      {confirmCancel && <fieldset className="appointment-manager-cancel tw:customer:p-5.5 tw:customer:[border:1px_solid_#e9d9d1] tw:customer:rounded-[12px]
+          tw:customer:[background:#fffaf7] tw:customer:min-w-0 tw:customer:[&_legend]:text-[16px]
+          tw:customer:[&_legend]:font-semibold tw:customer:[&_legend]:py-0 tw:customer:[&_legend]:px-1.5" disabled={busy}>
         <legend>Cancel your appointment?</legend>
         <p>This releases your reserved time. The collected appointment fee remains unchanged.</p>
-        <div className="appointment-manager-actions">
+        <div className="appointment-manager-actions tw:customer:flex tw:customer:items-center tw:customer:justify-end
+          tw:customer:flex-wrap tw:customer:gap-2.5 tw:customer:[border-top:1px_solid_#e4e1d6] tw:customer:m-0
+          tw:customer:pt-5 tw:down-600:customer:[&>button]:flex-1 tw:down-600:customer:[&>button]:min-w-[120px]
+          tw:down-600:customer:[&>button]:min-h-11 tw:down-600:customer:[&>button]:whitespace-nowrap">
           <Button variant="outline" onClick={() => setConfirmCancel(false)}>Keep appointment</Button>
           <Button variant="destructive" onClick={() => void cancel()}>Confirm cancellation</Button>
         </div>
       </fieldset>}
       {editing && <form className="appointment-manager-form" onSubmit={event => { event.preventDefault(); void search(); }}>
-        <fieldset disabled={busy} className="appointment-manager-fields">
-          <section className="appointment-manager-panel" aria-label="Services and professionals">
-          <div className="appointment-manager-step"><span>01</span><div><h3>{recovery ? "Plan your replacement visit" : "Services & professionals"}</h3><p>{recovery ? "Your original policy applies. Eligible unused appointment-fee credit is carried automatically; otherwise payment is required." : "Retained services keep their booked prices and durations. Added services use current values."}</p></div></div>
-          <div className="appointment-manager-services">
-            {rows.map((row, index) => <div className="appointment-manager-service" key={row.key}>
-              <div className="appointment-manager-service-heading"><span><Scissors size={16} aria-hidden="true" />Service {index + 1}</span><div>
-                <Button variant="ghost" size="icon-sm" type="button" disabled={index === 0} aria-label={`Move service ${index + 1} earlier`} onClick={() => {
+        <fieldset disabled={busy} className="appointment-manager-fields tw:customer:[border:0] tw:customer:p-0 tw:customer:m-0 tw:customer:min-w-0
+          tw:customer:grid tw:customer:gap-4">
+          <section className="appointment-manager-panel tw:customer:min-w-0 tw:customer:p-5.5 tw:customer:[background:#fff]
+          tw:customer:[border:1px_solid_#e4e1d6] tw:customer:rounded-[14px] tw:down-600:customer:p-4" aria-label="Services and professionals">
+          <div className="appointment-manager-step tw:customer:flex tw:customer:gap-3 tw:customer:items-start
+          tw:customer:[margin:8px_0_18px] tw:customer:[&>span]:grid tw:customer:[&>span]:place-items-center
+          tw:customer:[&>span]:shrink-0 tw:customer:[&>span]:text-[10px] tw:customer:[&>span]:font-bold
+          tw:customer:[&_p]:text-[12px] tw:customer:[&>span]:w-8 tw:customer:[&>span]:h-8
+          tw:customer:[&>span]:rounded-[10px] tw:customer:[&>span]:[background:#30382d] tw:customer:[&>span]:text-[white]
+          tw:customer:[&_h3]:text-[17px]"><span>01</span><div><h3>{recovery ? "Plan your replacement visit" : "Services & professionals"}</h3><p>{recovery ? "Your original policy applies. Eligible unused appointment-fee credit is carried automatically; otherwise payment is required." : "Retained services keep their booked prices and durations. Added services use current values."}</p></div></div>
+          <div className="appointment-manager-services tw:customer:grid tw:customer:gap-3">
+            {rows.map((row, index) => <div className="appointment-manager-service tw:customer:[border:1px_solid_#e4e1d6] tw:customer:rounded-[12px]
+          tw:customer:overflow-hidden tw:customer:min-w-0 tw:customer:[background:#fcfcf9]" key={row.key}>
+              <div className="appointment-manager-service-heading tw:customer:flex tw:customer:items-center tw:customer:justify-between
+          tw:customer:py-[9px] tw:customer:px-4 tw:customer:[border-bottom:1px_solid_#efede6] tw:customer:[&>span]:flex
+          tw:customer:[&>span]:items-center tw:customer:[&>span]:gap-2 tw:customer:[&>span]:text-[11px]
+          tw:customer:[&>span]:font-semibold tw:customer:[&>span]:text-[#727968] tw:customer:[&>div]:flex
+          tw:customer:[&>div]:gap-1 tw:customer:[background:#f5f5ef] tw:customer:[&_button]:min-w-9
+          tw:customer:[&_button]:min-h-9"><span><Scissors size={16} aria-hidden="true" />Service {index + 1}</span><div>
+                <Button variant="ghost" size="sm" type="button" disabled={index === 0} aria-label={`Move service ${index + 1} earlier`} onClick={() => {
                   invalidate(); setRows(items => { const copy = [...items]; [copy[index - 1], copy[index]] = [copy[index]!, copy[index - 1]!]; return copy; });
-                }}><ArrowUp size={16} /></Button>
+                }}>Move earlier</Button>
                 <Button variant="ghost" size="icon-sm" type="button" aria-label={`Remove service ${index + 1}`} onClick={() => { invalidate(); setRows(items => items.filter(item => item.key !== row.key)); }}><Trash2 size={16} /></Button>
               </div></div>
-              <div className="appointment-manager-service-fields">
-                {row.appointmentServiceId ? <div className="appointment-manager-retained"><span>Booked service</span><strong>{row.label}</strong><small>Original price & duration retained</small></div> : <label>Service<NativeSelect value={row.serviceId} onChange={event => { invalidate(); setRows(items => items.map(item => item.key === row.key ? { ...item, serviceId: event.target.value, staffId: "" } : item)); }}>{services.map(service => <NativeSelectOption key={service.id} value={service.id}>{service.name} · PHP {service.price}</NativeSelectOption>)}</NativeSelect></label>}
+              <div className="appointment-manager-service-fields tw:customer:grid tw:customer:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]
+          tw:customer:gap-4.5 tw:customer:p-4.5 tw:down-600:customer:grid-cols-[minmax(0,1fr)] tw:down-600:customer:gap-4">
+                {row.appointmentServiceId ? <div className="appointment-manager-retained tw:customer:flex tw:customer:flex-col tw:customer:gap-1.5
+          tw:customer:justify-center tw:customer:min-w-0 tw:customer:[&>span]:text-[11px]
+          tw:customer:[&>span]:text-[#777b70] tw:customer:[&_strong]:text-[14px] tw:customer:[&_strong]:font-semibold
+          tw:customer:[&_strong]:[overflow-wrap:anywhere] tw:customer:[&_small]:text-[10px]
+          tw:customer:[&_small]:text-[#85887e]"><span>Booked service</span><strong>{row.label}</strong><small>Original price & duration retained</small></div> : <label>Service<NativeSelect value={row.serviceId} onChange={event => { invalidate(); setRows(items => items.map(item => item.key === row.key ? { ...item, serviceId: event.target.value, staffId: "" } : item)); }}>{services.map(service => <NativeSelectOption key={service.id} value={service.id}>{service.name} · PHP {service.price}</NativeSelectOption>)}</NativeSelect></label>}
                 <label>Preferred professional<NativeSelect value={row.staffId} onChange={event => { invalidate(); setRows(items => items.map(item => item.key === row.key ? { ...item, staffId: event.target.value } : item)); }}>
                   <NativeSelectOption value="">Any available staff</NativeSelectOption>
                   {row.staffId && !staff.some(person => person.id === row.staffId && person.serviceIds.includes(row.serviceId)) && <NativeSelectOption value={row.staffId}>Previous staff (availability will be checked)</NativeSelectOption>}
@@ -269,33 +328,72 @@ export function AppointmentManagement({
           </div>
           <Button variant="outline" type="button" className="appointment-manager-add" disabled={!services.length || rows.length >= 20} onClick={() => { invalidate(); setRows(items => [...items, { key: key.current++, serviceId: services[0]!.id, staffId: "", label: services[0]!.name }]); }}><Plus size={16} />Add another service</Button>
           </section>
-          <section className="appointment-manager-panel" aria-label="Date and time">
-          <div className="appointment-manager-step"><span>02</span><div><h3>Find your new time</h3><p>All times follow {appointment.timeZone}. Availability is checked again when you confirm.</p></div></div>
-          <div className="appointment-manager-date-row">
+          <section className="appointment-manager-panel tw:customer:min-w-0 tw:customer:p-5.5 tw:customer:[background:#fff]
+          tw:customer:[border:1px_solid_#e4e1d6] tw:customer:rounded-[14px] tw:down-600:customer:p-4" aria-label="Date and time">
+          <div className="appointment-manager-step tw:customer:flex tw:customer:gap-3 tw:customer:items-start
+          tw:customer:[margin:8px_0_18px] tw:customer:[&>span]:grid tw:customer:[&>span]:place-items-center
+          tw:customer:[&>span]:shrink-0 tw:customer:[&>span]:text-[10px] tw:customer:[&>span]:font-bold
+          tw:customer:[&_p]:text-[12px] tw:customer:[&>span]:w-8 tw:customer:[&>span]:h-8
+          tw:customer:[&>span]:rounded-[10px] tw:customer:[&>span]:[background:#30382d] tw:customer:[&>span]:text-[white]
+          tw:customer:[&_h3]:text-[17px]"><span>02</span><div><h3>Find your new time</h3><p>All times follow {appointment.timeZone}. Availability is checked again when you confirm.</p></div></div>
+          <div className="appointment-manager-date-row tw:customer:grid tw:customer:grid-cols-[minmax(0,1fr)_auto] tw:customer:gap-4
+          tw:customer:[align-items:end] tw:customer:mb-4.5 tw:down-600:customer:grid-cols-[minmax(0,1fr)]
+          tw:down-600:customer:gap-4 tw:down-600:customer:[&>button]:w-full">
             <label>New visit date<Input type="date" value={date} required onChange={event => { invalidate(); setDate(event.target.value); }} /></label>
             <Button className="appointment-manager-primary" disabled={!rows.length}><CalendarDays size={16} aria-hidden="true" />Find available times</Button>
           </div>
-          {slots === null && <div className="appointment-manager-time-placeholder"><Clock3 size={20} aria-hidden="true" /><p>Choose a date and search to see available times.</p></div>}
-          {slots && (slots.length ? <div className="appointment-manager-time">
-            <fieldset className="appointment-manager-slot-picker">
+          {slots === null && <div className="appointment-manager-time-placeholder tw:customer:flex tw:customer:items-center tw:customer:justify-center
+          tw:customer:gap-3 tw:customer:py-5.5 tw:customer:px-4 tw:customer:[border:1px_dashed_#dedfd4]
+          tw:customer:rounded-[10px] tw:customer:[background:#fafaf6] tw:customer:text-[#848b79]
+          tw:customer:[&_p]:text-[12px] tw:down-600:customer:justify-start"><Clock3 size={20} aria-hidden="true" /><p>Choose a date and search to see available times.</p></div>}
+          {slots && (slots.length ? <div className="appointment-manager-time tw:customer:grid tw:customer:gap-4 tw:customer:my-4 tw:customer:mx-0">
+            <fieldset className="appointment-manager-slot-picker tw:customer:[border:0] tw:customer:min-w-0 tw:customer:m-0 tw:customer:p-0
+          tw:customer:[&_legend]:w-full tw:customer:[&_legend]:p-0 tw:customer:[&_legend]:mb-3
+          tw:customer:[&_legend]:text-[12px] tw:customer:[&_legend]:font-semibold tw:customer:[&_legend]:text-[#51564b]
+          tw:customer:[&_legend_span]:[float:right] tw:customer:[&_legend_span]:font-normal
+          tw:customer:[&_legend_span]:text-[#73796d] tw:customer:[&_legend_span]:text-[11px]">
               <legend>Choose a start time <span>{slots.length} available</span></legend>
-              <div className="appointment-manager-slot-grid">
-                {slots.map(slot => <label className={`appointment-manager-slot${startAt === slot.startAt ? " is-selected" : ""}`} key={slot.startAt}>
+              <div className="appointment-manager-slot-grid tw:customer:grid tw:customer:grid-cols-[repeat(auto-fit,minmax(112px,1fr))]
+          tw:customer:gap-2 tw:customer:max-h-[240px] tw:customer:overflow-y-auto tw:customer:p-1">
+                {slots.map(slot => <label className={`appointment-manager-slot tw:customer:[&>svg]:opacity-[0] tw:customer:[&>svg]:text-[#fff] tw:customer:[&>svg]:shrink-0 tw:customer:hover:[border-color:#8c987e] tw:customer:hover:[background:#f6f8f2] ${startAt === slot.startAt ? " is-selected" : ""}`} key={slot.startAt}>
                   <input type="radio" name="reschedule-start" value={slot.startAt} checked={startAt === slot.startAt} onChange={() => setStartAt(slot.startAt)} />
                   <span>{time(slot.startAt)}</span><Check size={14} aria-hidden="true" />
                 </label>)}
               </div>
             </fieldset>
-            {selectedSlot && <div className="appointment-manager-preview" aria-live="polite"><span><Check size={14} aria-hidden="true" /> YOUR UPDATED VISIT</span><strong>{format(selectedSlot.startAt)}</strong><p>Ends at {time(selectedSlot.endAt)} · {appointment.timeZone}</p><ol>{selectedSlot.services.map((service, index) => <li key={index}><Scissors size={15} aria-hidden="true" /><div>{service.serviceName}<span>with {service.staffName}</span></div></li>)}</ol></div>}
-          </div> : <div role="status" className="appointment-manager-empty"><CalendarDays size={22} aria-hidden="true" /><strong>No times available on this date</strong><p>Try another date or choose a different professional.</p></div>)}
+            {selectedSlot && <div className="appointment-manager-preview tw:customer:py-4.5 tw:customer:px-5 tw:customer:[border:1px_solid_#dbe3d4]
+          tw:customer:[background:#f0f4ec] tw:customer:rounded-[12px] tw:customer:[&>span]:flex
+          tw:customer:[&>span]:items-center tw:customer:[&>span]:gap-[7px] tw:customer:[&>span]:tracking-[.1em]
+          tw:customer:[&>span]:text-[9px] tw:customer:[&>span]:font-bold tw:customer:[&>span]:text-[#6e7b5f]
+          tw:customer:[&>span]:mb-[7px] tw:customer:[&>strong]:block tw:customer:[&>strong]:text-[14px]
+          tw:customer:[&>strong]:text-[#46553b] tw:customer:[&_ol]:[list-style:none]
+          tw:customer:[&_ol]:[padding:12px_0_0] tw:customer:[&_ol]:[margin:14px_0_0]
+          tw:customer:[&_ol]:[border-top:1px_solid_#dbe3d4] tw:customer:[&_li]:flex tw:customer:[&_li]:items-start
+          tw:customer:[&_li]:gap-2.5 tw:customer:[&_li]:py-1.5 tw:customer:[&_li]:px-0 tw:customer:[&_li]:text-[13px]
+          tw:customer:[&_li>svg]:shrink-0 tw:customer:[&_li>svg]:mt-[3px] tw:customer:[&_li>svg]:text-[#6e7b5f]
+          tw:customer:[&>p]:text-[11px] tw:customer:[&>p]:mt-1 tw:customer:[&>p]:text-[#65765b]
+          tw:customer:[&_li_span]:block tw:customer:[&_li_span]:text-[11px] tw:customer:[&_li_span]:text-[#747d6a]" aria-live="polite"><span><Check size={14} aria-hidden="true" /> YOUR UPDATED VISIT</span><strong>{format(selectedSlot.startAt)}</strong><p>Ends at {time(selectedSlot.endAt)} · {appointment.timeZone}</p><ol>{selectedSlot.services.map((service, index) => <li key={index}><Scissors size={15} aria-hidden="true" /><div>{service.serviceName}<span>with {service.staffName}</span></div></li>)}</ol></div>}
+          </div> : <div role="status" className="appointment-manager-empty tw:customer:grid tw:customer:[justify-items:center] tw:customer:gap-2
+          tw:customer:text-center tw:customer:py-6.5 tw:customer:px-4.5 tw:customer:[border:1px_dashed_#dfd8c6]
+          tw:customer:[background:#faf7ee] tw:customer:rounded-[10px] tw:customer:text-[#92752f]
+          tw:customer:[&_strong]:text-[14px] tw:customer:[&_strong]:text-[#5f604f] tw:customer:[&_p]:text-[12px]"><CalendarDays size={22} aria-hidden="true" /><strong>No times available on this date</strong><p>Try another date or choose a different professional.</p></div>)}
           </section>
-          <section className="appointment-manager-panel appointment-manager-note-panel" aria-label="Additional details">
-            <label className="appointment-manager-reason"><span>Reason for your change <small>Optional</small></span><Textarea maxLength={1000} rows={2} placeholder="Anything you’d like the salon to know?" value={reason} onChange={event => setReason(event.target.value)} /></label>
+          <section className="appointment-manager-panel tw:customer:min-w-0 tw:customer:p-5.5 tw:customer:[background:#fff]
+          tw:customer:[border:1px_solid_#e4e1d6] tw:customer:rounded-[14px] tw:down-600:customer:p-4
+          appointment-manager-note-panel" aria-label="Additional details">
+            <label className="appointment-manager-reason tw:customer:my-5 tw:customer:mx-0 tw:customer:[&>span]:flex
+          tw:customer:[&>span]:items-center tw:customer:[&>span]:justify-between tw:customer:[&>span]:gap-2.5
+          tw:customer:[&_small]:text-[11px] tw:customer:[&_small]:font-normal tw:customer:[&_small]:text-[#73796d]
+          tw:customer:[&_textarea]:min-h-19 tw:customer:[&_textarea]:[background:#fff]"><span>Reason for your change <small>Optional</small></span><Textarea maxLength={1000} rows={2} placeholder="Anything you’d like the salon to know?" value={reason} onChange={event => setReason(event.target.value)} /></label>
           </section>
-          <div className="appointment-manager-actions">
-            <div className="appointment-manager-save-hint">{selectedSlot ? "Ready when you are. Review your new visit above." : "Select an available time to continue."}</div>
+          <div className="appointment-manager-actions tw:customer:flex tw:customer:items-center tw:customer:justify-end
+          tw:customer:flex-wrap tw:customer:gap-2.5 tw:customer:[border-top:1px_solid_#e4e1d6] tw:customer:m-0
+          tw:customer:pt-5 tw:down-600:customer:[&>button]:flex-1 tw:down-600:customer:[&>button]:min-w-[120px]
+          tw:down-600:customer:[&>button]:min-h-11 tw:down-600:customer:[&>button]:whitespace-nowrap">
+            <div className="appointment-manager-save-hint tw:customer:flex-1 tw:customer:min-w-[180px] tw:customer:text-[11px]
+          tw:customer:text-[#747b6e] tw:down-600:customer:[flex-basis:100%]">{selectedSlot ? "Ready when you are. Review your new visit above." : "Select an available time to continue."}</div>
             <Button variant="outline" type="button" onClick={() => { setEditing(false); invalidate(); }}>Back</Button>
-            <Button type="button" className="appointment-manager-primary" disabled={!selectedSlot} onClick={() => void save()}>{recovery ? "Create replacement booking" : "Confirm changes"}<ArrowRight size={16} aria-hidden="true" /></Button>
+            <Button type="button" className="appointment-manager-primary" disabled={!selectedSlot} onClick={() => void save()}>{recovery ? "Create replacement booking" : "Confirm changes"}</Button>
           </div>
         </fieldset>
       </form>}

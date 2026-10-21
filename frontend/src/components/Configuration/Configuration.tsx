@@ -204,8 +204,8 @@ export function Configuration({
       : data[section]
     : [];
   return (
-    <section aria-label="Salon configuration" className={`configuration${section === "services" ? " services-configuration" : section === "staff" ? " staff-configuration" : section === "schedules" ? " schedules-configuration" : ""}`}>
-      {/* <nav className="config-tabs" aria-label="Configuration sections">
+    <section aria-label="Salon configuration" className={`configuration tw:[&_.section-heading]:items-start ${section === "services" ? " services-configuration" : section === "staff" ? " staff-configuration" : section === "schedules" ? " schedules-configuration" : ""}`}>
+      {/* <nav className="config-tabs tw:[&_button]:text-[12px] tw:[&_button]:py-[9px] tw:[&_button]:px-3" aria-label="Configuration sections">
         {(Object.keys(definitions) as Section[]).map((key) => (
           <button
             key={key}
@@ -225,15 +225,20 @@ export function Configuration({
           </button>
         ))}
       </nav> */}
-      <div className="section-heading">
+      <div className="section-heading tw:flex tw:justify-between tw:items-center tw:gap-5 tw:mb-5 tw:[&_.eyebrow]:mb-2.5
+          tw:[&_h2]:text-[30px] tw:down-760:items-start tw:down-760:flex-col
+          tw:down-600:[.confirmed-services_&]:items-start tw:down-600:[.confirmed-services_&]:flex-col
+          tw:[.admin-scheduling-grid_&]:gap-2.5 tw:[.admin-scheduling-grid_&]:flex-wrap">
         <div>
-          <p className="eyebrow">SALON MANAGEMENT</p>
+          <p className="eyebrow public:text-[12px] public:tracking-[0.17em] public:font-bold public:text-[#987b1f]
+          public:down-639:text-[11px] tw:text-[11px] tw:tracking-[.18em] tw:font-bold tw:mb-5 tw:[.cashier-main>&]:mb-2.5">SALON MANAGEMENT</p>
           <h2>{definition.title}</h2>
           <p className="muted">{definition.description}</p>
         </div>
         {data && section !== "hours" && (
           <Button variant="default"
-            className="primary"
+            className="primary tw:[background:#203c34] tw:text-[white] tw:[border-color:#203c34] tw:hover:[background:#31584c]
+          tw:[.login-card_&]:w-full tw:[.login-card_&]:mt-1.5"
             disabled={busy}
             onClick={() =>
               open(
@@ -248,12 +253,13 @@ export function Configuration({
         )}
       </div>
       {data && !["services", "staff", "schedules"].includes(section) && (
-        <p className="timezone-note">
+        <p className="timezone-note tw:text-[12px] tw:text-[#64736b] tw:mb-6">
           All dates and times use {data.timeZone}.
         </p>
       )}
       {error && !skillsStaff && !(["services", "staff", "schedules"].includes(section) && edit) && (
-        <div ref={errorPanel} role="alert" className="error">
+        <div ref={errorPanel} role="alert" className="error tw:[background:#fff0ed] tw:[border:1px_solid_#ecc5ba] tw:text-[#963923] tw:py-3 tw:px-4 tw:rounded-[6px]
+          tw:text-[14px]">
           <p>{error}</p>
           {conflicts.length > 0 && (
             <ul>
@@ -279,7 +285,8 @@ export function Configuration({
         </div>
       )}
       {notice && (
-        <p role="status" className="success">
+        <p role="status" className="success tw:[.admin-settlement_>_&]:[grid-column:2] tw:[.admin-settlement_>_&]:m-0 tw:[background:#eaf2e9]
+          tw:py-3 tw:px-4 tw:rounded-[6px] tw:[.clique-login-form_&]:text-[#203c34]">
           {notice}
         </p>
       )}
@@ -409,7 +416,8 @@ export function Configuration({
         onRestoreFocus={() => editorTrigger.current?.focus()}
       />}
       {edit && section !== "services" && section !== "staff" && section !== "schedules" && (
-        <form ref={form} tabIndex={-1} className="account-form" onSubmit={save}>
+        <form ref={form} tabIndex={-1} className="account-form tw:[border:1px_solid_#dce0d8] tw:[background:white] tw:p-7 tw:rounded-[10px] tw:mb-[25px]
+          tw:down-760:p-5" onSubmit={save}>
           <h3>
             {edit.id ? "Edit" : "New"} {definition.singular}
           </h3>
@@ -418,7 +426,7 @@ export function Configuration({
               ? "This existing closure uses custom hours. Its time range is preserved."
               : `The salon will be closed all day on the selected date (${data!.timeZone}).`}
           </p>}
-          <div className="form-grid">
+          <div className="form-grid tw:grid tw:grid-cols-[1fr_1fr] tw:gap-[0_24px] tw:down-760:grid-cols-[1fr]">
             {fields.map((field) => {
               const value = edit.values[field.key] ?? "";
               const update = (next: string | boolean) =>
@@ -431,7 +439,7 @@ export function Configuration({
               );
               if (field.type === "active")
                 return (
-                  <label className="checkbox" key={field.key}>
+                  <label className="checkbox tw:flex-row tw:items-center tw:[&_input]:w-4.5 tw:[&_input]:h-4.5 tw:[&_input]:[accent-color:#203c34]" key={field.key}>
                     <input
                       type="checkbox"
                       checked={Boolean(value)}
@@ -508,8 +516,9 @@ export function Configuration({
               );
             })}
           </div>
-          <div className="actions">
-            <Button variant="default" className="primary" disabled={busy}>
+          <div className="actions tw:flex tw:gap-3">
+            <Button variant="default" className="primary tw:[background:#203c34] tw:text-[white] tw:[border-color:#203c34] tw:hover:[background:#31584c]
+          tw:[.login-card_&]:w-full tw:[.login-card_&]:mt-1.5" disabled={busy}>
               {busy ? "Saving…" : "Save changes"}
             </Button>
             <Button variant="outline" type="button" disabled={busy} onClick={() => setEdit(null)}>
@@ -527,37 +536,56 @@ export function Configuration({
       />}
       {data && !["hours", "schedules"].includes(section) &&
         (rows.length === 0 ? (
-          <p className="empty-state">
+          <p className="empty-state public:py-10 public:px-6.5 public:[border:1px_dashed_#c8cbc0] public:rounded-[15px]
+          public:text-center tw:p-7.5 tw:[border:1px_dashed_#bac8bc] tw:rounded-[10px] tw:text-[#64736b]">
             No {definition.title.toLowerCase()} configured yet.
           </p>
         ) : (
-          <div className="config-records">
+          <div className="config-records tw:[.services-configuration_&]:grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))]
+          tw:[.services-configuration_&]:gap-5
+          tw:[.staff-configuration_&]:grid-cols-[repeat(auto-fill,minmax(min(100%,350px),1fr))]
+          tw:[.staff-configuration_&]:gap-5 tw:grid tw:grid-cols-[repeat(auto-fit,minmax(min(100%,360px),1fr))]
+          tw:gap-4.5">
             {rows.map((row) => section === "services" ? (
-              <article key={row.id} className="service-menu-card">
-                <div className="service-menu-heading">
-                  <span className="service-menu-icon"><Scissors size={20} aria-hidden="true" /></span>
-                  <span className={`service-menu-status${row.isActive ? " is-active" : ""}`}>{row.isActive ? "Active" : "Inactive"}</span>
+              <article key={row.id} className="service-menu-card tw:flex tw:flex-col tw:min-w-0 tw:p-6 tw:[border:1px_solid_#e5e3dc] tw:rounded-[16px]
+          tw:[background:#fff] tw:[&_h3]:[margin:0_0_8px] tw:[&_h3]:text-[#292a28] tw:[&_h3]:text-[18px]
+          tw:[&_h3]:leading-[1.4]">
+                <div className="service-menu-heading tw:flex tw:justify-between tw:items-center tw:gap-3 tw:mb-5">
+                  <span className="service-menu-icon tw:grid tw:place-items-center tw:shrink-0 tw:w-11 tw:h-11 tw:rounded-[12px]
+          tw:[background:#f8f2db] tw:text-[#95771c]"><Scissors size={20} aria-hidden="true" /></span>
+                  <span className={`service-menu-status tw:py-1 tw:px-2.5 tw:rounded-[20px] tw:[background:#f0f0ee] tw:text-[#696965] tw:text-[11px] tw:font-semibold tw:[&.is-active]:[background:#eaf3ed] tw:[&.is-active]:text-[#37734c] ${row.isActive ? " is-active" : ""}`}>{row.isActive ? "Active" : "Inactive"}</span>
                 </div>
-                <div className="service-menu-copy">
-                  <p className="service-menu-category">{String(row.category ?? "Other")}</p>
+                <div className="service-menu-copy tw:flex-1 tw:[overflow-wrap:anywhere]">
+                  <p className="service-menu-category tw:[margin:0_0_6px] tw:text-[#8d762e] tw:text-[11px] tw:font-semibold tw:tracking-[.05em]">{String(row.category ?? "Other")}</p>
                   <h3>{String(row.name)}</h3>
-                  <p className="service-menu-description">{String(row.description || "No description added.")}</p>
+                  <p className="service-menu-description tw:[display:-webkit-box] tw:overflow-hidden tw:text-[#777772] tw:text-[13px]
+          tw:[margin:0_0_22px] tw:leading-[1.6]">{String(row.description || "No description added.")}</p>
                 </div>
-                <div className="service-menu-metrics">
+                <div className="service-menu-metrics tw:flex tw:items-center tw:justify-between tw:gap-3 tw:mb-4.5 tw:[&_strong]:text-[23px]
+          tw:[&_strong]:[font-weight:650] tw:[&_strong]:tracking-[-.035em] tw:[&_strong]:text-[#292a28]
+          tw:[&_strong]:[overflow-wrap:anywhere] tw:[&_>_span]:flex tw:[&_>_span]:items-center tw:[&_>_span]:gap-1.5
+          tw:[&_>_span]:text-[#74746e] tw:[&_>_span]:text-[12px] tw:[&_>_span]:whitespace-nowrap">
                   <strong>{display({ key: "price", label: "Price", type: "money" }, row.price)}</strong>
                   <span><Clock3 size={14} aria-hidden="true" />{String(row.durationMinutes)} min</span>
                 </div>
-                <div className="service-menu-footer">
+                <div className="service-menu-footer tw:flex tw:items-center tw:justify-between tw:gap-2 tw:[border-top:1px_solid_#efeee9]
+          tw:pt-4 tw:[&_>_span]:text-[#85857f] tw:[&_>_span]:text-[11px] tw:[&_button]:text-[12px]
+          tw:[&_button]:gap-[7px]">
                   <span>{row.bufferMinutes == null ? "Default buffer" : `${row.bufferMinutes} min buffer`}</span>
                   <Button variant="outline" disabled={busy} aria-label={`Edit ${row.name}`} onClick={() => open(row)}><Pencil size={14} aria-hidden="true" />Edit service</Button>
                 </div>
               </article>
             ) : (
-              <Card asChild key={row.id} className="block"><article className={`config-record${section === "staff" ? " staff-member-card" : ""}`}>
-                <div className="record-heading">
+              <Card asChild key={row.id} className="block"><article className={`config-record tw:p-6 tw:[background:white] tw:[border:1px_solid_#dce0d8] tw:rounded-[10px] tw:min-w-0 tw:[&_dl]:grid tw:[&_dl]:grid-cols-[1fr_1fr] tw:[&_dl]:gap-[14px_18px] tw:[&_dl]:mb-0 tw:[&_dt]:text-[11px] tw:[&_dt]:text-[#64736b] tw:[&_dd]:[margin:3px_0_0] tw:[&_dd]:text-[14px] tw:[&_dd]:[overflow-wrap:anywhere] tw:down-540:[&_dl]:grid-cols-[1fr] ${section === "staff" ? " staff-member-card tw:[.staff-configuration_&]:flex tw:[.staff-configuration_&]:flex-col tw:[.staff-configuration_&]:gap-5 tw:[.staff-configuration_&]:p-6 tw:[.staff-configuration_&]:[border-color:#e5e3dc] tw:[.staff-configuration_&]:rounded-[16px] tw:[&_h3]:flex tw:[&_h3]:items-center tw:[&_h3]:gap-3 tw:[&_h3]:m-0 tw:[&_h3]:[order:0] tw:[&_dl]:[order:1] tw:[&_dl]:m-0 tw:[&_.actions]:grid tw:[&_.actions]:grid-cols-[1fr_1fr] tw:[&_.actions]:gap-2 tw:[&_.actions]:[order:3] tw:[&_.actions]:pt-4.5 tw:[&_.actions]:[border-top:1px_solid_#eeece5] tw:[&_.actions_button]:text-[11px] tw:[&_.actions_button]:min-h-9 tw:[&_.actions_button[aria-label^=Delete]]:text-[#a95045] tw:[&_.actions_button[aria-label^=Delete]]:[border-color:transparent] tw:down-540:[.staff-configuration_&]:p-5 " : ""}`}>
+                <div className="record-heading tw:[.staff-member-card_&]:contents tw:flex tw:gap-4 tw:items-start tw:justify-between
+          tw:[&_h3]:text-[18px] tw:[&_h3]:mb-3 tw:[&_.actions]:flex-wrap tw:[&_.actions]:justify-end
+          tw:[&_button]:text-[12px] tw:[&_button]:py-1.5 tw:[&_button]:px-2.5 tw:down-540:flex-wrap">
                   <h3>
                     {section === "staff"
-                        ? <><span className="staff-member-avatar" aria-hidden="true">{`${String(row.firstName).charAt(0)}${String(row.lastName ?? "").charAt(0)}`}</span><span className="staff-member-identity"><span>{staffName(row.id)}</span><small>{String(row.staffCode ?? "—")}</small></span><span className={`staff-member-status${row.isActive ? " is-active" : ""}`}>{row.isActive ? "Active" : "Inactive"}</span></>
+                        ? <><span className="staff-member-avatar tw:grid tw:place-items-center tw:shrink-0 tw:w-12 tw:h-12 tw:rounded-[14px]
+          tw:[background:#f8f2db] tw:text-[#967b25] tw:text-[16px] tw:font-semibold tw:uppercase" aria-hidden="true">{`${String(row.firstName).charAt(0)}${String(row.lastName ?? "").charAt(0)}`}</span><span className="staff-member-identity tw:flex-1 tw:min-w-0 tw:[&_>_span]:block tw:[&_>_span]:text-[17px]
+          tw:[&_>_span]:[overflow-wrap:anywhere] tw:[&_small]:block tw:[&_small]:mt-1 tw:[&_small]:text-[#858177]
+          tw:[&_small]:text-[11px] tw:[&_small]:font-normal tw:[&_>_span]:leading-[1.4]"><span>{staffName(row.id)}</span><small>{String(row.staffCode ?? "—")}</small></span><span className={`staff-member-status tw:py-1 tw:px-2.5 tw:rounded-[20px] tw:[background:#f0f0ee] tw:text-[#696965] tw:text-[10px] tw:font-semibold tw:[&.is-active]:[background:#eaf3ed] tw:[&.is-active]:text-[#37734c] ${row.isActive ? " is-active" : ""}`}>{row.isActive ? "Active" : "Inactive"}</span></>
                         : section === "schedules" ||
                               section === "unavailability"
                             ? staffName(row.staffId)
@@ -568,7 +596,7 @@ export function Configuration({
                                     : definition.singular),
                               )}
                   </h3>
-                    <div className="actions">
+                    <div className="actions tw:flex tw:gap-3">
                       <Button variant="outline" disabled={busy} aria-label={section === "staff" ? `Edit ${staffName(row.id)}` : undefined} onClick={() => open(row)}>
                         {section === "staff" ? "Edit details" : "Edit"}
                       </Button>
@@ -632,9 +660,13 @@ export function Configuration({
                   ))}
                 </dl>
                 {section === "staff" && (
-                  <div className="staff-skill-summary">
+                  <div className="staff-skill-summary tw:[border-top:1px_solid_#e8e8e0] tw:pt-3.5 tw:mt-4.5 tw:text-[13px]
+          tw:[.staff-member-card_&]:[order:2] tw:[.staff-member-card_&]:flex-1 tw:[.staff-member-card_&]:[border:0]
+          tw:[.staff-member-card_&]:p-0 tw:[.staff-member-card_&]:m-0 tw:[&_>_strong]:text-[#77766f]
+          tw:[&_>_strong]:text-[11px] tw:[&_>_strong]:font-medium tw:leading-[1.7]">
                     <strong>Qualified services</strong>
-                    <div className="staff-member-skills">
+                    <div className="staff-member-skills tw:flex tw:flex-wrap tw:gap-1.5 tw:mt-2.5 tw:[&_p]:m-0 tw:[&_p]:text-[#8b887d]
+          tw:[&_p]:text-[12px] tw:[&_p]:leading-[1.6]">
                       {data.qualifications
                         .filter(
                           (q) =>
@@ -648,7 +680,8 @@ export function Configuration({
                           const service = data.services.find(
                             (s) => s.id === q.serviceId,
                           )!;
-                          return <span className="staff-member-skill" key={q.id} title={String(service.category ?? "Other")}>{String(service.name)}</span>;
+                          return <span className="staff-member-skill tw:max-w-full tw:py-[5px] tw:px-[9px] tw:[background:#f7f6f0] tw:[border:1px_solid_#eceae0]
+          tw:rounded-[6px] tw:text-[#706747] tw:text-[11px] tw:[overflow-wrap:anywhere]" key={q.id} title={String(service.category ?? "Other")}>{String(service.name)}</span>;
                         })
                         }
                       {!data.qualifications.some(q => q.staffId === row.id && q.isActive && data.services.some(s => s.id === q.serviceId && s.isActive)) && <p>No active services assigned. Use Manage skills to enable booking.</p>}

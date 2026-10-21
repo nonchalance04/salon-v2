@@ -11,7 +11,6 @@ import {
   type Period,
   type Weekday,
 } from "./opening-hours";
-import "./OpeningHours.css";
 
 const label = (day: string) => day[0] + day.slice(1).toLowerCase();
 const timeValue = (value: string) =>
@@ -54,7 +53,7 @@ export function OpeningHours({
     }
   }
   return (
-    <div className="opening-hours" aria-label="Weekly opening hours">
+    <div className="opening-hours tw:grid tw:gap-3.5" aria-label="Weekly opening hours">
       {weekdays.map((day) => (
         <OpeningDay
           key={day}
@@ -106,14 +105,18 @@ function OpeningDay({
   }
   return (
     <form
-      className="opening-day"
+      className="opening-day tw:[border:1px_solid_#dce0d8] tw:rounded-[10px] tw:[background:#fff] tw:p-5
+          tw:[&_fieldset]:[border:0] tw:[&_fieldset]:m-0 tw:[&_fieldset]:p-0 tw:[&_fieldset]:min-w-0
+          tw:[&_legend]:font-bold tw:[&_legend]:text-[16px] tw:[&_legend]:mb-3.5 tw:[&_legend]:p-0 tw:down-700:p-4.5"
       aria-label={`${label(day)} opening hours`}
       onSubmit={submit}
     >
       <fieldset disabled={busy}>
         <legend>{label(day)}</legend>
-        <div className="opening-day-controls">
-          <label className="opening-day-toggle">
+        <div className="opening-day-controls tw:grid tw:grid-cols-[95px_minmax(0,1fr)_auto] tw:[align-items:start] tw:gap-5
+          tw:down-700:grid-cols-[1fr] tw:down-700:gap-2">
+          <label className="opening-day-toggle tw:flex tw:flex-row tw:items-center tw:gap-2 tw:my-3 tw:mx-0 tw:text-[14px]
+          tw:[&_input]:w-4.5 tw:[&_input]:h-4.5 tw:[&_input]:[accent-color:#203c34] tw:down-700:m-0">
             <input
               type="checkbox"
               aria-label={`Open on ${label(day)}`}
@@ -127,11 +130,13 @@ function OpeningDay({
             />
             {draft.isOpen ? "Open" : "Closed"}
           </label>
-          <div className="opening-day-times">
+          <div className="opening-day-times tw:[&>p]:my-[13px] tw:[&>p]:mx-0">
             {draft.isOpen ? (
               <>
                 {draft.periods.map((period, index) => (
-                  <div className="opening-time-range" key={index}>
+                  <div className="opening-time-range tw:flex tw:items-center tw:flex-wrap tw:gap-3 tw:mb-2.5 tw:[&_label]:m-0 tw:[&_label]:flex-1
+          tw:[&_label]:min-w-[115px] tw:[&_label]:max-w-[200px] tw:[&>button]:[align-self:end]
+          tw:down-700:[&_label]:max-w-none" key={index}>
                     <label>
                       Opens at
                       <Input
@@ -185,11 +190,14 @@ function OpeningDay({
               <p className="muted">Closed all day</p>
             )}
           </div>
-          <div className="opening-day-actions">
-            {/* <button type="submit" className="primary" disabled={!dirty}>
+          <div className="opening-day-actions tw:flex tw:flex-col tw:gap-2 tw:pt-6 tw:down-700:flex-row tw:down-700:flex-wrap
+          tw:down-700:pt-2">
+            {/* <button type="submit" className="primary tw:[background:#203c34] tw:text-[white] tw:[border-color:#203c34] tw:hover:[background:#31584c]
+          tw:[.login-card_&]:w-full tw:[.login-card_&]:mt-1.5" disabled={!dirty}>
               Save {label(day)}
             </button> */}
-            <Button variant="default" type="submit" className="primary" disabled={!dirty}>
+            <Button variant="default" type="submit" className="primary tw:[background:#203c34] tw:text-[white] tw:[border-color:#203c34] tw:hover:[background:#31584c]
+          tw:[.login-card_&]:w-full tw:[.login-card_&]:mt-1.5" disabled={!dirty}>
               Save
             </Button>
             {dirty && (

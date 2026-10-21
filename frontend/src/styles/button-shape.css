@@ -1,0 +1,15 @@
+@reference "./feature-utilities.css";
+
+/* Match the reference's rounded rectangle without adding an outline. */
+:is(button, [data-slot="button"], a.button, a[role="button"]) {
+  @apply tw:rounded-[12px]!;
+}
+
+/* Text actions need a filled surface for their rounded corners to be visible. */
+:is(.clique-back, [data-slot="button"][data-variant="link"], .button--text):not(.clique-login-form > button) {
+  @apply tw:bg-[#e2e2e2]! tw:px-[18px]! tw:py-3! tw:no-underline!;
+}
+
+:is(.clique-back, [data-slot="button"][data-variant="link"], .button--text):not(.clique-login-form > button):not(:disabled):hover {
+  @apply tw:bg-[#d5d5d5]!;
+}

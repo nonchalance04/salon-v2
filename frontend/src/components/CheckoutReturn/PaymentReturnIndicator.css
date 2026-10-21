@@ -1,0 +1,17 @@
+.payment-return-check-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: payment-return-draw 1s ease-in-out forwards;
+}
+
+@keyframes payment-return-draw {
+  0%, 10% { stroke-dashoffset: 1; opacity: 1; }
+  75%, 100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .payment-return-check-line {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}

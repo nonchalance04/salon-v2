@@ -22,7 +22,13 @@ const label = (key: string) => reportLabels[key] ?? key.replace(/([a-z])([A-Z])/
 function Value({ value }: { value: unknown }) {
   if (value == null) return <>—</>;
   if (Array.isArray(value)) return <ul>{value.map((item, i) => <li key={i}><Value value={item} /></li>)}</ul>;
-  if (typeof value === "object") return <dl className="report-details">{visibleReportEntries(value as Record<string, unknown>).map(([key, item]) => <div key={key}><dt>{label(key)}</dt><dd><Value value={item} /></dd></div>)}</dl>;
+  if (typeof value === "object") return <dl className="report-details tw:[.reports_&]:min-w-0 tw:[.reports_&]:max-w-full tw:[.reports_&]:[margin:12px_0_0]
+          tw:[.reports_&_>_div]:block tw:[.reports_&_>_div]:py-2 tw:[.reports_&_>_div]:px-0 tw:[.reports_&_>_div]:m-0
+          tw:[.reports_&_>_div]:[border-bottom:1px_solid_#e7e7df] tw:[.reports_&_dt]:text-[11px]
+          tw:[.reports_&_dt]:text-[#686868] tw:[.reports_&_dd]:[margin:4px_0_0]
+          tw:[.reports_&_dd]:[overflow-wrap:anywhere] tw:min-w-[16rem] tw:max-w-[32rem] tw:my-[.75rem] tw:mx-0
+          tw:[&_>_div]:mb-[.5rem] tw:[&_dt]:font-semibold tw:[&_dd]:[margin:.15rem_0_.5rem]
+          tw:[&_dd]:[overflow-wrap:anywhere]">{visibleReportEntries(value as Record<string, unknown>).map(([key, item]) => <div key={key}><dt>{label(key)}</dt><dd><Value value={item} /></dd></div>)}</dl>;
   if (typeof value === "boolean") return <>{value ? "Yes" : "No"}</>;
   return <>{paymentStatusLabel(String(value))}</>;
 }
@@ -38,17 +44,49 @@ function columnWidth(key: string, rows: Record<string, unknown>[]) {
   return 170;
 }
 function DataTable({ rows, renderCell, title = "Report records" }: { rows: Record<string, unknown>[]; renderCell?: (column: string, row: Record<string, unknown>) => ReactNode; title?: string }) {
-  if (!rows.length) return <p className="report-empty">No records in this period.</p>;
+  if (!rows.length) return <p className="report-empty tw:[.reports_&]:p-6 tw:[.reports_&]:[border:1px_dashed_#d6d6cf] tw:[.reports_&]:rounded-[10px]
+          tw:[.reports_&]:text-[#686868] tw:[.reports_&]:[background:#fff]">No records in this period.</p>;
   const columns = visibleReportEntries(rows[0]).map(([key]) => key).filter(k => k !== "id");
   const widths = columns.map(column => columnWidth(column, rows));
   const style = { "--report-table-width": `${widths.reduce((sum, width) => sum + width, 0)}px` } as CSSProperties;
-  return <div className="table-wrap report-table-wrap" role="region" aria-label={`${title} table`} tabIndex={0}>
-    <table className="report-table" style={style} role="table">
-      <caption className="sr-only">{title}</caption>
+  return <div className="table-wrap tw:overflow-auto tw:[background:white] tw:[border:1px_solid_#dce0d8] tw:rounded-[10px]
+          tw:[&_pre]:max-w-[36rem] tw:[&_pre]:max-h-[28rem] tw:[&_pre]:overflow-auto tw:[&_pre]:whitespace-pre-wrap
+          tw:[&_pre]:[overflow-wrap:anywhere] tw:[&_pre]:text-[.8rem] report-table-wrap tw:[.reports_&]:relative
+          tw:[.reports_&]:w-full tw:[.reports_&]:max-w-full tw:[.reports_&]:[margin:16px_0_24px]
+          tw:[.reports_&]:overflow-x-auto tw:[.reports_&:focus-visible]:[outline:3px_solid_#987b1f]
+          tw:[.reports_&:focus-visible]:outline-offset-[3px] tw:down-640:[.reports_&]:[border:0]
+          tw:down-640:[.reports_&]:rounded-none tw:down-640:[.reports_&]:[background:transparent]
+          tw:down-640:[.reports_&]:overflow-visible tw:down-640:[.appointment-report_&]:overflow-x-auto
+          tw:down-640:[.appointment-report_&]:[background:#fff] tw:down-640:[.appointment-report_&]:rounded-[10px]" role="region" aria-label={`${title} table`} tabIndex={0}>
+    <table className="report-table tw:[.reports_&]:table-fixed tw:[.reports_&]:whitespace-normal tw:[.reports_&_th]:p-4
+          tw:[.reports_&_td]:p-4 tw:[.reports_&_th]:align-top tw:[.reports_&_td]:align-top
+          tw:[.reports_&_th]:[overflow-wrap:anywhere] tw:[.reports_&_td]:[overflow-wrap:anywhere]
+          tw:[.reports_&_th]:[border-right:1px_solid_#d6d6cf] tw:[.reports_&_td]:[border-right:1px_solid_#d6d6cf]
+          tw:[.reports_&_td]:[border-bottom:1px_solid_#d6d6cf] tw:[.reports_&_th]:text-[11px]
+          tw:[.reports_&_th]:tracking-[.04em] tw:[.reports_&_th]:[border-bottom:2px_solid_#bca45b]
+          tw:[.reports_&_td]:text-[13px] tw:[.reports_&_tbody_tr:hover]:[background:#f8f5e9]
+          tw:down-640:[.reports_&]:block tw:down-640:[.reports_&]:w-full tw:down-640:[.reports_&_colgroup]:hidden
+          tw:down-640:[.reports_&_thead]:absolute tw:down-640:[.reports_&_thead]:w-[1px]
+          tw:down-640:[.reports_&_thead]:h-[1px] tw:down-640:[.reports_&_thead]:p-0
+          tw:down-640:[.reports_&_thead]:overflow-hidden tw:down-640:[.reports_&_tbody]:block
+          tw:down-640:[.reports_&_tbody_tr]:block tw:down-640:[.reports_&_tbody_tr]:mb-4
+          tw:down-640:[.reports_&_tbody_tr]:[border:1px_solid_#deded6] tw:down-640:[.reports_&_tbody_tr]:rounded-[10px]
+          tw:down-640:[.reports_&_tbody_tr]:[background:#fff] tw:down-640:[.reports_&_tbody_tr]:overflow-hidden
+          tw:[.reports_&_th]:leading-[1.5] tw:[.reports_&_td]:leading-[1.6]" style={style} role="table">
+      <caption className="sr-only tw:absolute tw:w-[1px] tw:h-[1px] tw:overflow-hidden">{title}</caption>
       <colgroup>{columns.map((column, i) => <col key={column} style={{ width: widths[i] }} />)}</colgroup>
       <thead role="rowgroup"><tr role="row">{columns.map(column => <th key={column} scope="col" role="columnheader" className={numericColumn(column) ? "report-numeric" : undefined}>{label(column)}</th>)}</tr></thead>
       <tbody role="rowgroup">{rows.map((row, i) => <tr key={String(row.id ?? i)} role="row">{columns.map(column => <td key={column} role="cell" data-label={label(column)} className={[numericColumn(column) ? "report-numeric" : "", row[column] !== null && typeof row[column] === "object" ? "report-detail-cell" : ""].filter(Boolean).join(" ")}>
-        <div className="report-cell-value">{renderCell?.(column, row) ?? (typeof row[column] === "object" && row[column] !== null ? <details className="report-cell-details"><summary>View details<span className="sr-only">: {label(column)}, record {i + 1}</span></summary><Value value={row[column]} /></details> : <Value value={row[column]} />)}</div>
+        <div className="report-cell-value tw:[.reports_&]:min-w-0 tw:[.reports_&]:max-w-full tw:[.reports_&_>_button]:max-w-full
+          tw:[.reports_&_>_button]:py-2 tw:[.reports_&_>_button]:px-3 tw:[.reports_&_>_button]:text-[12px]
+          tw:[.reports_&_>_button]:whitespace-normal tw:[.reports_&_ul]:[list-style:none]
+          tw:[.reports_&_ul]:[margin:12px_0_0] tw:[.reports_&_ul]:p-0 tw:[.reports_&_li]:p-3 tw:[.reports_&_li]:mb-2.5
+          tw:[.reports_&_li]:[background:#f5f5f1] tw:[.reports_&_li]:[border:1px_solid_#e3e3dc]
+          tw:[.reports_&_li]:rounded-[8px]">{renderCell?.(column, row) ?? (typeof row[column] === "object" && row[column] !== null ? <details className="report-cell-details tw:[.reports_&]:text-center tw:[.reports_&_>_summary]:w-[fit-content]
+          tw:[.reports_&_>_summary]:mx-auto tw:[.reports_&_>_summary]:cursor-pointer
+          tw:[.reports_&_>_summary]:font-semibold tw:[.reports_&_>_summary]:text-[#65500e]
+          tw:[.reports_&_>_summary]:rounded-[4px] tw:[.reports_&_>_summary:focus-visible]:[outline:3px_solid_#987b1f]
+          tw:[.reports_&_>_summary:focus-visible]:outline-offset-[3px]"><summary>View details<span className="sr-only tw:absolute tw:w-[1px] tw:h-[1px] tw:overflow-hidden">: {label(column)}, record {i + 1}</span></summary><Value value={row[column]} /></details> : <Value value={row[column]} />)}</div>
       </td>)}</tr>)}</tbody>
     </table>
   </div>;
@@ -109,12 +147,19 @@ function TransactionReports({ admin, initialKind = "appointments" }: { admin: bo
   }, [admin, from, to, load]);
   function submit(e: FormEvent) { e.preventDefault(); void load(); }
   function clear() { setCollections(null); setReport(null); }
-  return <section className="reports"><h2>{admin ? "Reports" : "Collection summary"}</h2><p>Choose up to 366 days in salon time. Reports use historical transactions and stored service values.</p>
-    <form className="account-form" onSubmit={submit}><div className="form-grid"><label>From<Input type="date" required value={from} disabled={busy} onChange={e => { setFrom(e.target.value); clear(); }} /></label><label>Through<Input type="date" required value={to} min={from} disabled={busy} onChange={e => { setTo(e.target.value); clear(); }} /></label>
-    {/* {admin && <label>Report<select value={kind} disabled={busy} onChange={e => { setKind(e.target.value); clear(); }}>{["appointments", "payments", "receipts", "commissions"].map(k => <option key={k} value={k}>{label(k)}</option>)}</select></label>} */}</div>{!admin && <Button variant="default" className="primary" disabled={busy}>{busy ? "Loading…" : "Run report"}</Button>}</form>
+  return <section className="reports tw:min-w-0 tw:[&_>_.account-form_label]:mb-0 tw:[&_>_.account-form_>_button]:mt-4.5
+          tw:down-640:[&_>_.account-form]:p-4.5"><h2>{admin ? "Reports" : "Collection summary"}</h2><p>Choose up to 366 days in salon time. Reports use historical transactions and stored service values.</p>
+    <form className="account-form tw:[border:1px_solid_#dce0d8] tw:[background:white] tw:p-7 tw:rounded-[10px] tw:mb-[25px]
+          tw:down-760:p-5" onSubmit={submit}><div className="form-grid tw:grid tw:grid-cols-[1fr_1fr] tw:gap-[0_24px] tw:down-760:grid-cols-[1fr]"><label>From<Input type="date" required value={from} disabled={busy} onChange={e => { setFrom(e.target.value); clear(); }} /></label><label>Through<Input type="date" required value={to} min={from} disabled={busy} onChange={e => { setTo(e.target.value); clear(); }} /></label>
+    {/* {admin && <label>Report<select value={kind} disabled={busy} onChange={e => { setKind(e.target.value); clear(); }}>{["appointments", "payments", "receipts", "commissions"].map(k => <option key={k} value={k}>{label(k)}</option>)}</select></label>} */}</div>{!admin && <Button variant="default" className="primary tw:[background:#203c34] tw:text-[white] tw:[border-color:#203c34] tw:hover:[background:#31584c]
+          tw:[.login-card_&]:w-full tw:[.login-card_&]:mt-1.5" disabled={busy}>{busy ? "Loading…" : "Run report"}</Button>}</form>
     {admin && busy && <p role="status">Loading…</p>}
-    {error && <p role="alert" className="error">{error}</p>}
+    {error && <p role="alert" className="error tw:[background:#fff0ed] tw:[border:1px_solid_#ecc5ba] tw:text-[#963923] tw:py-3 tw:px-4 tw:rounded-[6px]
+          tw:text-[14px]">{error}</p>}
     {collections && <><h3>Collections</h3><p>{collections.basis} Timezone: {collections.timeZone}.</p><DataTable rows={collections.totals} title="Collections" /><p>Successful applied and unapplied amounts describe current payment status. Reconciliation required is a subset, not an additional collection.</p><h3>Collections by payment method</h3><DataTable rows={collections.methodTotals} title="Collections by method" /><h3>Appointment fees & service payment captures</h3><DataTable rows={collections.typeTotals} title="Collections by payment type" /><details><summary>Collection breakdown by payment type and method</summary><DataTable rows={collections.breakdown} title="Collection breakdown" /></details></>}
-    {report && <><h3>{label(kind)}</h3><p>{report.total} records · Date basis: {report.dateBasis}. Timestamps in details use ISO format with UTC offsets.</p>{kind === "receipts" && <p>Use Print / Save PDF to open the formatted receipt, then choose Save as PDF in the print destination.</p>}<DataTable rows={report.rows} title={label(kind)} renderCell={kind === "receipts" ? receiptCell : undefined} /><div className="actions report-pagination"><Button variant="outline" disabled={busy || report.page <= 1} onClick={() => void load(report.page - 1)}>Previous</Button><span>Page {report.page} of {Math.max(1, Math.ceil(report.total / report.pageSize))}</span><Button variant="outline" disabled={busy || report.page * report.pageSize >= report.total} onClick={() => void load(report.page + 1)}>Next</Button></div></>}
+    {report && <><h3>{label(kind)}</h3><p>{report.total} records · Date basis: {report.dateBasis}. Timestamps in details use ISO format with UTC offsets.</p>{kind === "receipts" && <p>Use Print / Save PDF to open the formatted receipt, then choose Save as PDF in the print destination.</p>}<DataTable rows={report.rows} title={label(kind)} renderCell={kind === "receipts" ? receiptCell : undefined} /><div className="actions tw:flex tw:gap-3 report-pagination tw:[.reports_&]:items-center tw:[.reports_&]:justify-end
+          tw:[.reports_&]:gap-4 tw:[.reports_&]:my-5 tw:[.reports_&]:mx-0 tw:[.reports_&_span]:text-[13px]
+          tw:[.reports_&_span]:text-[#686868] tw:down-640:[.reports_&]:justify-between tw:down-640:[.reports_&]:flex-wrap
+          tw:down-640:[.reports_&]:gap-2.5 tw:down-640:[.reports_&_button]:py-[9px] tw:down-640:[.reports_&_button]:px-3"><Button variant="outline" disabled={busy || report.page <= 1} onClick={() => void load(report.page - 1)}>Previous</Button><span>Page {report.page} of {Math.max(1, Math.ceil(report.total / report.pageSize))}</span><Button variant="outline" disabled={busy || report.page * report.pageSize >= report.total} onClick={() => void load(report.page + 1)}>Next</Button></div></>}
   </section>;
 }

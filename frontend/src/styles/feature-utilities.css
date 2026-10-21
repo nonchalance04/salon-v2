@@ -1,0 +1,37 @@
+/*
+ * Feature utilities use the tw: prefix and preserve the existing cascade.
+ * Shared shadcn utilities remain in their original layer in tailwind.css.
+ * No Preflight: the application already supplies its own base styles.
+ */
+@import "tailwindcss/theme.css" layer(theme) prefix(tw);
+@import "tailwindcss/utilities.css";
+@source "../";
+
+@theme {
+  --font-sans: Arial, Helvetica, sans-serif;
+  --font-serif: Georgia, "Times New Roman", serif;
+}
+
+/* Preserve the original selector specificity and inclusive breakpoints. */
+@custom-variant customer (.customer-site &);
+@custom-variant workspace (.clique-workspace &);
+@custom-variant workspace-main (.clique-main &);
+@custom-variant receipt (.salon-receipt &);
+@custom-variant up-1500 (@media (min-width: 1500px));
+@custom-variant down-1200 (@media (max-width: 1200px));
+@custom-variant down-1150 (@media (max-width: 1150px));
+@custom-variant down-1100 (@media (max-width: 1100px));
+@custom-variant down-1023 (@media (max-width: 1023px));
+@custom-variant down-1000 (@media (max-width: 1000px));
+@custom-variant down-960 (@media (max-width: 960px));
+@custom-variant down-900 (@media (max-width: 900px));
+@custom-variant down-820 (@media (max-width: 820px));
+@custom-variant down-760 (@media (max-width: 760px));
+@custom-variant down-700 (@media (max-width: 700px));
+@custom-variant down-640 (@media (max-width: 640px));
+@custom-variant down-639 (@media (max-width: 639px));
+@custom-variant down-600 (@media (max-width: 600px));
+@custom-variant down-580 (@media (max-width: 580px));
+@custom-variant down-540 (@media (max-width: 540px));
+@custom-variant down-520 (@media (max-width: 520px));
+@custom-variant down-480 (@media (max-width: 480px));

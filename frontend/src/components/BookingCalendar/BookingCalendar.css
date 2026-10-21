@@ -1,2 +1,1 @@
-.customer-site .calendar-day:disabled{opacity:.35;cursor:not-allowed}
 .customer-site .calendar[aria-busy="true"] .calendar-day:disabled{cursor:wait}

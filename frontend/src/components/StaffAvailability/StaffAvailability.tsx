@@ -26,7 +26,19 @@ export function StaffAvailability({ tab, onTabChange, onReviewBooking }: {
     if (tab !== tabs[next].value) onTabChange(tabs[next].value);
   }
   return <section className="staff-availability" aria-label="Staff availability">
-    <div className="availability-tabs" role="tablist" aria-label="Staff availability views">{tabs.map((item, index) => <button
+    <div className="availability-tabs tw:inline-flex tw:items-center tw:gap-[5px] tw:max-w-full tw:mb-7 tw:p-[5px]
+          tw:[border:1px_solid_#e2dfd4] tw:rounded-[12px] tw:[background:#eaeae5] tw:workspace:[&_button]:inline-flex
+          tw:workspace:[&_button]:items-center tw:workspace:[&_button]:justify-center tw:workspace:[&_button]:gap-2
+          tw:workspace:[&_button]:min-h-10.5 tw:workspace:[&_button]:py-2.5 tw:workspace:[&_button]:px-4.5
+          tw:workspace:[&_button]:[border:1px_solid_transparent] tw:workspace:[&_button]:rounded-[8px]
+          tw:workspace:[&_button]:[background:transparent] tw:workspace:[&_button]:text-[#858071]
+          tw:workspace:[&_button]:text-[12px] tw:workspace:[&_button]:font-semibold
+          tw:workspace:[&_button]:whitespace-nowrap tw:workspace:[&_button[aria-selected=true]]:[border-color:#e6dfc6]
+          tw:workspace:[&_button[aria-selected=true]]:[background:#fffdf5]
+          tw:workspace:[&_button[aria-selected=true]]:text-[#80691f] tw:workspace:[&_button:hover]:[background:#f7f4e9]
+          tw:workspace:[&_button:hover]:text-[#80691f] tw:down-540:flex tw:down-540:w-full tw:down-540:mb-5.5
+          tw:down-540:workspace:[&_button]:flex-1 tw:down-540:workspace:[&_button]:py-2.5
+          tw:down-540:workspace:[&_button]:px-3 tw:down-540:workspace:[&_button]:text-[11px]" role="tablist" aria-label="Staff availability views">{tabs.map((item, index) => <button
       type="button" role="tab" key={item.value}
       ref={button => { buttons.current[index] = button; }}
       id={`${id}-${item.value}-tab`} aria-controls={`${id}-${item.value}-panel`}
