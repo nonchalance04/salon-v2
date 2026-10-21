@@ -77,7 +77,6 @@ export function FeePaymentControls({ bookingCode, token, onChange, pending }: { 
       {checkoutUrl && <p><a className="payment-link" href={checkoutUrl} rel="noreferrer">Continue to PayMongo </a></p>}
       {!options.testMode && <p>Complete payment in this tab. When PayMongo returns you to the salon, your booking restores automatically on this browser and confirms after payment is verified.</p>}
       {!options.testMode && payment?.status === "PENDING" && <p role="status">Waiting for payment confirmation… Status updates automatically when you return to the salon.</p>}
-      {!options.testMode && payment && <Button variant="outline" type="button" disabled={busy} onClick={() => void checkPayment()}>Check payment status</Button>}
     </> : options && <p>Contact the salon to pay the appointment fee before your hold expires. Online payment is not configured.</p>}
     {error && <p role="alert" className="error tw:[background:#fff0ed] tw:[border:1px_solid_#ecc5ba] tw:text-[#963923] tw:py-3 tw:px-4 tw:rounded-[6px]
           tw:text-[14px]">{error}</p>}

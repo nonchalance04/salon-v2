@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/Button";
 import { readGuestCredentials } from "../../utils/guest-credentials";
 import { Link, useLocation, useNavigate } from "react-router";
 import { AppointmentOtp } from "../AppointmentOtp";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { CheckoutReturn } from "../CheckoutReturn";
 import { PaymentReturnIndicator } from "../CheckoutReturn/PaymentReturnIndicator";
 import { api, ApiError } from "../../lib/api";
@@ -14,6 +14,14 @@ import type { Appointment } from "../../types/booking";
 // Choose a readable error message so the screen can explain what went wrong.
 const message = (error: unknown) =>
   error instanceof Error ? error.message : "Please try again.";
+
+// Keep one indicator mounted while restoration and provider verification run beneath it.
+function PaymentReturnScreen({ loading, children }: { loading: boolean; children: ReactNode }) {
+  return <>
+    {loading && <PaymentReturnIndicator />}
+    <div hidden={loading} className={loading ? "tw:hidden!" : undefined}>{children}</div>
+  </>;
+}
 
 // Guide customers to their saved booking so they can manage the visit after verification.
 export function GuestAppointment({
@@ -32,6 +40,7 @@ export function GuestAppointment({
   const [restoreError, setRestoreError] = useState("");
   const [restoreAttempt, setRestoreAttempt] = useState(0);
   const [checkoutResolved, setCheckoutResolved] = useState(false);
+  const [returnNeedsAttention, setReturnNeedsAttention] = useState(false);
   const [showReturnAnimation, setShowReturnAnimation] = useState(checkoutReturn);
   // Keep time-based screen updates running while this view is open so its status stays current.
   useEffect(() => {
@@ -62,6 +71,7 @@ export function GuestAppointment({
       requestGeneration.current++;
       setResult(null);
       setCheckoutResolved(false);
+      setReturnNeedsAttention(false);
       setRestoreError("");
       setToken("");
       setCredentials({ bookingCode: "", token: "" });
@@ -110,6 +120,7 @@ export function GuestAppointment({
     requestGeneration.current++;
     setResult(null);
     setCheckoutResolved(false);
+    setReturnNeedsAttention(false);
     setToken("");
     setError("");
     setBusy(false);
@@ -158,9 +169,12 @@ export function GuestAppointment({
     return () => { controller.abort(); };
   }, [credentials, restoreAttempt]);
 
-  if (checkoutReturn && showReturnAnimation) return <PaymentReturnIndicator />;
+  const returnLoading = checkoutReturn && (showReturnAnimation ||
+    (restoring && !restoreError) || (busy && !error) ||
+    (result?.status === "PENDING_PAYMENT" && !checkoutResolved && !returnNeedsAttention));
 
   if (restoring || restoreError) return (
+    <PaymentReturnScreen loading={returnLoading}>
     <section className={embedded ? "guest-appointment container public:w-[min(1280px,calc(100%_-_96px))] public:mx-auto public:down-1023:w-[calc(100%_-_48px)] public:down-639:w-[calc(100%_-_36px)]  page-section public:pt-7.5 public:pb-20 public:min-h-[65vh] public:down-639:pb-[45px] " : "workspace-main tw:max-w-[1200px] tw:m-auto tw:[padding:60px_32px_80px] tw:[&>h1]:text-[46px] tw:[&>h1]:mb-2 tw:down-760:py-9.5 tw:down-760:px-5 tw:down-760:[&>h1]:text-[38px]  availability-page tw:max-w-[1000px] "} aria-labelledby="appointment-restore-title">
       <p className="eyebrow public:text-[12px] public:tracking-[0.17em] public:font-bold public:text-[#987b1f]
           public:down-639:text-[11px] tw:text-[11px] tw:tracking-[.18em] tw:font-bold tw:mb-5 tw:[.cashier-main>&]:mb-2.5">YOUR VISIT</p>
@@ -177,9 +191,11 @@ export function GuestAppointment({
         </div>
       </> : <p role="status">Please wait while we restore your appointment securely.</p>}
     </section>
+    </PaymentReturnScreen>
   );
 
   return (
+    <PaymentReturnScreen loading={returnLoading}>
     <div
       className={
         embedded ? "guest-appointment container public:w-[min(1280px,calc(100%_-_96px))] public:mx-auto public:down-1023:w-[calc(100%_-_48px)] public:down-639:w-[calc(100%_-_36px)]  page-section public:pt-7.5 public:pb-20 public:min-h-[65vh] public:down-639:pb-[45px] " : "workspace tw:[&_header]:py-6 tw:[&_header]:px-[5vw] tw:[&_header]:[border-bottom:1px_solid_#dce0d8] tw:[&_header]:flex tw:[&_header]:justify-between tw:[&_header]:items-center tw:[&_header]:[background:#fff] tw:[&_header_.wordmark]:text-[23px] tw:down-760:[&_header]:p-5 "
@@ -218,6 +234,7 @@ export function GuestAppointment({
                 key={result.bookingCode}
                 appointment={result}
                 token={token}
+                onAttentionChange={setReturnNeedsAttention}
                 onResolved={appointment => { setResult(appointment); setCheckoutResolved(true); }}
               />
             ) : <AppointmentView
@@ -267,5 +284,6 @@ export function GuestAppointment({
         )}
       </section>
     </div>
+    </PaymentReturnScreen>
   );
 }

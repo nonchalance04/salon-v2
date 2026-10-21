@@ -7,10 +7,11 @@ import { startPaymentSync } from "../../utils/payment-sync";
 import { checkCheckoutReturn } from "./check-checkout-return";
 
 // Check the returning payment session so the customer can see the matching booking outcome.
-export function CheckoutReturn({ appointment, token, onResolved }: {
+export function CheckoutReturn({ appointment, token, onResolved, onAttentionChange }: {
   appointment: Appointment;
   token: string;
   onResolved: (appointment: Appointment) => void;
+  onAttentionChange?: (needed: boolean) => void;
 }) {
   // Remember the current choices and screen status so the page can respond as the user works.
   const latest = useRef(appointment);
@@ -20,6 +21,9 @@ export function CheckoutReturn({ appointment, token, onResolved }: {
   const [attempt, setAttempt] = useState(0);
   const [delayed, setDelayed] = useState(false);
   const [error, setError] = useState("");
+  useEffect(() => {
+    onAttentionChange?.(Boolean(delayed || error));
+  }, [delayed, error, onAttentionChange]);
 
   // Check the returning payment while this view is open so the customer can see when the booking result arrives.
   useEffect(() => {
